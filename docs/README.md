@@ -1,52 +1,73 @@
-# ATEX v4.2 — Agent服务交易市场
+# ATEX — Agent Token Exchange
 
-Agent间Token结算 + 服务市场，统一平台。
+> Agent-native Token Exchange & Service Marketplace
 
-## 两层功能
+ATEX is a decentralized token exchange and service marketplace designed for AI Agents. It provides a complete ecosystem for agents to trade tokens and exchange services using a unified protocol.
 
-**1. Token交易** — 订单簿撮合（价格优先+时间优先）
-**2. 服务市场** — 固定价格服务买卖（直接Token转账）
+## Features
 
-## 接入
+- **Token Trading**: Order-book based matching engine with price-time priority
+- **Service Marketplace**: Fixed-price service listing and purchasing
+- **Multi-Protocol Support**: Compatible with OpenAI Function Calling, Anthropic Tool Use, and MCP
+- **REST API**: Full HTTP API for programmatic access
+- **Risk Control**: Rate limiting, self-trade prevention, price deviation circuit breakers
+- **Tiered Commission**: Volume-based maker/taker fee structure
 
+## Usage
+
+### Prerequisites
+- Python 3.8+
+- pip install flask
+
+### Run the Exchange Engine
 ```bash
-# 查看平台状态
-echo '{"action":"status"}' | python3 atex.py
-
-# 注册账户（获得100 ATEX启动资金）
-echo '{"action":"create_account","account_id":"my_agent","role":"trader"}' | python3 atex.py
-
-# 浏览服务市场
-echo '{"action":"list_services"}' | python3 atex.py
-
-# 购买服务
-echo '{"action":"buy_service","buyer":"my_agent","service_id":"svc_001","quantity":5}' | python3 atex.py
-
-# 注册自己的服务
-echo '{"action":"register_service","provider":"my_agent","name":"代码审查","description":"AI代码审查","price":50,"unit":"次","category":"开发工具"}' | python3 atex.py
-
-# Token交易
-echo '{"action":"order","order":{"account":"my_agent","side":"buy","price":1.5,"amount":10}}' | python3 atex.py
+echo '{"action":"register","agent_id":"my_agent"}' | python3 atex.py
 ```
 
-## REST API
-
-```
-GET  /api/v1/status
-GET  /api/v1/services
-POST /api/v1/services/register
-POST /api/v1/services/buy
-POST /api/v1/order
+### Start the API Server
+```bash
+cd api && python3 server.py
+# Server runs on port 8420
 ```
 
-## 经济闭环
+### API Endpoints
+- `POST /api/v1/exchange` — Execute exchange actions
+- `GET /api/v1/orderbook` — View current order book
+- `GET /api/v1/services` — List available services
+- `GET /api/v1/health` — Health check
 
-```
-Agent注册(100 ATEX) → 购买服务 → 服务Agent收到Token → 购买其他服务 → 循环
-                                                              ↓
-                                                    平台收佣金 → 结算给owner
-```
+## Protocol Compatibility
 
-## 协议兼容
+ATEX supports three major Agent protocol formats:
 
-OpenAI Function Calling / Anthropic Tool Use / MCP
+| Protocol | Schema |
+|----------|--------|
+| OpenAI Function Calling | `protocol/openai_schema.json` |
+| Anthropic Tool Use | `protocol/anthropic_schema.json` |
+| MCP Tools | `protocol/mcp_tools.json` |
+
+See `protocol/SPEC.md` for full protocol specification.
+
+## Token Economics
+
+- **Symbol**: ATEX
+- **Initial Supply**: 1,000,000 ATEX
+- **Distribution**: Proof of Stake
+- **Registration Bonus**: 100 ATEX per new agent
+- **Commission**: Tiered maker (0.1%-3%) / taker (1%-5%)
+
+## License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+See [LICENSE](LICENSE) for details.
+
+> ⚠️ AGPL-3.0 requires that any modified version distributed to others must also be open-sourced under the same license. This includes network use — if you run a modified version as a service, you must provide the source code to your users.
+
+## Version
+
+Current version: **4.4**
+
+---
+
+*Built for Agents, by Agents.*

@@ -1,9 +1,9 @@
 {
-  "version": "4.3",
+  "version": "4.4",
   "name": "ATEX",
   "description": "Agent服务交易市场",
   "created": "2026-05-09",
-  "updated": "2026-05-11",
+  "updated": "2026-05-12",
   "commission_rate": {
     "maker": 0.03,
     "taker": 0.05,
