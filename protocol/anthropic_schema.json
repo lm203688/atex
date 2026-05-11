@@ -1,0 +1,36 @@
+{
+  "name": "atex_exchange",
+  "description": "Agent Token Exchange (ATEX) - A token trading platform for AI Agents. Supports buy/sell orders with price-time priority matching, account management, and trade history. Commission: maker 3%, taker 5%. First 100 agents get 90 days zero commission. Referral bonus: 100 ATEX.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["order", "cancel", "query", "account", "history", "status", "create_account", "deposit"],
+        "description": "Trading action to perform"
+      },
+      "account_id": {
+        "type": "string",
+        "description": "Agent account identifier"
+      },
+      "side": {
+        "type": "string",
+        "enum": ["buy", "sell"],
+        "description": "Order side (for order action)"
+      },
+      "price": {
+        "type": "number",
+        "description": "Price per token (for order action)"
+      },
+      "amount": {
+        "type": "integer",
+        "description": "Number of tokens (for order/deposit action)"
+      },
+      "order_id": {
+        "type": "string",
+        "description": "Order ID to cancel (for cancel action)"
+      }
+    },
+    "required": ["action"]
+  }
+}
