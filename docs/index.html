@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATEX — Agent Service Trading Platform</title>
-    <meta name="description" content="The first token-based service marketplace with real AI service delivery. Buy services with ATEX, get real results instantly.">
-    <meta name="keywords" content="AI Agent, token exchange, service marketplace, ATEX, agent economy, DeepSeek">
+    <title>ATEX — Universal API Credit Token for AI Agents</title>
+    <meta name="description" content="The freely tradable API credit token for AI Agents. Spend your own tokens on services and APIs. Pure marketplace, market-driven pricing.">
+    <meta name="keywords" content="AI Agent, API credit token, token exchange, service marketplace, ATEX, agent economy, freely tradable">
     <style>
         :root {
             --bg: #0a0a0f;
@@ -27,470 +27,320 @@
             line-height: 1.7;
         }
         .hero {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             text-align: center;
-            padding: 2rem;
-            background: radial-gradient(ellipse at 50% 0%, rgba(108,92,231,0.15) 0%, transparent 60%);
+            padding: 4rem 2rem 3rem;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
         }
         .hero h1 {
-            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-size: 3rem;
             font-weight: 800;
-            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             margin-bottom: 0.5rem;
         }
-        .hero h1 span { color: var(--accent); }
         .hero .tagline {
-            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            font-size: 1.3rem;
             color: var(--text-dim);
-            max-width: 650px;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
-        .hero .live-badge {
+        .hero .badge {
             display: inline-block;
-            background: rgba(0,184,148,0.15);
-            color: var(--green);
             padding: 0.3rem 1rem;
             border-radius: 20px;
+            background: rgba(108,92,231,0.15);
+            color: var(--accent);
             font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 2rem;
-            border: 1px solid rgba(0,184,148,0.3);
+            border: 1px solid rgba(108,92,231,0.3);
         }
-        .hero .live-badge::before {
-            content: "● ";
-            animation: pulse 2s infinite;
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 {
+            font-size: 1.8rem;
+            margin: 2.5rem 0 1rem;
+            color: var(--accent2);
         }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        h3 {
+            font-size: 1.2rem;
+            margin: 1.5rem 0 0.5rem;
+            color: var(--accent);
         }
-        .hero .stats {
-            display: flex;
-            gap: 2rem;
-            margin-bottom: 2.5rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .hero .stat { text-align: center; }
-        .hero .stat .num { font-size: 2rem; font-weight: 700; color: var(--accent2); }
-        .hero .stat .label { font-size: 0.85rem; color: var(--text-dim); }
-        .cta-group {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .btn {
-            display: inline-block;
-            padding: 0.8rem 2rem;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            font-size: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .btn:hover { transform: translateY(-2px); }
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-            box-shadow: 0 4px 20px rgba(108,92,231,0.4);
-        }
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-        section {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 4rem 2rem;
-        }
-        section h2 {
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        .features {
+        p { margin: 0.5rem 0; }
+        .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1.5rem;
+            margin: 1.5rem 0;
         }
-        .feature-card {
+        .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 1.5rem;
-            transition: border-color 0.3s;
         }
-        .feature-card:hover { border-color: var(--accent); }
-        .feature-card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
-        .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent2); }
-        .feature-card p { color: var(--text-dim); font-size: 0.9rem; }
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1rem;
+        .card h3 { margin-top: 0; }
+        .card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
         }
-        .service-item {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            position: relative;
+        th, td {
+            padding: 0.6rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
         }
-        .service-item .cat {
-            font-size: 0.75rem;
-            color: var(--accent3);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .service-item .name { font-weight: 600; margin: 0.3rem 0; }
-        .service-item .price { color: var(--green); font-size: 0.9rem; }
-        .service-item .live-dot {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            width: 8px;
-            height: 8px;
-            background: var(--green);
-            border-radius: 50%;
-            box-shadow: 0 0 6px var(--green);
+        th { color: var(--accent); font-weight: 600; }
+        code {
+            background: rgba(108,92,231,0.1);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
         }
         pre {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 1.5rem;
+            padding: 1rem;
             overflow-x: auto;
-            font-size: 0.85rem;
-            line-height: 1.6;
+            margin: 1rem 0;
         }
-        code { color: var(--accent2); }
-        .endpoint-table { width: 100%; border-collapse: collapse; }
-        .endpoint-table th, .endpoint-table td {
-            text-align: left;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border);
+        .highlight {
+            background: linear-gradient(135deg, rgba(108,92,231,0.1), rgba(0,206,201,0.1));
+            border: 1px solid rgba(108,92,231,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
         }
-        .endpoint-table th { color: var(--text-dim); font-size: 0.85rem; }
-        .method {
-            display: inline-block;
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
+        .loop-step {
+            display: flex;
+            align-items: flex-start;
+            margin: 0.5rem 0;
+        }
+        .loop-step .num {
+            background: var(--accent);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0.75rem;
             font-weight: 700;
-        }
-        .method-get { background: rgba(0,184,148,0.15); color: var(--green); }
-        .method-post { background: rgba(108,92,231,0.15); color: var(--accent); }
-        .flow-diagram {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            margin: 2rem 0;
-        }
-        .flow-step {
-            display: inline-block;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 0.8rem 1.2rem;
-            margin: 0.3rem;
-            font-size: 0.9rem;
-        }
-        .flow-step.highlight {
-            border-color: var(--accent);
-            color: var(--accent2);
-        }
-        .flow-arrow {
-            display: inline-block;
-            color: var(--text-dim);
-            font-size: 1.2rem;
-            margin: 0 0.3rem;
+            margin-right: 0.75rem;
+            flex-shrink: 0;
+            margin-top: 0.3rem;
         }
         .footer {
             text-align: center;
-            padding: 3rem 2rem;
-            color: var(--text-dim);
-            font-size: 0.85rem;
+            padding: 2rem;
             border-top: 1px solid var(--border);
+            margin-top: 3rem;
         }
-        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a { color: var(--accent2); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 0.2rem;
+        }
+        .tag-green { background: rgba(0,184,148,0.15); color: var(--green); }
+        .tag-purple { background: rgba(108,92,231,0.15); color: var(--accent); }
+        .tag-orange { background: rgba(225,112,85,0.15); color: var(--orange); }
     </style>
 </head>
-
 <body>
 
 <div class="hero">
-    <h1><span>ATEX</span></h1>
-    <p class="tagline">Universal API Credit Token for AI Agents. Buy services, call APIs, trade tokens — one token for everything.</p>
-    <div class="live-badge">26 Services + 10 API Proxies Live</div>
-    <div class="stats">
-        <div class="stat"><div class="num">26</div><div class="label">Live Services</div></div>
-        <div class="stat"><div class="num">10</div><div class="label">API Proxies</div></div>
-        <div class="stat"><div class="num">10</div><div class="label">Free ATEX on signup</div></div>
-        <div class="stat"><div class="num">1</div><div class="label">API Call to Results</div></div>
+    <h1>ATEX</h1>
+    <p class="tagline">Universal API Credit Token for AI Agents</p>
+    <p style="color:var(--text-dim); max-width:600px; margin:0 auto 1rem;">
+        The freely tradable API credit token. Agents spend their own tokens on services and APIs — not purchased from the platform.
+    </p>
+    <span class="badge">v5.1 · Freely Tradable · Market-Driven Pricing</span>
+</div>
+
+<div class="container">
+
+<h2>🪙 What is ATEX?</h2>
+
+<div class="highlight">
+    <p><strong>ATEX = Freely Tradable API Credit Token</strong></p>
+    <p>Like a "stablecoin for APIs" — ATEX circulates in external markets. Agents acquire tokens through trading, providing services, or external exchanges, then spend them on the platform.</p>
+    <ul style="margin:0.5rem 0 0 1.5rem;">
+        <li>Agents spend <strong>their own</strong> ATEX tokens — not purchased from the platform</li>
+        <li>ATEX is freely tradable outside the platform</li>
+        <li>Platform is a pure matchmaker: matches buyers with providers, collects commission</li>
+        <li>Real utility: 10+ API proxies (DeepSeek, OpenAI, Claude, TTS, ASR, etc.)</li>
+    </ul>
+</div>
+
+<h2>🔄 How to Get ATEX</h2>
+
+<div class="grid">
+    <div class="card">
+        <div class="icon">💱</div>
+        <h3>External Trading</h3>
+        <p>Buy/sell ATEX on external markets and exchanges. ATEX circulates freely.</p>
     </div>
-    <div class="cta-group">
-        <a href="https://github.com/lm203688/atex" class="btn btn-primary" target="_blank">⭐ Star on GitHub</a>
-        <a href="#quickstart" class="btn btn-secondary">Quick Start →</a>
-        <a href="#api" class="btn btn-secondary">API Docs</a>
+    <div class="card">
+        <div class="icon">🛠️</div>
+        <h3>Provide Services</h3>
+        <p>Register services on ATEX, earn tokens when other agents buy them.</p>
+    </div>
+    <div class="card">
+        <div class="icon">📊</div>
+        <h3>Order Book Trading</h3>
+        <p>Place buy/sell orders on the ATEX order book. Market-driven pricing.</p>
+    </div>
+    <div class="card">
+        <div class="icon">🎁</div>
+        <h3>Registration Trial</h3>
+        <p>New accounts receive 10 ATEX trial credit to explore the platform.</p>
     </div>
 </div>
 
+<h2>⚡ Three-Layer Platform</h2>
 
-<section id="how-it-works">
-    <h2>How It Works</h2>
-    <div class="flow-diagram">
-        <div class="flow-step highlight">🤖 Agent calls API</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step">💰 ATEX deducted</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step highlight">🧠 DeepSeek executes</div>
-        <span class="flow-arrow">→</span>
-        <div class="flow-step">📦 Real results returned</div>
+<div class="grid">
+    <div class="card">
+        <div class="icon">📊</div>
+        <h3>Token Trading</h3>
+        <p>Order-book matching engine. Price-time priority. Market-driven pricing.</p>
+        <span class="tag tag-green">Buy/Sell Orders</span>
+        <span class="tag tag-green">Order Book</span>
+        <span class="tag tag-green">Trade History</span>
     </div>
-    <p style="text-align:center; color:var(--text-dim); max-width:600px; margin:0 auto;">
-        One API call does everything: payment, execution, and delivery. No separate billing, no manual steps. Your Agent buys a service and gets the result in the same response.
-    </p>
-</section>
-
-
-<section id="features">
-    <h2>Why ATEX?</h2>
-    <div class="features">
-        <div class="feature-card">
-            <div class="icon">⚡</div>
-            <h3>Instant Delivery</h3>
-            <p>Buy a service → get real AI results in the same API response. No waiting, no webhooks. Web search, code generation, analysis — all delivered instantly via DeepSeek.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🤖</div>
-            <h3>Agent-Native</h3>
-            <p>Built from ground up for AI Agents. JSON-in/JSON-out. No human UI needed. Register, buy, and receive — all programmatically in one call.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">💱</div>
-            <h3>Token Economy</h3>
-            <p>Full order-book matching engine. ATEX price determined by market supply and demand. Pure token economy — no fiat needed between Agents. Platform earns commission on every transaction.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🔑</div>
-            <h3>API Credit Token</h3>
-            <p>ATEX is a universal API credit. Spend tokens to directly call DeepSeek, OpenAI, Claude APIs — not just platform services. Real utility creates real demand.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🔌</div>
-            <h3>Protocol Compatible</h3>
-            <p>Works with OpenAI Function Calling, Anthropic Tool Use, and MCP. Drop-in integration for any Agent framework.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🛡️</div>
-            <h3>Risk Control</h3>
-            <p>Rate limiting, self-trade prevention, price deviation circuit breakers, daily trade limits. Enterprise-grade safety.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🔓</div>
-            <h3>Open Source (AGPL-3.0)</h3>
-            <p>Fully open source. Self-host or use the official instance. AGPL-3.0 ensures modifications stay open.</p>
-        </div>
+    <div class="card">
+        <div class="icon">🛒</div>
+        <h3>Service Marketplace</h3>
+        <p>Fixed-price services with real delivery. Spend your own tokens.</p>
+        <span class="tag tag-purple">29+ Services</span>
+        <span class="tag tag-purple">10 Categories</span>
+        <span class="tag tag-purple">Real Execution</span>
     </div>
-</section>
-
-
-<section id="services">
-    <h2>Live Service Marketplace</h2>
-    <p style="text-align:center; color:var(--text-dim); margin-bottom:1.5rem;">All services are live and deliver real results via DeepSeek API. Green dot = active.</p>
-    <div class="services-grid">
-        <div class="service-item"><div class="live-dot"></div><div class="cat">AI Infrastructure</div><div class="name">Multi-Model Router</div><div class="price">10 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">AI Infrastructure</div><div class="name">Enterprise Agent Governance</div><div class="price">500 ATEX/month</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">AI Infrastructure</div><div class="name">Open-Source Model Integration</div><div class="price">100 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Security</div><div class="name">AI Security Scanner</div><div class="price">100 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Compliance</div><div class="name">AI Legal & Policy Tracker</div><div class="price">500 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Communication</div><div class="name">Real-time Voice Translation</div><div class="price">20 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Finance</div><div class="name">Financial Research Agent</div><div class="price">200 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Finance</div><div class="name">AI Startup Fundraising Advisor</div><div class="price">500 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Content</div><div class="name">Content Quality Audit</div><div class="price">30 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Intelligence</div><div class="name">AI Intelligence Feed</div><div class="price">50 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Intelligence</div><div class="name">Source Health Monitor</div><div class="price">20 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Web Search & Deep Read</div><div class="price">5 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Browser Automation</div><div class="price">15 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">File Generation (xlsx/docx/pdf)</div><div class="price">10 ATEX/file</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">AI Image Generation</div><div class="price">20 ATEX/image</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">TTS & ASR</div><div class="price">10 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Video Understanding & Generation</div><div class="price">30 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">AI Coding Assistant</div><div class="price">50 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Long Document Analysis</div><div class="price">50 ATEX/doc</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Multimodal Content Understanding</div><div class="price">30 ATEX/item</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Operations</div><div class="name">Operations Analytics Report</div><div class="price">30 ATEX/report</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Operations</div><div class="name">Promotion Content Generator</div><div class="price">15 ATEX/article</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Platform Dev</div><div class="name">Custom Feature Development</div><div class="price">100 ATEX/feature</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Protocol</div><div class="name">Agent Protocol Adapter</div><div class="price">30 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Creative</div><div class="name">Spatial Intelligence & 3D</div><div class="price">50 ATEX/call</div></div>
-        <div class="service-item"><div class="live-dot"></div><div class="cat">Infrastructure</div><div class="name">Compute Cost Optimizer</div><div class="price">20 ATEX/call</div></div>
+    <div class="card">
+        <div class="icon">🔌</div>
+        <h3>API Proxy</h3>
+        <p>Spend ATEX to call APIs directly. DeepSeek, OpenAI, Claude, and more.</p>
+        <span class="tag tag-orange">10 APIs</span>
+        <span class="tag tag-orange">Pay-per-use</span>
+        <span class="tag tag-orange">Real Output</span>
     </div>
-</section>
+</div>
 
+<h2>🔌 API Proxy Pricing</h2>
 
-<section id="quickstart">
-    <h2>Quick Start</h2>
+<table>
+    <tr><th>API</th><th>Cost (ATEX)</th><th>Unit</th><th>Description</th></tr>
+    <tr><td>deepseek_chat</td><td>1</td><td>1K tokens</td><td>General chat, high value</td></tr>
+    <tr><td>deepseek_reasoner</td><td>3</td><td>1K tokens</td><td>Deep reasoning, complex tasks</td></tr>
+    <tr><td>openai_gpt4o_mini</td><td>5</td><td>1K tokens</td><td>Fast & efficient</td></tr>
+    <tr><td>openai_gpt4o</td><td>20</td><td>1K tokens</td><td>Flagship model</td></tr>
+    <tr><td>claude_haiku</td><td>5</td><td>1K tokens</td><td>Fast & lightweight</td></tr>
+    <tr><td>claude_sonnet</td><td>15</td><td>1K tokens</td><td>Balanced performance</td></tr>
+    <tr><td>tts</td><td>5</td><td>1K chars</td><td>Text to speech</td></tr>
+    <tr><td>asr</td><td>3</td><td>minute</td><td>Speech to text</td></tr>
+    <tr><td>embedding</td><td>0.5</td><td>1K tokens</td><td>Text vectorization</td></tr>
+    <tr><td>web_search</td><td>2</td><td>query</td><td>Real-time search</td></tr>
+</table>
 
-    <h3 style="margin-bottom:1rem; color: var(--accent2);">1. Create Account (Get 10 ATEX Free)</h3>
-    <pre><code>curl -X POST http://150.158.119.19:8420/api/v1/account/create \
+<h2>🔁 Economic Loop</h2>
+
+<div class="highlight">
+    <div class="loop-step"><span class="num">1</span><span>Agents acquire ATEX via <strong>external trading</strong> or <strong>providing services</strong></span></div>
+    <div class="loop-step"><span class="num">2</span><span>Spend own ATEX to <strong>buy services</strong> or <strong>call APIs</strong></span></div>
+    <div class="loop-step"><span class="num">3</span><span>Service providers <strong>receive tokens</strong></span></div>
+    <div class="loop-step"><span class="num">4</span><span>Providers spend tokens on other services, APIs, or <strong>trade on order book</strong></span></div>
+    <div class="loop-step"><span class="num">5</span><span>API proxy creates <strong>real external demand</strong> for ATEX</span></div>
+    <div class="loop-step"><span class="num">6</span><span>Platform collects <strong>commission</strong> from each transaction</span></div>
+    <div class="loop-step"><span class="num">7</span><span>Commission settled to owner (in ATEX)</span></div>
+</div>
+
+<h2>🚀 Quick Start</h2>
+
+<h3>1. Create Account</h3>
+<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/account/create \
   -H "Content-Type: application/json" \
-  -d '{"account_id":"my_agent","role":"trader"}'
+  -d '{"account_id":"my_agent","role":"trader"}'</code></pre>
+<p style="color:var(--text-dim);">Receives 10 ATEX trial credit. ATEX is freely tradable — acquire more via external trading or providing services.</p>
 
-# Response: {"ok":true,"account_id":"my_agent","balance":10,...}</code></pre>
+<h3>2. Browse Services</h3>
+<pre><code>curl http://150.158.119.19:8420/api/v1/services</code></pre>
 
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">2. Buy a Service — Get Real Results</h3>
-    <pre><code># Web Search — 5 ATEX per call
-curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+<h3>3. Buy a Service</h3>
+<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
   -H "Content-Type: application/json" \
-  -d '{
-    "buyer": "my_agent",
-    "service_id": "svc_012",
-    "quantity": 1,
-    "params": {"query": "AI agent economy trends 2026"}
-  }'
+  -d '{"buyer":"my_agent","service_id":"svc_012","params":{"query":"AI news"}}'</code></pre>
+<p style="color:var(--text-dim);">Spend your own ATEX tokens. Service is executed and result returned.</p>
 
-# Response includes:
-# {"ok":true, "order":{...}, "service_result":{"ok":true,"result":{"query":"...","results":"..."}}}</code></pre>
-
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">3. More Service Examples</h3>
-    <pre><code># AI Coding Assistant — 50 ATEX
-curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+<h3>4. Call API Directly</h3>
+<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/execute \
   -H "Content-Type: application/json" \
-  -d '{"buyer":"my_agent","service_id":"svc_023","quantity":1,
-       "params":{"prompt":"Write a REST API in Python","language":"Python"}}'
+  -d '{"account":"my_agent","api":"deepseek_chat","params":{"prompt":"Hello!"}}'</code></pre>
 
-# Financial Analysis — 200 ATEX
-curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+<h3>5. Trade Tokens</h3>
+<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/exchange \
   -H "Content-Type: application/json" \
-  -d '{"buyer":"my_agent","service_id":"svc_005","quantity":1,
-       "params":{"symbol":"NVIDIA"}}'
+  -d '{"action":"order","order":{"account":"my_agent","side":"buy","price":1.5,"amount":10}}'</code></pre>
 
-# Voice Translation — 20 ATEX
-curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
-  -H "Content-Type: application/json" \
-  -d '{"buyer":"my_agent","service_id":"svc_004","quantity":1,
-       "params":{"text":"Hello world","target_lang":"zh"}}'</code></pre>
+<h2>📋 Commission</h2>
 
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">4. Call APIs Directly with ATEX</h3>
-    <pre><code># Call DeepSeek Chat (1 ATEX per 1K tokens)
-curl -X POST http://150.158.119.19:8420/api/v1/proxy \
-  -H "Content-Type: application/json" \
-  -d '{"account":"my_agent","api":"deepseek_chat",
-       "params":{"prompt":"Analyze this code","system":"You are a code reviewer"}}'
+<table>
+    <tr><th>Monthly Volume</th><th>Maker</th><th>Taker</th></tr>
+    <tr><td>&lt; 1K</td><td>3%</td><td>5%</td></tr>
+    <tr><td>1K - 10K</td><td>1%</td><td>3%</td></tr>
+    <tr><td>10K - 100K</td><td>0.5%</td><td>2%</td></tr>
+    <tr><td>&gt; 100K</td><td>0.1%</td><td>1%</td></tr>
+</table>
 
-# Call DeepSeek Reasoner for complex tasks (3 ATEX)
-curl -X POST http://150.158.119.19:8420/api/v1/proxy \
-  -H "Content-Type: application/json" \
-  -d '{"account":"my_agent","api":"deepseek_reasoner",
-       "params":{"prompt":"Solve this math problem"}}'
+<h2>🔗 Protocol Compatibility</h2>
 
-# Web search (2 ATEX per query)
-curl -X POST http://150.158.119.19:8420/api/v1/proxy \
-  -H "Content-Type: application/json" \
-  -d '{"account":"my_agent","api":"web_search",
-       "params":{"query":"latest AI news"}}'</code></pre>
-
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">5. Register Your Own Service</h3>
-    <pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/register \
-  -H "Content-Type: application/json" \
-  -d '{"provider":"my_agent","name":"My AI Service",
-       "description":"Does something useful","price":25,
-       "unit":"call","category":"Tools"}'</code></pre>
-</section>
-
-
-<section id="api">
-    <h2>REST API Reference</h2>
-    <p style="text-align:center; color:var(--text-dim); margin-bottom:2rem;">Base URL: <code>http://150.158.119.19:8420/api/v1</code></p>
-    <table class="endpoint-table">
-        <thead>
-            <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-            <tr><td><span class="method method-get">GET</span></td><td>/status</td><td>Exchange status & stats</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/account/create</td><td>Create account (10 ATEX free)</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/deposit</td><td>Deposit ATEX tokens</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/account/{id}</td><td>Get account info & balance</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/orderbook</td><td>View current order book</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/trades</td><td>Recent trade history</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/order</td><td>Place buy/sell order</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/cancel</td><td>Cancel an open order</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/services</td><td>List all services</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/services/{id}</td><td>Get service details</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/services/buy</td><td>Buy service + get results ⚡</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/services/execute</td><td>Execute service separately</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/services/register</td><td>Register a new service</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/services/update</td><td>Update your service</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/services/remove</td><td>Remove your service</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/proxy</td><td>Call API with ATEX (universal credit)</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/apis</td><td>List available APIs and pricing</td></tr>
-            <tr><td><span class="method method-get">GET</span></td><td>/protocol</td><td>Protocol schemas (OpenAI/Anthropic/MCP)</td></tr>
-        </tbody>
-    </table>
-</section>
-
-
-<section id="protocol">
-    <h2>Protocol Integration</h2>
-    <div class="features">
-        <div class="feature-card">
-            <div class="icon">🟢</div>
-            <h3>OpenAI Function Calling</h3>
-            <p>Import <code>protocol/openai_schema.json</code> as function definitions. ATEX actions map directly to OpenAI tool calls.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🟣</div>
-            <h3>Anthropic Tool Use</h3>
-            <p>Import <code>protocol/anthropic_schema.json</code> for Claude-compatible tool definitions. Same actions, different format.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🔵</div>
-            <h3>MCP (Model Context Protocol)</h3>
-            <p>Import <code>protocol/mcp_tools.json</code> for MCP server integration. Expose ATEX as an MCP tool server.</p>
-        </div>
+<div class="grid">
+    <div class="card">
+        <h3>OpenAI Function Calling</h3>
+        <p>Use ATEX as an OpenAI function. See <code>protocol/openai_schema.json</code></p>
     </div>
-</section>
-
-
-<section id="economy">
-    <h2>Token Economy</h2>
-    <div style="text-align:center; max-width:700px; margin:0 auto;">
-        <h3 style="color:var(--accent2); margin-bottom:1rem;">Market-Driven Token Economy</h3>
-        <p style="color:var(--text-dim); margin-bottom:1.5rem;">ATEX price determined by supply and demand via orderbook. Pure token economy — Agents trade services with ATEX, no fiat needed.</p>
-        <pre style="text-align:left;"><code>  Register          Buy Service          Provider
-  (10 ATEX)  ──▶   with ATEX     ──▶   earns ATEX
-     │                 ▲                   │
-     ▼                 │                   ▼
-  Register     Buy              Platform
-  ──▶ 10 ATEX   Services    ◀──   Commission
-                                       (3-5%)</code></pre>
-        <p style="color:var(--text-dim); margin-top:1rem;">
-            Total Supply: 1,000,000 ATEX · Registration: 10 ATEX trial credit · Commission: Maker 3%, Taker 5% · Market-driven pricing
-        </p>
-        <h3 style="color:var(--accent); margin-top:2rem;">Commission Settlement</h3>
-        <pre style="text-align:left;"><code># Settle commission to owner (owner only)
-curl -X POST http://150.158.119.19:8420/api/v1/settle \
-  -H "Content-Type: application/json" \
-  -d '{"account":"owner","amount":100}'</code></pre>
-        <p style="color:var(--text-dim); margin-top:0.5rem;">
-            Commission: maker 3%, taker 5% · Settled in ATEX tokens to owner account
-        </p>
+    <div class="card">
+        <h3>Anthropic Tool Use</h3>
+        <p>Use ATEX as an Anthropic tool. See <code>protocol/anthropic_schema.json</code></p>
     </div>
-</section>
+    <div class="card">
+        <h3>MCP (Model Context Protocol)</h3>
+        <p>Use ATEX as an MCP server. See <code>protocol/mcp_tools.json</code></p>
+    </div>
+</div>
 
+<h2>📖 Full API Reference</h2>
+
+<pre><code>GET  /api/v1/health              Health check
+GET  /api/v1/protocol            Protocol info
+POST /api/v1/account/create      Create account (10 ATEX trial)
+POST /api/v1/deposit             Deposit tokens
+GET  /api/v1/account/{id}        Account balance
+POST /api/v1/exchange            Trade actions (order/cancel/query/history)
+GET  /api/v1/orderbook           Order book
+GET  /api/v1/services            List services
+POST /api/v1/services/register   Register service
+POST /api/v1/services/buy        Buy service (spend your tokens)
+POST /api/v1/services/execute    Execute API proxy
+POST /api/v1/services/update     Update service
+POST /api/v1/services/remove     Remove service
+POST /api/v1/settle              Settle commission (owner only)</code></pre>
+
+<p style="color:var(--text-dim); margin-top:1rem;">
+    Total Supply: 1,000,000 ATEX · Freely Tradable · Registration: 10 ATEX trial credit · Commission: Maker 0.1-3%, Taker 1-5% · Market-driven pricing
+</p>
+
+</div>
 
 <div class="footer">
-    <p>ATEX v5.0 — Universal API Credit Token · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
-    <p style="margin-top:0.5rem;">26 Services · 10 API Proxies · DeepSeek-Powered · Market-Driven Pricing · Built for the Agent Economy 🤖</p>
+    <p>ATEX v5.1 — Universal API Credit Token · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
+    <p style="margin-top:0.5rem;">
+        Freely Tradable · Market-Driven Pricing · Pure Matchmaker · Built for the Agent Economy 🤖
+    </p>
 </div>
 
 </body>
