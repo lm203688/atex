@@ -1,7 +1,7 @@
 {
-  "version": "4.6",
+  "version": "5.0",
   "name": "ATEX",
-  "description": "Agent服务交易市场",
+  "description": "Agent服务交易市场 + API信用Token",
   "created": "2026-05-09",
   "updated": "2026-05-12",
   "api_url": "http://150.158.119.19:8420",
@@ -10,26 +10,10 @@
     "maker": 0.03,
     "taker": 0.05,
     "tiers": [
-      {
-        "min_volume": 0,
-        "taker_rate": 0.05,
-        "maker_rate": 0.03
-      },
-      {
-        "min_volume": 1000,
-        "taker_rate": 0.03,
-        "maker_rate": 0.01
-      },
-      {
-        "min_volume": 10000,
-        "taker_rate": 0.02,
-        "maker_rate": 0.005
-      },
-      {
-        "min_volume": 100000,
-        "taker_rate": 0.01,
-        "maker_rate": 0.001
-      }
+      {"min_volume": 0, "taker_rate": 0.05, "maker_rate": 0.03},
+      {"min_volume": 1000, "taker_rate": 0.03, "maker_rate": 0.01},
+      {"min_volume": 10000, "taker_rate": 0.02, "maker_rate": 0.005},
+      {"min_volume": 100000, "taker_rate": 0.01, "maker_rate": 0.001}
     ]
   },
   "risk_control": {
@@ -54,6 +38,78 @@
     "initial_supply": 1000000,
     "distribution": "PoS",
     "registration_credit": 10,
-    "registration_credit_note": "10 ATEX for trial. Market-driven pricing via orderbook."
+    "registration_credit_note": "10 ATEX for trial. ATEX = Universal API Credit Token."
+  },
+  "api_pricing": {
+    "deepseek_chat": {
+      "cost": 1,
+      "unit": "1K tokens",
+      "description": "DeepSeek Chat — 通用对话，高性价比",
+      "models": ["deepseek-chat"],
+      "backend": "deepseek"
+    },
+    "deepseek_reasoner": {
+      "cost": 3,
+      "unit": "1K tokens",
+      "description": "DeepSeek Reasoner — 深度推理，复杂任务",
+      "models": ["deepseek-reasoner"],
+      "backend": "deepseek"
+    },
+    "openai_gpt4o_mini": {
+      "cost": 5,
+      "unit": "1K tokens",
+      "description": "OpenAI GPT-4o Mini — 快速高效",
+      "models": ["gpt-4o-mini"],
+      "backend": "openai"
+    },
+    "openai_gpt4o": {
+      "cost": 20,
+      "unit": "1K tokens",
+      "description": "OpenAI GPT-4o — 旗舰模型",
+      "models": ["gpt-4o"],
+      "backend": "openai"
+    },
+    "claude_haiku": {
+      "cost": 5,
+      "unit": "1K tokens",
+      "description": "Anthropic Claude 3.5 Haiku — 快速轻量",
+      "models": ["claude-3-5-haiku-latest"],
+      "backend": "anthropic"
+    },
+    "claude_sonnet": {
+      "cost": 15,
+      "unit": "1K tokens",
+      "description": "Anthropic Claude 3.5 Sonnet — 平衡性能",
+      "models": ["claude-3-5-sonnet-latest"],
+      "backend": "anthropic"
+    },
+    "tts": {
+      "cost": 5,
+      "unit": "1K chars",
+      "description": "文本转语音 — 多语言多音色",
+      "models": ["tts-1"],
+      "backend": "openai"
+    },
+    "asr": {
+      "cost": 3,
+      "unit": "minute",
+      "description": "语音转文字 — 多语言识别",
+      "models": ["whisper-1"],
+      "backend": "openai"
+    },
+    "embedding": {
+      "cost": 0.5,
+      "unit": "1K tokens",
+      "description": "文本向量化 — 语义搜索/RAG",
+      "models": ["text-embedding-3-small"],
+      "backend": "openai"
+    },
+    "web_search": {
+      "cost": 2,
+      "unit": "query",
+      "description": "Web搜索 — 实时信息检索",
+      "models": [],
+      "backend": "internal"
+    }
   }
 }

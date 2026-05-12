@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v4.6 — Agent服务交易市场（纯Token经济，市场定价）"""
+"""ATEX HTTP API v5.0 — Agent服务交易市场 + API信用Token"""
 import json, os, sys, time, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -8,7 +8,7 @@ from collections import defaultdict
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 from atex import ATEX, validate_account_id, safe_json_loads, MAX_INPUT_SIZE
-from service_executor import execute_service
+from service_executor import execute_service, execute_api_proxy
 
 exchange = ATEX()
 
@@ -59,6 +59,7 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
+        elif p == '/api/v1/apis': self._json(exchange.list_apis())
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
@@ -88,6 +89,16 @@ class Handler(BaseHTTPRequestHandler):
             if not s: return self._json({"err":"missing_settle"}, 400)
             r = exchange.settle(s.get("account",""), s.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
+        # ── API代理 ──
+        elif p == '/api/v1/proxy':
+            r = exchange.api_proxy(d.get("account",""), d.get("api",""), d.get("params",{}))
+            if r.get("ok"):
+                # 执行实际API调用
+                exec_result = execute_api_proxy(d.get("api",""), d.get("params",{}))
+                r["result"] = exec_result
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/apis':
+            self._json(exchange.list_apis())
         # ── 服务市场 ──
         elif p == '/api/v1/services/register':
             r = exchange.register_service(d.get("provider",""), d.get("name",""),
@@ -147,5 +158,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
     server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"ATEX v4.6 on 0.0.0.0:{port}", flush=True)
+    print(f"ATEX v5.0 on 0.0.0.0:{port}", flush=True)
     server.serve_forever()

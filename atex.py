@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-ATEX v4.6 — Agent服务交易市场
-Agent间Token结算 + 服务市场，统一平台。
+ATEX v5.0 — Agent服务交易市场 + API信用Token
+Agent间Token结算 + 服务市场 + 通用API代理，统一平台。
 
-两层功能:
+三层功能:
   1. Token交易: 订单簿撮合（价格优先+时间优先，市场定价）
   2. 服务市场: 固定价格服务买卖（直接Token转账 + 服务交付）
+  3. API代理: 花ATEX直接调底层API（通用API信用Token）
 
 Token经济:
+  - ATEX = 通用API信用Token，可购买服务、调API、在订单簿交易
   - ATEX价格由市场供需决定（订单簿撮合，非固定汇率）
   - Agent间纯Token交易，无需法币
-  - 注册赠送ATEX启动资金，服务买卖形成经济闭环
+  - API代理让ATEX有外部使用场景，形成真实需求
   - 平台从每笔交易收佣金，佣金结算给owner
 
 Agent交互:
@@ -586,6 +588,56 @@ class ATEX:
             "remaining_commission": self.ob["total_commission_earned"]
         }
 
+    def api_proxy(self, acc_id, api_name, params=None):
+        """API代理：Agent花ATEX直接调底层API，ATEX作为通用API信用Token"""
+        acc = self.get_account(acc_id)
+        if not acc:
+            return {"ok": False, "err": "account_not_found"}
+        # 查API定价
+        api_pricing = self.config.get("api_pricing", {})
+        api_info = api_pricing.get(api_name)
+        if not api_info:
+            available = list(api_pricing.keys())
+            return {"ok": False, "err": f"unknown_api:{api_name}", "available_apis": available}
+        cost = api_info["cost"]
+        if acc["balance"] < cost:
+            return {"ok": False, "err": f"insufficient_balance:need={cost},available={acc['balance']}"}
+        # 扣Token
+        acc["balance"] -= cost
+        # 佣金
+        commission_rate = self.commission_taker
+        commission = round(cost * commission_rate, 4)
+        # 卖方（platform）收到Token
+        platform_acc = self.accounts["accounts"].get("platform")
+        if platform_acc:
+            platform_acc["balance"] += cost - commission
+        self.ob["total_commission_earned"] += commission
+        self._save()
+        self._log(f"api_proxy:{acc_id},api:{api_name},cost:{cost},commission:{commission}")
+        return {
+            "ok": True,
+            "api": api_name,
+            "cost": cost,
+            "commission": commission,
+            "buyer_balance": acc["balance"],
+            "params": params or {},
+            "note": "API will be executed by the HTTP API layer"
+        }
+
+    def list_apis(self):
+        """列出可用的API代理及定价"""
+        api_pricing = self.config.get("api_pricing", {})
+        result = []
+        for name, info in api_pricing.items():
+            result.append({
+                "api": name,
+                "cost": info["cost"],
+                "unit": info.get("unit", "call"),
+                "description": info.get("description", ""),
+                "models": info.get("models", [])
+            })
+        return {"apis": result, "count": len(result)}
+
 
 
 def main():
@@ -663,6 +715,12 @@ def main():
             return
         r = ex.settle(s.get("account", ""), s.get("amount", 0))
         print(json.dumps(r, ensure_ascii=False, indent=2))
+    # ── API代理 ──
+    elif action == "api_proxy":
+        r = ex.api_proxy(cmd.get("account", ""), cmd.get("api", ""), cmd.get("params", {}))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "list_apis":
+        print(json.dumps(ex.list_apis(), ensure_ascii=False, indent=2))
     # ── 服务市场 ──
     elif action == "register_service":
         r = ex.register_service(
