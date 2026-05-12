@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v4.2 — Agent服务交易市场"""
+"""ATEX HTTP API v4.5 — Agent服务交易市场（含服务交付）"""
 import json, os, sys, time, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -8,6 +8,7 @@ from collections import defaultdict
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 from atex import ATEX, validate_account_id, safe_json_loads, MAX_INPUT_SIZE
+from service_executor import execute_service
 
 exchange = ATEX()
 
@@ -91,6 +92,15 @@ class Handler(BaseHTTPRequestHandler):
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/buy':
             r = exchange.buy_service(d.get("buyer",""), d.get("service_id",""), d.get("quantity",1))
+            # Execute service and return result
+            if r.get("ok"):
+                svc_params = d.get("params", {})
+                exec_result = execute_service(d.get("service_id",""), svc_params, d.get("buyer",""))
+                r["service_result"] = exec_result
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/services/execute':
+            # Separate execution endpoint (for async/retry)
+            r = execute_service(d.get("service_id",""), d.get("params",{}), d.get("account",""))
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/update':
             r = exchange.update_service(d.get("provider",""), d.get("service_id",""),
