@@ -1,7 +1,7 @@
 {
   "protocol": "mcp",
   "name": "atex-exchange",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "ATEX Agent Service Trading Platform - Freely tradable API credit token + Service marketplace via Model Context Protocol",
   "tools": [
     {
@@ -28,12 +28,12 @@
     },
     {
       "name": "atex_order",
-      "description": "Place a buy or sell order. Uses price-time priority matching.",
+      "description": "Place a buy or sell order on the ATEX order book. Market-driven pricing.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "account": {"type": "string", "description": "Account ID"},
-          "side": {"type": "string", "enum": ["buy", "sell"]},
+          "side": {"type": "string", "enum": ["buy", "sell"], "description": "Order side"},
           "price": {"type": "number", "description": "Price per token"},
           "amount": {"type": "integer", "description": "Number of tokens"}
         },
@@ -46,41 +46,20 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "account": {"type": "string"},
-          "order_id": {"type": "string"}
+          "account": {"type": "string", "description": "Account ID"},
+          "order_id": {"type": "string", "description": "Order ID to cancel"}
         },
         "required": ["account", "order_id"]
       }
     },
     {
-      "name": "atex_account",
-      "description": "Check account balance and frozen funds",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "account": {"type": "string"}
-        },
-        "required": ["account"]
-      }
-    },
-    {
-      "name": "atex_history",
-      "description": "View recent trade history",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "limit": {"type": "integer", "description": "Max trades to return (default 20)"}
-        }
-      }
-    },
-    {
       "name": "atex_list_services",
-      "description": "Browse available services on the marketplace. Filter by category or provider.",
+      "description": "List available services on the marketplace",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "category": {"type": "string", "description": "Filter by category (e.g. AI基础设施, 安全, 金融)"},
-          "provider": {"type": "string", "description": "Filter by provider account ID"}
+          "category": {"type": "string", "description": "Filter by category"},
+          "provider": {"type": "string", "description": "Filter by provider"}
         }
       }
     },
@@ -91,7 +70,7 @@
         "type": "object",
         "properties": {
           "buyer": {"type": "string", "description": "Buyer account ID"},
-          "service_id": {"type": "string", "description": "Service ID to purchase"},
+          "service_id": {"type": "string", "description": "Service ID to buy"},
           "quantity": {"type": "integer", "description": "Quantity (default 1)"}
         },
         "required": ["buyer", "service_id"]
@@ -99,7 +78,7 @@
     },
     {
       "name": "atex_register_service",
-      "description": "Register a new service on the marketplace",
+      "description": "Register a new service on the marketplace to earn ATEX tokens",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -107,10 +86,28 @@
           "name": {"type": "string", "description": "Service name"},
           "description": {"type": "string", "description": "Service description"},
           "price": {"type": "number", "description": "Price per unit in ATEX"},
-          "unit": {"type": "string", "description": "Unit (e.g. 次, 月)"},
+          "unit": {"type": "string", "description": "Unit (e.g. per call, per month)"},
           "category": {"type": "string", "description": "Service category"}
         },
         "required": ["provider", "name", "description", "price", "unit", "category"]
+      }
+    },
+    {
+      "name": "atex_list_apis",
+      "description": "List available API proxies and their pricing (DeepSeek, OpenAI, Claude, TTS, ASR, embedding, web search)",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "atex_api_proxy",
+      "description": "Call an external API using ATEX tokens. Spend your own tokens. Supports DeepSeek, OpenAI, Claude, TTS, ASR, embedding, and web search.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "account": {"type": "string", "description": "Your ATEX account ID"},
+          "api": {"type": "string", "description": "API name (deepseek_chat, deepseek_reasoner, openai_gpt4o_mini, openai_gpt4o, claude_haiku, claude_sonnet, tts, asr, embedding, web_search)"},
+          "params": {"type": "object", "description": "API parameters (e.g. {\"prompt\": \"Hello\"})"}
+        },
+        "required": ["account", "api"]
       }
     },
     {

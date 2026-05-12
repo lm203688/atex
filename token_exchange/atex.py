@@ -175,6 +175,13 @@ class ATEX:
         if acc_id in self.accounts["accounts"]:
             return {"ok": False, "err": "account_exists"}
         credit = self.config.get("token", {}).get("registration_credit", 0)
+        # 试用额度从platform账户扣除（非凭空铸造）
+        if credit > 0:
+            platform = self.get_account("platform")
+            if platform and platform["balance"] >= credit:
+                platform["balance"] -= credit
+            else:
+                credit = 0  # platform余额不足则不赠送
         self.accounts["accounts"][acc_id] = {
             "balance": credit,
             "frozen": 0,
@@ -187,6 +194,7 @@ class ATEX:
         return {"ok": True, "account": acc_id, "balance": credit, "note": "Registration credit is a trial bonus. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."}
 
     def deposit(self, acc_id, amount):
+        """存入Token：从platform账户转入（非凭空创造）"""
         acc = self.get_account(acc_id)
         if not acc:
             return {"ok": False, "err": "account_not_found"}
@@ -194,53 +202,17 @@ class ATEX:
             return {"ok": False, "err": "amount_must_be_positive"}
         if amount > MAX_ORDER_AMOUNT:
             return {"ok": False, "err": f"max_deposit:{MAX_ORDER_AMOUNT}"}
+        # 从platform账户扣除
+        platform = self.get_account("platform")
+        if not platform:
+            return {"ok": False, "err": "platform_account_not_found"}
+        if platform["balance"] < amount:
+            return {"ok": False, "err": f"platform_insufficient_balance:available={platform['balance']}"}
+        platform["balance"] -= amount
         acc["balance"] += amount
         self._save()
-        self._log(f"deposit:{acc_id},amount:{amount},new_balance:{acc['balance']}")
-        return {"ok": True, "balance": acc["balance"]}
-
-    # ── 法币兑换（平台直兑，非C2C）──
-
-    def deposit_fiat(self, acc_id, cny_amount, channel="alipay", tx_id=""):
-        """法币充值：CNY → ATEX（按平台汇率，人工确认后到账）"""
-        acc = self.get_account(acc_id)
-        if not acc:
-            return {"ok": False, "err": "account_not_found"}
-        rate = self.config.get("exchange_rate", {}).get("ATEX_to_CNY", 0.01)
-        if rate <= 0:
-            return {"ok": False, "err": "invalid_exchange_rate"}
-        min_cny = self.config.get("payment", {}).get("deposit", {}).get("min_cny", 10)
-        if cny_amount < min_cny:
-            return {"ok": False, "err": f"min_deposit_cny:{min_cny}"}
-        atex_amount = round(cny_amount / rate, 2)
-        acc["balance"] += atex_amount
-        self._save()
-        self._log(f"fiat_deposit:{acc_id},cny:{cny_amount},atex:{atex_amount},channel:{channel},tx:{tx_id}")
-        return {"ok": True, "deposited_atex": atex_amount, "cny_amount": cny_amount,
-                "rate": rate, "new_balance": acc["balance"]}
-
-    def withdraw_fiat(self, acc_id, atex_amount, channel="alipay", dest=""):
-        """法币提现：ATEX → CNY（仅owner可用，平台直兑）"""
-        acc = self.get_account(acc_id)
-        if not acc:
-            return {"ok": False, "err": "account_not_found"}
-        if acc.get("role") != "owner":
-            return {"ok": False, "err": "owner_only_withdraw"}
-        min_atex = self.config.get("payment", {}).get("withdrawal", {}).get("min_ATEX", 1000)
-        if atex_amount < min_atex:
-            return {"ok": False, "err": f"min_withdraw_atex:{min_atex}"}
-        if acc["balance"] < atex_amount:
-            return {"ok": False, "err": "insufficient_balance"}
-        fee_rate = self.config.get("payment", {}).get("withdrawal", {}).get("fee_rate", 0.01)
-        rate = self.config.get("exchange_rate", {}).get("ATEX_to_CNY", 0.01)
-        fee_atex = round(atex_amount * fee_rate, 2)
-        net_atex = atex_amount - fee_atex
-        cny_amount = round(net_atex * rate, 2)
-        acc["balance"] -= atex_amount
-        self._save()
-        self._log(f"fiat_withdraw:{acc_id},atex:{atex_amount},fee:{fee_atex},cny:{cny_amount},channel:{channel},dest:{dest}")
-        return {"ok": True, "withdrawn_atex": atex_amount, "fee_atex": fee_atex,
-                "net_cny": cny_amount, "rate": rate, "new_balance": acc["balance"]}
+        self._log(f"deposit:{acc_id},amount:{amount},from:platform,new_balance:{acc['balance']}")
+        return {"ok": True, "balance": acc["balance"], "source": "platform", "platform_remaining": platform["balance"]}
 
     # ── Token交易（订单簿撮合）──
 
@@ -589,6 +561,53 @@ class ATEX:
             orders = [o for o in orders if o.get("buyer") == acc_id or o.get("provider") == acc_id]
         return {"ok": True, "count": len(orders), "orders": orders[-limit:]}
 
+    # ── API代理（通用API信用Token）──
+
+    def list_apis(self):
+        """列出可用API及定价"""
+        api_pricing = self.config.get("api_pricing", {})
+        apis = []
+        for api_name, info in api_pricing.items():
+            apis.append({
+                "id": api_name,
+                "name": info.get("description", api_name),
+                "cost": info.get("cost", 0),
+                "unit": info.get("unit", ""),
+                "models": info.get("models", []),
+                "backend": info.get("backend", ""),
+            })
+        return {"ok": True, "count": len(apis), "apis": apis}
+
+    def api_proxy(self, acc_id, api_name, params=None):
+        """花ATEX调底层API：扣费+执行"""
+        valid, err = validate_account_id(acc_id)
+        if not valid:
+            return {"ok": False, "err": err}
+        acc = self.get_account(acc_id)
+        if not acc:
+            return {"ok": False, "err": "account_not_found"}
+        api_pricing = self.config.get("api_pricing", {})
+        api_info = api_pricing.get(api_name)
+        if not api_info:
+            return {"ok": False, "err": f"unknown_api:{api_name}", "available": list(api_pricing.keys())}
+        cost = api_info.get("cost", 0)
+        available = acc["balance"] - acc["frozen"]
+        if available < cost:
+            return {"ok": False, "err": f"insufficient_balance:need={cost},available={available}"}
+        # 扣费
+        acc["balance"] -= cost
+        # 佣金
+        commission = self._calc_commission(cost, "taker")
+        acc["balance"] -= commission
+        self.ob["total_commission_earned"] += commission
+        self._save()
+        self._log(f"api_proxy:{acc_id},{api_name},cost:{cost},commission:{commission}")
+        return {
+            "ok": True, "api": api_name, "cost": cost, "commission": commission,
+            "remaining_balance": acc["balance"],
+            "note": "API execution happens via REST endpoint /api/v1/services/execute"
+        }
+
     # ── 查询 ──
 
     def status(self):
@@ -608,28 +627,25 @@ class ATEX:
             "service_orders": total_service_orders,
         }
 
-    def settle(self, acc_id, currency, amount):
-        """结算：仅owner可用，将平台佣金token折算为法币"""
+    def settle(self, acc_id, amount):
+        """结算：仅owner可用，将平台佣金ATEX转至owner账户"""
         acc = self.get_account(acc_id)
         if not acc:
             return {"ok": False, "err": "account_not_found"}
         if acc.get("role") != "owner":
             return {"ok": False, "err": "owner_only"}
-        if currency not in ("cny", "usd"):
-            return {"ok": False, "err": "currency must be cny or usd"}
         if amount <= 0:
             return {"ok": False, "err": "amount_must_be_positive"}
         commission = self.ob["total_commission_earned"]
         if amount > commission:
             return {"ok": False, "err": f"insufficient_commission:available={commission},requested={amount}"}
         self.ob["total_commission_earned"] -= amount
-        settlement = self.config.get("settlement", {})
-        dest = settlement.get(f"{currency}_account", "N/A")
+        acc["balance"] += amount
         self._save()
-        self._log(f"settle:{acc_id},{currency},{amount}->dest:{dest}")
+        self._log(f"settle:{acc_id},atex:{amount},remaining_commission:{self.ob['total_commission_earned']}")
         return {
-            "ok": True, "amount": amount, "currency": currency,
-            "destination": dest,
+            "ok": True, "amount": amount, "currency": "ATEX",
+            "new_balance": acc["balance"],
             "remaining_commission": self.ob["total_commission_earned"]
         }
 
@@ -684,14 +700,6 @@ def main():
     elif action == "deposit":
         r = ex.deposit(cmd.get("account", ""), cmd.get("amount", 0))
         print(json.dumps(r, ensure_ascii=False, indent=2))
-    elif action == "deposit_fiat":
-        r = ex.deposit_fiat(cmd.get("account", ""), cmd.get("cny_amount", 0),
-                            cmd.get("channel", "alipay"), cmd.get("tx_id", ""))
-        print(json.dumps(r, ensure_ascii=False, indent=2))
-    elif action == "withdraw_fiat":
-        r = ex.withdraw_fiat(cmd.get("account", ""), cmd.get("atex_amount", 0),
-                             cmd.get("channel", "alipay"), cmd.get("dest", ""))
-        print(json.dumps(r, ensure_ascii=False, indent=2))
     elif action == "order":
         o = cmd.get("order", {})
         if not o:
@@ -711,11 +719,7 @@ def main():
     elif action == "history":
         print(json.dumps(ex.trade_history(cmd.get("limit", 20)), ensure_ascii=False, indent=2))
     elif action == "settle":
-        s = cmd.get("settle", {})
-        if not s:
-            print(json.dumps({"err": "missing_settle"}, ensure_ascii=False))
-            return
-        r = ex.settle(s.get("account", ""), s.get("currency", ""), s.get("amount", 0))
+        r = ex.settle(cmd.get("account", ""), cmd.get("amount", 0))
         print(json.dumps(r, ensure_ascii=False, indent=2))
     # ── 服务市场 ──
     elif action == "register_service":
@@ -744,6 +748,12 @@ def main():
         print(json.dumps(r, ensure_ascii=False, indent=2))
     elif action == "service_orders":
         r = ex.service_orders(cmd.get("account"), cmd.get("limit", 20))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    # ── API代理 ──
+    elif action == "list_apis":
+        print(json.dumps(ex.list_apis(), ensure_ascii=False, indent=2))
+    elif action == "api_proxy":
+        r = ex.api_proxy(cmd.get("account", ""), cmd.get("api", ""), cmd.get("params"))
         print(json.dumps(r, ensure_ascii=False, indent=2))
     else:
         print(json.dumps({"err": f"unknown_action:{action}"}, ensure_ascii=False))

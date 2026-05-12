@@ -53,6 +53,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(exchange.get_account(p.split('/')[-1]) or {"err":"not_found"})
         elif p == '/api/v1/services':
             self._json(exchange.list_services())
+        elif p == '/api/v1/apis':
+            self._json(exchange.list_apis())
         elif p.startswith('/api/v1/services/'):
             sid = p.split('/')[-1]
             r = exchange.list_services()
@@ -97,9 +99,21 @@ class Handler(BaseHTTPRequestHandler):
                 r["service_result"] = exec_result
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/execute':
-            # Separate execution endpoint (for async/retry)
-            r = execute_service(d.get("service_id",""), d.get("params",{}), d.get("account",""))
-            self._json(r, 200 if r.get("ok") else 400)
+            # API代理执行：先扣费再调用底层API
+            api_name = d.get("api", "")
+            account = d.get("account", "")
+            params = d.get("params", {})
+            if api_name:
+                # API代理模式：扣费+执行
+                r = exchange.api_proxy(account, api_name, params)
+                if r.get("ok"):
+                    exec_result = execute_api_proxy(api_name, params)
+                    r["api_result"] = exec_result
+                self._json(r, 200 if r.get("ok") else 400)
+            else:
+                # 服务执行模式（兼容旧接口）
+                r = execute_service(d.get("service_id",""), params, account)
+                self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/update':
             r = exchange.update_service(d.get("provider",""), d.get("service_id",""),
                 name=d.get("name"), description=d.get("description"), price=d.get("price"),
@@ -108,10 +122,9 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/services/remove':
             r = exchange.remove_service(d.get("provider",""), d.get("service_id",""))
             self._json(r, 200 if r.get("ok") else 400)
-        # ── 结算（仅owner，平台佣金）──
+        # ── 结算（仅owner，平台佣金→ATEX）──
         elif p == '/api/v1/settle':
-            s = d.get("settle",{})
-            r = exchange.settle(s.get("account",""), s.get("currency",""), s.get("amount",0))
+            r = exchange.settle(d.get("account",""), d.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
@@ -120,7 +133,8 @@ class Handler(BaseHTTPRequestHandler):
             "description": "Agent服务交易市场 + 通用API信用Token — 花自己的token消费服务",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
-                       "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}","/api/v1/protocol"],
+                       "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}",
+                       "/api/v1/apis","/api/v1/protocol"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
