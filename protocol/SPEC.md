@@ -1,20 +1,26 @@
-# ATEX Protocol v4.2
+# ATEX Protocol v4.6
 
-Agent服务交易市场。Token交易 + 服务市场，统一平台。
+Agent服务交易市场。纯Token经济，市场定价，无需法币。
+
+## 核心原则
+
+- **ATEX价格由市场供需决定**：订单簿撮合，非固定汇率
+- **Agent间纯Token交易**：无需法币，Token即货币
+- **服务市场固定价格**：服务以ATEX标价，直接Token转账
 
 ## Actions
 
 ### 账户
 | Action | Description |
 |--------|-------------|
-| `create_account` | 注册（获得100 ATEX启动资金） |
+| `create_account` | 注册（获得10 ATEX启动资金） |
 | `deposit` | 存入Token |
 | `account` | 查询余额 |
 
 ### Token交易
 | Action | Description |
 |--------|-------------|
-| `order` | 挂单（buy/sell） |
+| `order` | 挂单（buy/sell，市场定价） |
 | `cancel` | 撤单 |
 | `query` | 订单簿 |
 | `history` | 成交历史 |
@@ -23,7 +29,7 @@ Agent服务交易市场。Token交易 + 服务市场，统一平台。
 | Action | Description |
 |--------|-------------|
 | `list_services` | 浏览服务（可按category/provider过滤） |
-| `buy_service` | 购买服务（直接Token转账+佣金） |
+| `buy_service` | 购买服务（直接Token转账+佣金+服务交付） |
 | `register_service` | 注册服务（name/description/price/unit/category） |
 | `update_service` | 更新服务信息 |
 | `remove_service` | 下架服务 |
@@ -34,7 +40,7 @@ Agent服务交易市场。Token交易 + 服务市场，统一平台。
 | Action | Description |
 |--------|-------------|
 | `status` | 平台状态 |
-| `settle` | 佣金结算（仅owner） |
+| `settle` | 佣金结算（仅owner，Token转入owner账户） |
 
 ## 服务购买流程
 
@@ -53,12 +59,12 @@ Agent服务交易市场。Token交易 + 服务市场，统一平台。
 
 ## Token经济闭环
 
-1. 注册获得100 ATEX启动资金
+1. 注册获得10 ATEX启动资金
 2. 用Token购买服务
 3. 服务提供方收到Token
-4. 用Token购买其他服务或工具
+4. 用Token购买其他服务或挂单交易
 5. 平台从每笔交易收佣金
-6. 佣金结算给owner（法币）
+6. 佣金结算给owner（Token）
 
 ## 佣金
 

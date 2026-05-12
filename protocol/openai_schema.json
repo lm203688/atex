@@ -41,5 +41,63 @@
         "required": ["action"]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "atex_service",
+      "description": "Service marketplace on ATEX. Browse, buy, register, and manage AI agent services. Fixed-price direct token transfer with commission.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["list_services", "buy_service", "register_service", "update_service", "remove_service", "my_services", "service_orders"],
+            "description": "Service action to perform"
+          },
+          "buyer": {
+            "type": "string",
+            "description": "Buyer account ID (for buy_service)"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider account ID (for register/update/remove/my_services)"
+          },
+          "service_id": {
+            "type": "string",
+            "description": "Service ID (for buy/update/remove)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Service name (for register/update)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Service description (for register/update)"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price per unit in ATEX (for register/update)"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of service, e.g. '次', '月' (for register/update)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Service category (for register/update)"
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Quantity to buy (for buy_service, default 1)"
+          },
+          "account": {
+            "type": "string",
+            "description": "Account ID (for service_orders)"
+          }
+        },
+        "required": ["action"]
+      }
+    }
   }
 ]

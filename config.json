@@ -1,9 +1,11 @@
 {
-  "version": "4.4",
+  "version": "4.6",
   "name": "ATEX",
   "description": "Agent服务交易市场",
   "created": "2026-05-09",
   "updated": "2026-05-12",
+  "api_url": "http://150.158.119.19:8420",
+  "public_endpoint": "http://150.158.119.19:8420/api/v1",
   "commission_rate": {
     "maker": 0.03,
     "taker": 0.05,
@@ -51,9 +53,7 @@
     "symbol": "ATEX",
     "initial_supply": 1000000,
     "distribution": "PoS",
-    "registration_credit": 100
-  },
-  "settlement": {
-    "description": "Settlement configuration (private)"
+    "registration_credit": 10,
+    "registration_credit_note": "10 ATEX for trial. Market-driven pricing via orderbook."
   }
 }
