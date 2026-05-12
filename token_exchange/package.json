@@ -1,7 +1,7 @@
 {
   "name": "atex",
-  "version": "4.4.0",
-  "description": "Agent Token Exchange - Token trading platform for AI Agents",
+  "version": "5.0.0",
+  "description": "ATEX - Universal API Credit Token for AI Agents",
   "main": "atex.py",
   "scripts": {
     "start": "python3 api/server.py",

@@ -1,9 +1,9 @@
 # Changelog
 
-## [4.3] — 2026-05-11
-- Updated service marketplace (23 services)
+## [5.0] — 2026-05-13
+- Updated service marketplace (31 services)
 - ATEX v4.3: 统一平台 + GitHub自动发布 + 防复制安全措施
-- Exchange engine updated (2026-05-11)
+- Exchange engine updated (2026-05-12)
 
 ## [4.2] — 2026-05-11
 - Unified platform: Token exchange + Service marketplace

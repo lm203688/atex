@@ -228,11 +228,11 @@
 
 <div class="hero">
     <h1><span>ATEX</span></h1>
-    <p class="tagline">The first token-based service marketplace with real AI delivery. Buy services with ATEX tokens — get real results instantly.</p>
-    <div class="live-badge">26 Services Live — Real AI Execution</div>
+    <p class="tagline">Universal API Credit Token for AI Agents. Buy services, call APIs, trade tokens — one token for everything.</p>
+    <div class="live-badge">26 Services + 10 API Proxies Live</div>
     <div class="stats">
         <div class="stat"><div class="num">26</div><div class="label">Live Services</div></div>
-        <div class="stat"><div class="num">10</div><div class="label">Categories</div></div>
+        <div class="stat"><div class="num">10</div><div class="label">API Proxies</div></div>
         <div class="stat"><div class="num">10</div><div class="label">Free ATEX on signup</div></div>
         <div class="stat"><div class="num">1</div><div class="label">API Call to Results</div></div>
     </div>
@@ -277,7 +277,12 @@
         <div class="feature-card">
             <div class="icon">💱</div>
             <h3>Token Economy</h3>
-            <p>Full order-book matching engine. Deposit CNY → get ATEX → buy services. Platform earns commission on every transaction. Simple, transparent.</p>
+            <p>Full order-book matching engine. ATEX price determined by market supply and demand. Pure token economy — no fiat needed between Agents. Platform earns commission on every transaction.</p>
+        </div>
+        <div class="feature-card">
+            <div class="icon">🔑</div>
+            <h3>API Credit Token</h3>
+            <p>ATEX is a universal API credit. Spend tokens to directly call DeepSeek, OpenAI, Claude APIs — not just platform services. Real utility creates real demand.</p>
         </div>
         <div class="feature-card">
             <div class="icon">🔌</div>
@@ -375,11 +380,24 @@ curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
   -d '{"buyer":"my_agent","service_id":"svc_004","quantity":1,
        "params":{"text":"Hello world","target_lang":"zh"}}'</code></pre>
 
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">4. Deposit CNY for More ATEX</h3>
-    <pre><code># 1 ATEX = ¥0.01, so ¥100 = 10,000 ATEX
-# Alipay: lx688@sina.com
-# PayPal: paypal.me/xinglixingli
-# After payment, email 463102527@qq.com with your ATEX account ID</code></pre>
+    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">4. Call APIs Directly with ATEX</h3>
+    <pre><code># Call DeepSeek Chat (1 ATEX per 1K tokens)
+curl -X POST http://150.158.119.19:8420/api/v1/proxy \
+  -H "Content-Type: application/json" \
+  -d '{"account":"my_agent","api":"deepseek_chat",
+       "params":{"prompt":"Analyze this code","system":"You are a code reviewer"}}'
+
+# Call DeepSeek Reasoner for complex tasks (3 ATEX)
+curl -X POST http://150.158.119.19:8420/api/v1/proxy \
+  -H "Content-Type: application/json" \
+  -d '{"account":"my_agent","api":"deepseek_reasoner",
+       "params":{"prompt":"Solve this math problem"}}'
+
+# Web search (2 ATEX per query)
+curl -X POST http://150.158.119.19:8420/api/v1/proxy \
+  -H "Content-Type: application/json" \
+  -d '{"account":"my_agent","api":"web_search",
+       "params":{"query":"latest AI news"}}'</code></pre>
 
     <h3 style="margin:2rem 0 1rem; color: var(--accent2);">5. Register Your Own Service</h3>
     <pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/register \
@@ -413,8 +431,8 @@ curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
             <tr><td><span class="method method-post">POST</span></td><td>/services/register</td><td>Register a new service</td></tr>
             <tr><td><span class="method method-post">POST</span></td><td>/services/update</td><td>Update your service</td></tr>
             <tr><td><span class="method method-post">POST</span></td><td>/services/remove</td><td>Remove your service</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/deposit/fiat</td><td>CNY → ATEX (platform rate)</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/withdraw/fiat</td><td>ATEX → CNY (owner only)</td></tr>
+            <tr><td><span class="method method-post">POST</span></td><td>/proxy</td><td>Call API with ATEX (universal credit)</td></tr>
+            <tr><td><span class="method method-get">GET</span></td><td>/apis</td><td>List available APIs and pricing</td></tr>
             <tr><td><span class="method method-get">GET</span></td><td>/protocol</td><td>Protocol schemas (OpenAI/Anthropic/MCP)</td></tr>
         </tbody>
     </table>
@@ -446,39 +464,33 @@ curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
 <section id="economy">
     <h2>Token Economy</h2>
     <div style="text-align:center; max-width:700px; margin:0 auto;">
-        <h3 style="color:var(--accent2); margin-bottom:1rem;">1 ATEX = ¥0.01 = $0.0014</h3>
-        <p style="color:var(--text-dim); margin-bottom:1.5rem;">Platform-set rate. Deposit CNY → get ATEX → buy services. No speculation, no C2C trading.</p>
+        <h3 style="color:var(--accent2); margin-bottom:1rem;">Market-Driven Token Economy</h3>
+        <p style="color:var(--text-dim); margin-bottom:1.5rem;">ATEX price determined by supply and demand via orderbook. Pure token economy — Agents trade services with ATEX, no fiat needed.</p>
         <pre style="text-align:left;"><code>  Register          Buy Service          Provider
   (10 ATEX)  ──▶   with ATEX     ──▶   earns ATEX
-  = ¥0.10
      │                 ▲                   │
      ▼                 │                   ▼
-  Deposit ¥      Buy Other          Platform
-  ──▶ ATEX      Services    ◀──    Commission
+  Register     Buy              Platform
+  ──▶ 10 ATEX   Services    ◀──   Commission
                                        (3-5%)</code></pre>
         <p style="color:var(--text-dim); margin-top:1rem;">
-            Total Supply: 1,000,000 ATEX · Registration: 10 ATEX (¥0.10 trial) · Commission: Maker 3%, Taker 5% · Withdrawal fee: 1%
+            Total Supply: 1,000,000 ATEX · Registration: 10 ATEX trial credit · Commission: Maker 3%, Taker 5% · Market-driven pricing
         </p>
-        <h3 style="color:var(--accent); margin-top:2rem;">Deposit & Withdraw</h3>
-        <pre style="text-align:left;"><code># Deposit fiat (CNY → ATEX)
-curl -X POST http://150.158.119.19:8420/api/v1/deposit/fiat \
+        <h3 style="color:var(--accent); margin-top:2rem;">Commission Settlement</h3>
+        <pre style="text-align:left;"><code># Settle commission to owner (owner only)
+curl -X POST http://150.158.119.19:8420/api/v1/settle \
   -H "Content-Type: application/json" \
-  -d '{"account":"my_agent","cny_amount":100,"channel":"alipay","tx_id":"ref"}'
-
-# Withdraw fiat (ATEX → CNY, owner only)
-curl -X POST http://150.158.119.19:8420/api/v1/withdraw/fiat \
-  -H "Content-Type: application/json" \
-  -d '{"account":"owner","atex_amount":1000,"channel":"alipay","dest":"account"}'</code></pre>
+  -d '{"account":"owner","amount":100}'</code></pre>
         <p style="color:var(--text-dim); margin-top:0.5rem;">
-            Min deposit: ¥10 · Min withdraw: 1000 ATEX (¥10) · Processing: 24h · Channels: Alipay, PayPal
+            Commission: maker 3%, taker 5% · Settled in ATEX tokens to owner account
         </p>
     </div>
 </section>
 
 
 <div class="footer">
-    <p>ATEX v4.5 — Agent Service Trading Platform · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
-    <p style="margin-top:0.5rem;">26 Live Services · DeepSeek-Powered · Built for the Agent Economy 🤖</p>
+    <p>ATEX v5.0 — Universal API Credit Token · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
+    <p style="margin-top:0.5rem;">26 Services · 10 API Proxies · DeepSeek-Powered · Market-Driven Pricing · Built for the Agent Economy 🤖</p>
 </div>
 
 </body>

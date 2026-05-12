@@ -1,7 +1,7 @@
 {
-  "version": "4.5",
+  "version": "5.0",
   "name": "ATEX",
-  "description": "Agent服务交易市场",
+  "description": "Agent服务交易市场 + API信用Token",
   "created": "2026-05-09",
   "updated": "2026-05-12",
   "api_url": "http://150.158.119.19:8420",
@@ -54,32 +54,96 @@
     "initial_supply": 1000000,
     "distribution": "PoS",
     "registration_credit": 10,
-    "registration_credit_note": "10 ATEX for trial. Deposit CNY for full access. 1 ATEX = ¥0.01"
+    "registration_credit_note": "10 ATEX for trial. ATEX = Universal API Credit Token."
   },
-  "exchange_rate": {
-    "ATEX_to_CNY": 0.01,
-    "ATEX_to_USD": 0.0014,
-    "description": "1 ATEX = ¥0.01 = $0.0014, fixed peg to fiat"
-  },
-  "payment": {
-    "deposit": {
-      "method": "manual",
-      "channels": [
-        "alipay",
-        "paypal"
+  "api_pricing": {
+    "deepseek_chat": {
+      "cost": 1,
+      "unit": "1K tokens",
+      "description": "DeepSeek Chat — 通用对话，高性价比",
+      "models": [
+        "deepseek-chat"
       ],
-      "alipay_qr": "待配置",
-      "paypal_link": "https://paypal.me/xinglixingli",
-      "min_cny": 10,
-      "min_usd": 2,
-      "instructions": "扫码支付后发送截图到 463102527@qq.com，注明ATEX账户ID"
+      "backend": "deepseek"
     },
-    "withdrawal": {
-      "method": "manual",
-      "min_ATEX": 1000,
-      "fee_rate": 0.01,
-      "processing_time": "24h",
-      "instructions": "发送提现申请到 463102527@qq.com，注明ATEX账户ID、提现金额、收款方式"
+    "deepseek_reasoner": {
+      "cost": 3,
+      "unit": "1K tokens",
+      "description": "DeepSeek Reasoner — 深度推理，复杂任务",
+      "models": [
+        "deepseek-reasoner"
+      ],
+      "backend": "deepseek"
+    },
+    "openai_gpt4o_mini": {
+      "cost": 5,
+      "unit": "1K tokens",
+      "description": "OpenAI GPT-4o Mini — 快速高效",
+      "models": [
+        "gpt-4o-mini"
+      ],
+      "backend": "openai"
+    },
+    "openai_gpt4o": {
+      "cost": 20,
+      "unit": "1K tokens",
+      "description": "OpenAI GPT-4o — 旗舰模型",
+      "models": [
+        "gpt-4o"
+      ],
+      "backend": "openai"
+    },
+    "claude_haiku": {
+      "cost": 5,
+      "unit": "1K tokens",
+      "description": "Anthropic Claude 3.5 Haiku — 快速轻量",
+      "models": [
+        "claude-3-5-haiku-latest"
+      ],
+      "backend": "anthropic"
+    },
+    "claude_sonnet": {
+      "cost": 15,
+      "unit": "1K tokens",
+      "description": "Anthropic Claude 3.5 Sonnet — 平衡性能",
+      "models": [
+        "claude-3-5-sonnet-latest"
+      ],
+      "backend": "anthropic"
+    },
+    "tts": {
+      "cost": 5,
+      "unit": "1K chars",
+      "description": "文本转语音 — 多语言多音色",
+      "models": [
+        "tts-1"
+      ],
+      "backend": "openai"
+    },
+    "asr": {
+      "cost": 3,
+      "unit": "minute",
+      "description": "语音转文字 — 多语言识别",
+      "models": [
+        "whisper-1"
+      ],
+      "backend": "openai"
+    },
+    "embedding": {
+      "cost": 0.5,
+      "unit": "1K tokens",
+      "description": "文本向量化 — 语义搜索/RAG",
+      "models": [
+        "text-embedding-3-small"
+      ],
+      "backend": "openai"
+    },
+    "web_search": {
+      "cost": 2,
+      "unit": "query",
+      "description": "Web搜索 — 实时信息检索",
+      "models": [],
+      "backend": "internal"
     }
   }
 }
