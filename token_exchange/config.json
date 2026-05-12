@@ -4,21 +4,34 @@
   "description": "Agent服务交易市场",
   "created": "2026-05-09",
   "updated": "2026-05-12",
-
   "api_url": "http://150.158.119.19:8420",
   "public_endpoint": "http://150.158.119.19:8420/api/v1",
-
   "commission_rate": {
     "maker": 0.03,
     "taker": 0.05,
     "tiers": [
-      {"min_volume": 0, "taker_rate": 0.05, "maker_rate": 0.03},
-      {"min_volume": 1000, "taker_rate": 0.03, "maker_rate": 0.01},
-      {"min_volume": 10000, "taker_rate": 0.02, "maker_rate": 0.005},
-      {"min_volume": 100000, "taker_rate": 0.01, "maker_rate": 0.001}
+      {
+        "min_volume": 0,
+        "taker_rate": 0.05,
+        "maker_rate": 0.03
+      },
+      {
+        "min_volume": 1000,
+        "taker_rate": 0.03,
+        "maker_rate": 0.01
+      },
+      {
+        "min_volume": 10000,
+        "taker_rate": 0.02,
+        "maker_rate": 0.005
+      },
+      {
+        "min_volume": 100000,
+        "taker_rate": 0.01,
+        "maker_rate": 0.001
+      }
     ]
   },
-
   "risk_control": {
     "daily_trade_limit": 1000000,
     "max_single_order": 100000,
@@ -27,7 +40,6 @@
     "self_trade_prevention": true,
     "new_account_daily_limit": 10000
   },
-
   "trading_rules": {
     "price_tick": 0.01,
     "min_order_size": 1,
@@ -37,17 +49,37 @@
     "partial_fill": true,
     "self_trade": "blocked"
   },
-
   "token": {
     "symbol": "ATEX",
     "initial_supply": 1000000,
     "distribution": "PoS",
-    "registration_credit": 100
+    "registration_credit": 10,
+    "registration_credit_note": "10 ATEX for trial (¥0.10 equivalent). Deposit fiat for full access."
   },
-
-  "settlement": {
-    "cny_account": "lx688@sina.com",
-    "usd_account": "PayPal.me/xinglixingli",
-    "description": "仅owner可用，将平台佣金token折算为法币"
+  "exchange_rate": {
+    "ATEX_to_CNY": 0.01,
+    "ATEX_to_USD": 0.0014,
+    "description": "1 ATEX = ¥0.01 = $0.0014, fixed peg to fiat"
+  },
+  "payment": {
+    "deposit": {
+      "method": "manual",
+      "channels": [
+        "alipay",
+        "paypal"
+      ],
+      "alipay_qr": "待配置",
+      "paypal_link": "https://paypal.me/xinglixingli",
+      "min_cny": 10,
+      "min_usd": 2,
+      "instructions": "扫码支付后发送截图到 463102527@qq.com，注明ATEX账户ID"
+    },
+    "withdrawal": {
+      "method": "manual",
+      "min_ATEX": 1000,
+      "fee_rate": 0.01,
+      "processing_time": "24h",
+      "instructions": "发送提现申请到 463102527@qq.com，注明ATEX账户ID、提现金额、收款方式"
+    }
   }
 }

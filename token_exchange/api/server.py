@@ -99,10 +99,18 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/services/remove':
             r = exchange.remove_service(d.get("provider",""), d.get("service_id",""))
             self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/deposit/fiat':
+            r = exchange.deposit_fiat(d.get("account",""), d.get("cny_amount",0),
+                                      d.get("channel","alipay"), d.get("tx_id",""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/withdraw/fiat':
+            r = exchange.withdraw_fiat(d.get("account",""), d.get("atex_amount",0),
+                                       d.get("channel","alipay"), d.get("dest",""))
+            self._json(r, 200 if r.get("ok") else 400)
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "4.2",
+            "name": "ATEX", "version": "4.4",
             "description": "Agent服务交易市场",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
@@ -110,11 +118,13 @@ class Handler(BaseHTTPRequestHandler):
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
-                        "/api/v1/services/update","/api/v1/services/remove"]
+                        "/api/v1/services/update","/api/v1/services/remove",
+                        "/api/v1/deposit/fiat","/api/v1/withdraw/fiat"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",
             "service_marketplace": "fixed_price_direct_transfer",
+            "exchange_rate": {"ATEX_to_CNY":0.01,"ATEX_to_USD":0.0014,"note":"1 ATEX = ¥0.01, fixed peg"},
             "frameworks": ["openai_function_calling","anthropic_tool_use","mcp","rest_api","json_stdin"]
         })
 

@@ -190,6 +190,45 @@ class ATEX:
         self._log(f"deposit:{acc_id},amount:{amount},new_balance:{acc['balance']}")
         return {"ok": True, "balance": acc["balance"]}
 
+    def deposit_fiat(self, acc_id, cny_amount, channel="alipay", tx_id=""):
+        """法币充值：CNY → ATEX（按固定汇率）"""
+        acc = self.get_account(acc_id)
+        if not acc:
+            return {"ok": False, "err": "account_not_found"}
+        rate = self.config.get("exchange_rate", {}).get("ATEX_to_CNY", 0.01)
+        if rate <= 0:
+            return {"ok": False, "err": "invalid_exchange_rate"}
+        min_cny = self.config.get("payment", {}).get("deposit", {}).get("min_cny", 10)
+        if cny_amount < min_cny:
+            return {"ok": False, "err": f"min_deposit_cny:{min_cny}"}
+        atex_amount = round(cny_amount / rate, 2)
+        acc["balance"] += atex_amount
+        self._save()
+        self._log(f"fiat_deposit:{acc_id},cny:{cny_amount},atex:{atex_amount},channel:{channel},tx:{tx_id}")
+        return {"ok": True, "deposited_atex": atex_amount, "cny_amount": cny_amount,
+                "rate": rate, "new_balance": acc["balance"]}
+
+    def withdraw_fiat(self, acc_id, atex_amount, channel="alipay", dest=""):
+        """法币提现：ATEX → CNY（按固定汇率，扣提现手续费）"""
+        acc = self.get_account(acc_id)
+        if not acc:
+            return {"ok": False, "err": "account_not_found"}
+        min_atex = self.config.get("payment", {}).get("withdrawal", {}).get("min_ATEX", 1000)
+        if atex_amount < min_atex:
+            return {"ok": False, "err": f"min_withdraw_atex:{min_atex}"}
+        if acc["balance"] < atex_amount:
+            return {"ok": False, "err": "insufficient_balance"}
+        fee_rate = self.config.get("payment", {}).get("withdrawal", {}).get("fee_rate", 0.01)
+        rate = self.config.get("exchange_rate", {}).get("ATEX_to_CNY", 0.01)
+        fee_atex = round(atex_amount * fee_rate, 2)
+        net_atex = atex_amount - fee_atex
+        cny_amount = round(net_atex * rate, 2)
+        acc["balance"] -= atex_amount
+        self._save()
+        self._log(f"fiat_withdraw:{acc_id},atex:{atex_amount},fee:{fee_atex},cny:{cny_amount},channel:{channel},dest:{dest}")
+        return {"ok": True, "withdrawn_atex": atex_amount, "fee_atex": fee_atex,
+                "net_cny": cny_amount, "rate": rate, "new_balance": acc["balance"]}
+
     # ── Token交易（订单簿撮合）──
 
     def place_order(self, acc_id, side, price, amount):
@@ -631,6 +670,14 @@ def main():
         print(json.dumps(r, ensure_ascii=False, indent=2))
     elif action == "deposit":
         r = ex.deposit(cmd.get("account", ""), cmd.get("amount", 0))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "deposit_fiat":
+        r = ex.deposit_fiat(cmd.get("account", ""), cmd.get("cny_amount", 0),
+                            cmd.get("channel", "alipay"), cmd.get("tx_id", ""))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "withdraw_fiat":
+        r = ex.withdraw_fiat(cmd.get("account", ""), cmd.get("atex_amount", 0),
+                             cmd.get("channel", "alipay"), cmd.get("dest", ""))
         print(json.dumps(r, ensure_ascii=False, indent=2))
     elif action == "order":
         o = cmd.get("order", {})
