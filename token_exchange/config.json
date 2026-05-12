@@ -1,5 +1,5 @@
 {
-  "version": "4.4",
+  "version": "4.5",
   "name": "ATEX",
   "description": "Agent服务交易市场",
   "created": "2026-05-09",
@@ -54,7 +54,7 @@
     "initial_supply": 1000000,
     "distribution": "PoS",
     "registration_credit": 10,
-    "registration_credit_note": "10 ATEX for trial (¥0.10 equivalent). Deposit fiat for full access."
+    "registration_credit_note": "10 ATEX for trial. Deposit CNY for full access. 1 ATEX = ¥0.01"
   },
   "exchange_rate": {
     "ATEX_to_CNY": 0.01,

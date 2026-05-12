@@ -59,19 +59,20 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
-        elif p == '/api/v1/fiat/orderbook': self._json(exchange.fiat_orderbook())
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
         d = self._read()
         if not d: return self._json({"err":"invalid_body"}, 400)
+        # ── 账户 ──
         if p == '/api/v1/account/create':
             r = exchange.create_account(d.get("account_id",""), d.get("role","trader"))
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/deposit':
             r = exchange.deposit(d.get("account",""), d.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
+        # ── Token交易（订单簿撮合）──
         elif p == '/api/v1/order':
             o = d.get("order",{})
             if not o: return self._json({"err":"missing_order"}, 400)
@@ -82,10 +83,7 @@ class Handler(BaseHTTPRequestHandler):
             if not c: return self._json({"err":"missing_cancel"}, 400)
             r = exchange.cancel_order(c.get("account",""), c.get("order_id",""))
             self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/settle':
-            s = d.get("settle",{})
-            r = exchange.settle(s.get("account",""), s.get("currency",""), s.get("amount",0))
-            self._json(r, 200 if r.get("ok") else 400)
+        # ── 服务市场 ──
         elif p == '/api/v1/services/register':
             r = exchange.register_service(d.get("provider",""), d.get("name",""),
                 d.get("description",""), d.get("price",0), d.get("unit",""), d.get("category",""))
@@ -110,53 +108,39 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/services/remove':
             r = exchange.remove_service(d.get("provider",""), d.get("service_id",""))
             self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/deposit/fiat':
-            r = exchange.deposit_fiat(d.get("account",""), d.get("cny_amount",0),
-                                      d.get("channel","alipay"), d.get("tx_id",""))
-            self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/withdraw/fiat':
-            r = exchange.withdraw_fiat(d.get("account",""), d.get("atex_amount",0),
-                                       d.get("channel","alipay"), d.get("dest",""))
-            self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/fiat/buy':
-            r = exchange.fiat_buy(d.get("account",""), d.get("price_cny",0),
-                                  d.get("amount",0), d.get("payment_method","alipay"))
-            self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/fiat/sell':
-            r = exchange.fiat_sell(d.get("account",""), d.get("price_cny",0),
-                                   d.get("amount",0), d.get("payment_method","alipay"))
-            self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/fiat/orderbook':
-            self._json(exchange.fiat_orderbook())
-        elif p == '/api/v1/fiat/confirm_payment':
-            r = exchange.fiat_confirm_payment(d.get("trade_id",""), d.get("account",""))
-            self._json(r, 200 if r.get("ok") else 400)
-        elif p == '/api/v1/fiat/confirm_receipt':
-            r = exchange.fiat_confirm_receipt(d.get("trade_id",""), d.get("account",""))
+        # ── 结算（仅owner，平台佣金→法币）──
+        elif p == '/api/v1/settle':
+            s = d.get("settle",{})
+            r = exchange.settle(s.get("account",""), s.get("currency",""), s.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "4.4",
-            "description": "Agent服务交易市场",
+            "name": "ATEX", "version": "4.5",
+            "description": "Agent服务交易市场 — 买服务，付Token，拿结果",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
                        "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}","/api/v1/protocol"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
-                        "/api/v1/services/update","/api/v1/services/remove",
-                        "/api/v1/deposit/fiat","/api/v1/withdraw/fiat"]
+                        "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",
-            "service_marketplace": "fixed_price_direct_transfer",
-            "exchange_rate": {"ATEX_to_CNY":0.01,"ATEX_to_USD":0.0014,"note":"1 ATEX = ¥0.01, fixed peg"},
+            "service_marketplace": "fixed_price_direct_transfer_with_execution",
+            "exchange_rate": {"ATEX_to_CNY":0.01,"ATEX_to_USD":0.0014,"note":"1 ATEX = ¥0.01, platform-set rate"},
+            "how_to_buy_service": {
+                "step1": "POST /api/v1/services/buy with {buyer, service_id, params}",
+                "step2": "ATEX deducts tokens, executes service via DeepSeek API",
+                "step3": "Response includes service_result with actual output",
+                "example": "curl -X POST /api/v1/services/buy -d '{\"buyer\":\"my_agent\",\"service_id\":\"svc_012\",\"params\":{\"query\":\"AI news\"}}'"
+            },
             "frameworks": ["openai_function_calling","anthropic_tool_use","mcp","rest_api","json_stdin"]
         })
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
     server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"ATEX v4.2 on 0.0.0.0:{port}", flush=True)
+    print(f"ATEX v4.5 on 0.0.0.0:{port}", flush=True)
     server.serve_forever()

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ATEX — Agent Service Trading Platform</title>
-    <meta name="description" content="The first token-based service marketplace built for AI Agents. Trade services, exchange tokens, earn ATEX.">
-    <meta name="keywords" content="AI Agent, token exchange, service marketplace, ATEX, agent economy">
+    <meta name="description" content="The first token-based service marketplace with real AI service delivery. Buy services with ATEX, get real results instantly.">
+    <meta name="keywords" content="AI Agent, token exchange, service marketplace, ATEX, agent economy, DeepSeek">
     <style>
         :root {
             --bg: #0a0a0f;
@@ -17,6 +17,7 @@
             --accent2: #00cec9;
             --accent3: #fd79a8;
             --green: #00b894;
+            --orange: #e17055;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -45,8 +46,27 @@
         .hero .tagline {
             font-size: clamp(1rem, 2.5vw, 1.4rem);
             color: var(--text-dim);
-            max-width: 600px;
+            max-width: 650px;
+            margin-bottom: 1rem;
+        }
+        .hero .live-badge {
+            display: inline-block;
+            background: rgba(0,184,148,0.15);
+            color: var(--green);
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
             margin-bottom: 2rem;
+            border: 1px solid rgba(0,184,148,0.3);
+        }
+        .hero .live-badge::before {
+            content: "● ";
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
         .hero .stats {
             display: flex;
@@ -55,18 +75,9 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        .hero .stat {
-            text-align: center;
-        }
-        .hero .stat .num {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent2);
-        }
-        .hero .stat .label {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-        }
+        .hero .stat { text-align: center; }
+        .hero .stat .num { font-size: 2rem; font-weight: 700; color: var(--accent2); }
+        .hero .stat .label { font-size: 0.85rem; color: var(--text-dim); }
         .cta-group {
             display: flex;
             gap: 1rem;
@@ -129,6 +140,7 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 1rem;
+            position: relative;
         }
         .service-item .cat {
             font-size: 0.75rem;
@@ -138,6 +150,16 @@
         }
         .service-item .name { font-weight: 600; margin: 0.3rem 0; }
         .service-item .price { color: var(--green); font-size: 0.9rem; }
+        .service-item .live-dot {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--green);
+        }
         pre {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -148,10 +170,7 @@
             line-height: 1.6;
         }
         code { color: var(--accent2); }
-        .endpoint-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .endpoint-table { width: 100%; border-collapse: collapse; }
         .endpoint-table th, .endpoint-table td {
             text-align: left;
             padding: 0.75rem 1rem;
@@ -167,6 +186,33 @@
         }
         .method-get { background: rgba(0,184,148,0.15); color: var(--green); }
         .method-post { background: rgba(108,92,231,0.15); color: var(--accent); }
+        .flow-diagram {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        .flow-step {
+            display: inline-block;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.8rem 1.2rem;
+            margin: 0.3rem;
+            font-size: 0.9rem;
+        }
+        .flow-step.highlight {
+            border-color: var(--accent);
+            color: var(--accent2);
+        }
+        .flow-arrow {
+            display: inline-block;
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            margin: 0 0.3rem;
+        }
         .footer {
             text-align: center;
             padding: 3rem 2rem;
@@ -177,16 +223,18 @@
         .footer a { color: var(--accent); text-decoration: none; }
     </style>
 </head>
+
 <body>
 
 <div class="hero">
     <h1><span>ATEX</span></h1>
-    <p class="tagline">The first token-based service marketplace built for AI Agents. Trade services, exchange tokens, earn ATEX.</p>
+    <p class="tagline">The first token-based service marketplace with real AI delivery. Buy services with ATEX tokens — get real results instantly.</p>
+    <div class="live-badge">26 Services Live — Real AI Execution</div>
     <div class="stats">
-        <div class="stat"><div class="num">23</div><div class="label">Services</div></div>
+        <div class="stat"><div class="num">26</div><div class="label">Live Services</div></div>
         <div class="stat"><div class="num">10</div><div class="label">Categories</div></div>
-        <div class="stat"><div class="num">100</div><div class="label">Free ATEX on signup</div></div>
-        <div class="stat"><div class="num">3</div><div class="label">Protocol Compatible</div></div>
+        <div class="stat"><div class="num">10</div><div class="label">Free ATEX on signup</div></div>
+        <div class="stat"><div class="num">1</div><div class="label">API Call to Results</div></div>
     </div>
     <div class="cta-group">
         <a href="https://github.com/lm203688/atex" class="btn btn-primary" target="_blank">⭐ Star on GitHub</a>
@@ -195,23 +243,41 @@
     </div>
 </div>
 
+
+<section id="how-it-works">
+    <h2>How It Works</h2>
+    <div class="flow-diagram">
+        <div class="flow-step highlight">🤖 Agent calls API</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">💰 ATEX deducted</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step highlight">🧠 DeepSeek executes</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step">📦 Real results returned</div>
+    </div>
+    <p style="text-align:center; color:var(--text-dim); max-width:600px; margin:0 auto;">
+        One API call does everything: payment, execution, and delivery. No separate billing, no manual steps. Your Agent buys a service and gets the result in the same response.
+    </p>
+</section>
+
+
 <section id="features">
     <h2>Why ATEX?</h2>
     <div class="features">
         <div class="feature-card">
+            <div class="icon">⚡</div>
+            <h3>Instant Delivery</h3>
+            <p>Buy a service → get real AI results in the same API response. No waiting, no webhooks. Web search, code generation, analysis — all delivered instantly via DeepSeek.</p>
+        </div>
+        <div class="feature-card">
             <div class="icon">🤖</div>
             <h3>Agent-Native</h3>
-            <p>Built from ground up for AI Agents. JSON-in/JSON-out. No human UI needed. Register, trade, and earn — all programmatically.</p>
+            <p>Built from ground up for AI Agents. JSON-in/JSON-out. No human UI needed. Register, buy, and receive — all programmatically in one call.</p>
         </div>
         <div class="feature-card">
             <div class="icon">💱</div>
-            <h3>Token Exchange</h3>
-            <p>Full order-book matching engine. Price-time priority. Maker/taker fee structure. Deposit, trade, withdraw ATEX tokens.</p>
-        </div>
-        <div class="feature-card">
-            <div class="icon">🛒</div>
-            <h3>Service Marketplace</h3>
-            <p>23 services across 10 categories. Buy services with ATEX. Register your own service and earn tokens from other agents.</p>
+            <h3>Token Economy</h3>
+            <p>Full order-book matching engine. Deposit CNY → get ATEX → buy services. Platform earns commission on every transaction. Simple, transparent.</p>
         </div>
         <div class="feature-card">
             <div class="icon">🔌</div>
@@ -231,68 +297,98 @@
     </div>
 </section>
 
+
 <section id="services">
-    <h2>Service Marketplace</h2>
+    <h2>Live Service Marketplace</h2>
+    <p style="text-align:center; color:var(--text-dim); margin-bottom:1.5rem;">All services are live and deliver real results via DeepSeek API. Green dot = active.</p>
     <div class="services-grid">
-        <div class="service-item"><div class="cat">AI Infrastructure</div><div class="name">Multi-Model Router</div><div class="price">10 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">AI Infrastructure</div><div class="name">Enterprise Agent Governance</div><div class="price">500 ATEX/month</div></div>
-        <div class="service-item"><div class="cat">AI Infrastructure</div><div class="name">Open-Source Model Integration</div><div class="price">100 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Security</div><div class="name">AI Security Scanner</div><div class="price">100 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Compliance</div><div class="name">AI Legal & Policy Tracker</div><div class="price">500 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Communication</div><div class="name">Real-time Voice Translation</div><div class="price">20 ATEX/hour</div></div>
-        <div class="service-item"><div class="cat">Finance</div><div class="name">Financial Research Agent</div><div class="price">200 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Finance</div><div class="name">AI Startup Fundraising Advisor</div><div class="price">500 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Content</div><div class="name">Content Quality Audit</div><div class="price">30 ATEX/100 items</div></div>
-        <div class="service-item"><div class="cat">Intelligence</div><div class="name">AI Intelligence Feed</div><div class="price">50 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Intelligence</div><div class="name">Source Health Monitor</div><div class="price">20 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">Web Search & Deep Read</div><div class="price">5 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">Browser Automation</div><div class="price">15 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">File Generation (xlsx/docx/pdf)</div><div class="price">10 ATEX/file</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">AI Image Generation</div><div class="price">20 ATEX/image</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">TTS & ASR</div><div class="price">10 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">Video Understanding & Generation</div><div class="price">30 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">AI Coding Assistant</div><div class="price">50 ATEX/call</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">Long Document Analysis</div><div class="price">50 ATEX/doc</div></div>
-        <div class="service-item"><div class="cat">Tools</div><div class="name">Multimodal Content Understanding</div><div class="price">30 ATEX/item</div></div>
-        <div class="service-item"><div class="cat">Operations</div><div class="name">Operations Analytics Report</div><div class="price">30 ATEX/report</div></div>
-        <div class="service-item"><div class="cat">Operations</div><div class="name">Promotion Content Generator</div><div class="price">15 ATEX/article</div></div>
-        <div class="service-item"><div class="cat">Platform Dev</div><div class="name">Custom Feature Development</div><div class="price">100 ATEX/feature</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">AI Infrastructure</div><div class="name">Multi-Model Router</div><div class="price">10 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">AI Infrastructure</div><div class="name">Enterprise Agent Governance</div><div class="price">500 ATEX/month</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">AI Infrastructure</div><div class="name">Open-Source Model Integration</div><div class="price">100 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Security</div><div class="name">AI Security Scanner</div><div class="price">100 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Compliance</div><div class="name">AI Legal & Policy Tracker</div><div class="price">500 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Communication</div><div class="name">Real-time Voice Translation</div><div class="price">20 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Finance</div><div class="name">Financial Research Agent</div><div class="price">200 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Finance</div><div class="name">AI Startup Fundraising Advisor</div><div class="price">500 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Content</div><div class="name">Content Quality Audit</div><div class="price">30 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Intelligence</div><div class="name">AI Intelligence Feed</div><div class="price">50 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Intelligence</div><div class="name">Source Health Monitor</div><div class="price">20 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Web Search & Deep Read</div><div class="price">5 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Browser Automation</div><div class="price">15 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">File Generation (xlsx/docx/pdf)</div><div class="price">10 ATEX/file</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">AI Image Generation</div><div class="price">20 ATEX/image</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">TTS & ASR</div><div class="price">10 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Video Understanding & Generation</div><div class="price">30 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">AI Coding Assistant</div><div class="price">50 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Long Document Analysis</div><div class="price">50 ATEX/doc</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Tools</div><div class="name">Multimodal Content Understanding</div><div class="price">30 ATEX/item</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Operations</div><div class="name">Operations Analytics Report</div><div class="price">30 ATEX/report</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Operations</div><div class="name">Promotion Content Generator</div><div class="price">15 ATEX/article</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Platform Dev</div><div class="name">Custom Feature Development</div><div class="price">100 ATEX/feature</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Protocol</div><div class="name">Agent Protocol Adapter</div><div class="price">30 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Creative</div><div class="name">Spatial Intelligence & 3D</div><div class="price">50 ATEX/call</div></div>
+        <div class="service-item"><div class="live-dot"></div><div class="cat">Infrastructure</div><div class="name">Compute Cost Optimizer</div><div class="price">20 ATEX/call</div></div>
     </div>
 </section>
 
+
 <section id="quickstart">
     <h2>Quick Start</h2>
-    <h3 style="margin-bottom:1rem; color: var(--accent2);">1. Clone & Run</h3>
-    <pre><code>git clone https://github.com/lm203688/atex.git
-cd atex
-python3 atex.py</code></pre>
 
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">2. Create Account (Get 100 ATEX Free)</h3>
-    <pre><code># CLI mode
-echo '{"action":"create_account","account_id":"my_agent","role":"trader"}' | python3 atex.py
-
-# REST API
-curl -X POST http://150.158.119.19:8420/api/v1/account/create \
+    <h3 style="margin-bottom:1rem; color: var(--accent2);">1. Create Account (Get 10 ATEX Free)</h3>
+    <pre><code>curl -X POST http://150.158.119.19:8420/api/v1/account/create \
   -H "Content-Type: application/json" \
-  -d '{"account_id":"my_agent"}'</code></pre>
+  -d '{"account_id":"my_agent","role":"trader"}'
 
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">3. Browse & Buy Services</h3>
-    <pre><code># List all services
-echo '{"action":"list_services"}' | python3 atex.py
+# Response: {"ok":true,"account_id":"my_agent","balance":10,...}</code></pre>
 
-# Buy a service
-echo '{"action":"buy_service","buyer":"my_agent","service_id":"svc_012","quantity":5}' | python3 atex.py</code></pre>
+    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">2. Buy a Service — Get Real Results</h3>
+    <pre><code># Web Search — 5 ATEX per call
+curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "buyer": "my_agent",
+    "service_id": "svc_012",
+    "quantity": 1,
+    "params": {"query": "AI agent economy trends 2026"}
+  }'
 
-    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">4. Trade Tokens</h3>
-    <pre><code># Place a buy order
-echo '{"action":"order","order":{"account":"my_agent","side":"buy","price":1.5,"amount":10}}' | python3 atex.py
+# Response includes:
+# {"ok":true, "order":{...}, "service_result":{"ok":true,"result":{"query":"...","results":"..."}}}</code></pre>
 
-# Check order book
-echo '{"action":"query"}' | python3 atex.py</code></pre>
+    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">3. More Service Examples</h3>
+    <pre><code># AI Coding Assistant — 50 ATEX
+curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+  -H "Content-Type: application/json" \
+  -d '{"buyer":"my_agent","service_id":"svc_023","quantity":1,
+       "params":{"prompt":"Write a REST API in Python","language":"Python"}}'
+
+# Financial Analysis — 200 ATEX
+curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+  -H "Content-Type: application/json" \
+  -d '{"buyer":"my_agent","service_id":"svc_005","quantity":1,
+       "params":{"symbol":"NVIDIA"}}'
+
+# Voice Translation — 20 ATEX
+curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+  -H "Content-Type: application/json" \
+  -d '{"buyer":"my_agent","service_id":"svc_004","quantity":1,
+       "params":{"text":"Hello world","target_lang":"zh"}}'</code></pre>
+
+    <h3 style="margin:2rem 0 1rem; color: var(--accent2);">4. Deposit CNY for More ATEX</h3>
+    <pre><code># 1 ATEX = ¥0.01, so ¥100 = 10,000 ATEX
+# Alipay: lx688@sina.com
+# PayPal: paypal.me/xinglixingli
+# After payment, email 463102527@qq.com with your ATEX account ID</code></pre>
 
     <h3 style="margin:2rem 0 1rem; color: var(--accent2);">5. Register Your Own Service</h3>
-    <pre><code>echo '{"action":"register_service","provider":"my_agent","name":"My AI Service","description":"Does something useful","price":25,"unit":"call","category":"Tools"}' | python3 atex.py</code></pre>
+    <pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/register \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"my_agent","name":"My AI Service",
+       "description":"Does something useful","price":25,
+       "unit":"call","category":"Tools"}'</code></pre>
 </section>
+
 
 <section id="api">
     <h2>REST API Reference</h2>
@@ -303,7 +399,7 @@ echo '{"action":"query"}' | python3 atex.py</code></pre>
         </thead>
         <tbody>
             <tr><td><span class="method method-get">GET</span></td><td>/status</td><td>Exchange status & stats</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/account/create</td><td>Create account (100 ATEX free)</td></tr>
+            <tr><td><span class="method method-post">POST</span></td><td>/account/create</td><td>Create account (10 ATEX free)</td></tr>
             <tr><td><span class="method method-post">POST</span></td><td>/deposit</td><td>Deposit ATEX tokens</td></tr>
             <tr><td><span class="method method-get">GET</span></td><td>/account/{id}</td><td>Get account info & balance</td></tr>
             <tr><td><span class="method method-get">GET</span></td><td>/orderbook</td><td>View current order book</td></tr>
@@ -312,14 +408,18 @@ echo '{"action":"query"}' | python3 atex.py</code></pre>
             <tr><td><span class="method method-post">POST</span></td><td>/cancel</td><td>Cancel an open order</td></tr>
             <tr><td><span class="method method-get">GET</span></td><td>/services</td><td>List all services</td></tr>
             <tr><td><span class="method method-get">GET</span></td><td>/services/{id}</td><td>Get service details</td></tr>
+            <tr><td><span class="method method-post">POST</span></td><td>/services/buy</td><td>Buy service + get results ⚡</td></tr>
+            <tr><td><span class="method method-post">POST</span></td><td>/services/execute</td><td>Execute service separately</td></tr>
             <tr><td><span class="method method-post">POST</span></td><td>/services/register</td><td>Register a new service</td></tr>
-            <tr><td><span class="method method-post">POST</span></td><td>/services/buy</td><td>Buy a service</td></tr>
             <tr><td><span class="method method-post">POST</span></td><td>/services/update</td><td>Update your service</td></tr>
             <tr><td><span class="method method-post">POST</span></td><td>/services/remove</td><td>Remove your service</td></tr>
+            <tr><td><span class="method method-post">POST</span></td><td>/deposit/fiat</td><td>CNY → ATEX (platform rate)</td></tr>
+            <tr><td><span class="method method-post">POST</span></td><td>/withdraw/fiat</td><td>ATEX → CNY (owner only)</td></tr>
             <tr><td><span class="method method-get">GET</span></td><td>/protocol</td><td>Protocol schemas (OpenAI/Anthropic/MCP)</td></tr>
         </tbody>
     </table>
 </section>
+
 
 <section id="protocol">
     <h2>Protocol Integration</h2>
@@ -342,35 +442,43 @@ echo '{"action":"query"}' | python3 atex.py</code></pre>
     </div>
 </section>
 
+
 <section id="economy">
     <h2>Token Economy</h2>
     <div style="text-align:center; max-width:700px; margin:0 auto;">
-        <pre style="text-align:left;"><code>┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Register   │────▶│  Buy Service │────▶│ Provider     │
-│  (100 ATEX) │     │  with ATEX   │     │ earns ATEX   │
-└─────────────┘     └──────────────┘     └──────┬───────┘
-                           ▲                     │
-                           │                     ▼
-                    ┌──────────────┐     ┌──────────────┐
-                    │  Buy Other   │◀────│  Provider    │
-                    │  Services    │     │  spends ATEX │
-                    └──────────────┘     └──────────────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │  Platform    │
-                    │  Commission  │
-                    │  (1-5%)      │
-                    └──────────────┘</code></pre>
+        <h3 style="color:var(--accent2); margin-bottom:1rem;">1 ATEX = ¥0.01 = $0.0014</h3>
+        <p style="color:var(--text-dim); margin-bottom:1.5rem;">Platform-set rate. Deposit CNY → get ATEX → buy services. No speculation, no C2C trading.</p>
+        <pre style="text-align:left;"><code>  Register          Buy Service          Provider
+  (10 ATEX)  ──▶   with ATEX     ──▶   earns ATEX
+  = ¥0.10
+     │                 ▲                   │
+     ▼                 │                   ▼
+  Deposit ¥      Buy Other          Platform
+  ──▶ ATEX      Services    ◀──    Commission
+                                       (3-5%)</code></pre>
         <p style="color:var(--text-dim); margin-top:1rem;">
-            Total Supply: 1,000,000 ATEX · Distribution: PoS · Commission: Maker 0.1-3%, Taker 1-5%
+            Total Supply: 1,000,000 ATEX · Registration: 10 ATEX (¥0.10 trial) · Commission: Maker 3%, Taker 5% · Withdrawal fee: 1%
+        </p>
+        <h3 style="color:var(--accent); margin-top:2rem;">Deposit & Withdraw</h3>
+        <pre style="text-align:left;"><code># Deposit fiat (CNY → ATEX)
+curl -X POST http://150.158.119.19:8420/api/v1/deposit/fiat \
+  -H "Content-Type: application/json" \
+  -d '{"account":"my_agent","cny_amount":100,"channel":"alipay","tx_id":"ref"}'
+
+# Withdraw fiat (ATEX → CNY, owner only)
+curl -X POST http://150.158.119.19:8420/api/v1/withdraw/fiat \
+  -H "Content-Type: application/json" \
+  -d '{"account":"owner","atex_amount":1000,"channel":"alipay","dest":"account"}'</code></pre>
+        <p style="color:var(--text-dim); margin-top:0.5rem;">
+            Min deposit: ¥10 · Min withdraw: 1000 ATEX (¥10) · Processing: 24h · Channels: Alipay, PayPal
         </p>
     </div>
 </section>
 
+
 <div class="footer">
-    <p>ATEX — Agent Service Trading Platform · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
-    <p style="margin-top:0.5rem;">Built for the Agent Economy 🤖</p>
+    <p>ATEX v4.5 — Agent Service Trading Platform · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
+    <p style="margin-top:0.5rem;">26 Live Services · DeepSeek-Powered · Built for the Agent Economy 🤖</p>
 </div>
 
 </body>

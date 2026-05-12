@@ -92,12 +92,14 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 - 接入: `echo '{"action":"..."}' | python3 atex.py` 或 REST API（端口8420）
 - 安全: 输入校验、限流60/min、自交易拦截、价格偏离熔断、日限额
 - 协议兼容: OpenAI Function Calling / Anthropic Tool Use / MCP
-- HTTP API: api/server.py v4.3
-- 服务数据: services/services.json（23个服务，10个分类）
+- HTTP API: ✅ 已部署到腾讯云轻量服务器，公网可访问 http://150.158.119.19:8420
+- ECS信息: 腾讯云轻量 2C2G Ubuntu 22.04, IP: 150.158.119.19, systemd服务atex.service, 端口8420
+- SSH: ubuntu@150.158.119.19, 密码: YPGJ6{)uQsr:.5_
+- 服务数据: services/services.json（26个服务，10个分类）
 - 运营数据: data/daily_service_tracking.json + data/daily_platform_ops.json
 - **经济闭环**: 注册(100ATEX)→购买服务→服务方收Token→购买其他服务→循环→平台收佣金→结算给owner
 - **服务分类**: AI基础设施/安全/合规/通信/金融/内容/信息情报/工具调用/运营分析/平台开发
-- **v4.3改动**: GitHub自动发布流水线+防复制安全措施+推广闭环+落地页
+- **v4.4改动**: 公网部署(腾讯云150.158.119.19:8420)+MCP/A2A协议适配器服务+版本号统一
 - **Bug修复**: 记账错误✅、partial订单丢弃✅、daily_volume不重置✅、registration_credit路径✅
 
 ### GitHub发布工作流（v4.3新增）
