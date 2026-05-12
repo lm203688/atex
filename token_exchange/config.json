@@ -1,7 +1,7 @@
 {
-  "version": "5.0",
+  "version": "5.1",
   "name": "ATEX",
-  "description": "Agent服务交易市场 + API信用Token",
+  "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）",
   "created": "2026-05-09",
   "updated": "2026-05-12",
   "api_url": "http://150.158.119.19:8420",
@@ -54,7 +54,7 @@
     "initial_supply": 1000000,
     "distribution": "PoS",
     "registration_credit": 10,
-    "registration_credit_note": "10 ATEX for trial. ATEX = Universal API Credit Token."
+    "registration_credit_note": "10 ATEX trial credit. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."
   },
   "api_pricing": {
     "deepseek_chat": {

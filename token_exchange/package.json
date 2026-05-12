@@ -1,7 +1,7 @@
 {
   "name": "atex",
-  "version": "5.0.0",
-  "description": "ATEX - Universal API Credit Token for AI Agents",
+  "version": "5.1.0",
+  "description": "ATEX — Universal API Credit Token for AI Agents. Freely tradable outside the platform. Spend your own tokens on services and APIs.",
   "main": "atex.py",
   "scripts": {
     "start": "python3 api/server.py",

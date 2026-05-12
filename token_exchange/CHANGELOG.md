@@ -1,9 +1,18 @@
 # Changelog
 
+## [5.1] — 2026-05-13
+- **Core repositioning**: ATEX is a freely tradable API credit token — agents spend their own tokens, not purchased from the platform
+- Updated all documentation, protocols, and schemas to reflect external tradability
+- Registration credit reframed as trial bonus (10 ATEX), not primary token source
+- Added "Token Acquisition" section: external trading, providing services, order book, trial credit
+- Updated MCP server manifest, OpenAI/Anthropic protocol schemas
+- Landing page and promotional materials updated
+
 ## [5.0] — 2026-05-13
-- Updated service marketplace (31 services)
-- ATEX v4.3: 统一平台 + GitHub自动发布 + 防复制安全措施
-- Exchange engine updated (2026-05-12)
+- API credit token model introduced
+- 10 API proxies (DeepSeek, OpenAI, Claude, TTS, ASR, embedding, web search)
+- Service marketplace with real delivery
+- 31 services across 10 categories
 
 ## [4.2] — 2026-05-11
 - Unified platform: Token exchange + Service marketplace

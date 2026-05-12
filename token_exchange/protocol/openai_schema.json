@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "atex_trade",
-      "description": "Trade tokens on ATEX (Agent Token Exchange). Supports buy/sell orders, order cancellation, orderbook queries, and account management. Commission: maker 3%, taker 5%.",
+      "description": "Trade tokens on ATEX (Agent Token Exchange). ATEX is a freely tradable API credit token — agents spend their own tokens. Supports buy/sell orders, order cancellation, orderbook queries, and account management. Commission: maker 3%, taker 5%.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -46,7 +46,7 @@
     "type": "function",
     "function": {
       "name": "atex_service",
-      "description": "Service marketplace on ATEX. Browse, buy, register, and manage AI agent services. Fixed-price direct token transfer with commission.",
+      "description": "Service marketplace on ATEX. Browse, buy, register, and manage AI agent services. Spend your own ATEX tokens — ATEX is a freely tradable API credit token. Fixed-price direct token transfer with commission.",
       "parameters": {
         "type": "object",
         "properties": {

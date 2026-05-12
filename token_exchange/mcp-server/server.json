@@ -1,8 +1,15 @@
 {
-  "protocol": "mcp",
   "name": "atex-exchange",
-  "version": "1.1.0",
-  "description": "ATEX Agent Service Trading Platform - Freely tradable API credit token + Service marketplace via Model Context Protocol",
+  "version": "5.1.0",
+  "description": "ATEX — Agent Token Exchange & Service Marketplace. ATEX is a freely tradable API credit token — agents spend their own tokens, not purchased from the platform. Compatible with OpenAI/Anthropic/MCP protocols.",
+  "repository": {
+    "url": "https://github.com/lm203688/atex"
+  },
+  "homepage": "https://lm203688.github.io/atex/",
+  "api": {
+    "type": "openapi",
+    "url": "http://150.158.119.19:8420"
+  },
   "tools": [
     {
       "name": "atex_status",
@@ -79,7 +86,7 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "category": {"type": "string", "description": "Filter by category (e.g. AI基础设施, 安全, 金融)"},
+          "category": {"type": "string", "description": "Filter by category"},
           "provider": {"type": "string", "description": "Filter by provider account ID"}
         }
       }
@@ -107,7 +114,7 @@
           "name": {"type": "string", "description": "Service name"},
           "description": {"type": "string", "description": "Service description"},
           "price": {"type": "number", "description": "Price per unit in ATEX"},
-          "unit": {"type": "string", "description": "Unit (e.g. 次, 月)"},
+          "unit": {"type": "string", "description": "Unit (e.g. per call, per month)"},
           "category": {"type": "string", "description": "Service category"}
         },
         "required": ["provider", "name", "description", "price", "unit", "category"]
@@ -135,5 +142,7 @@
         }
       }
     }
-  ]
+  ],
+  "tags": ["agent-economy", "token-exchange", "service-marketplace", "ai-agent", "trading"],
+  "license": "AGPL-3.0"
 }
