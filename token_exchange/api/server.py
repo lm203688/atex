@@ -72,6 +72,15 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/deposit':
             r = exchange.deposit(d.get("account",""), d.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
+        # ── 法币兑换（平台直兑）──
+        elif p == '/api/v1/deposit/fiat':
+            r = exchange.deposit_fiat(d.get("account",""), d.get("cny_amount",0),
+                d.get("channel","alipay"), d.get("tx_id",""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/withdraw/fiat':
+            r = exchange.withdraw_fiat(d.get("account",""), d.get("atex_amount",0),
+                d.get("channel","alipay"), d.get("dest",""))
+            self._json(r, 200 if r.get("ok") else 400)
         # ── Token交易（订单簿撮合）──
         elif p == '/api/v1/order':
             o = d.get("order",{})
