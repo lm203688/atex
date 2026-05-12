@@ -105,6 +105,7 @@ class ATEX:
         self.accounts = load_json(f"{BASE}/accounts/accounts.json")
         self.ob = load_json(f"{BASE}/orders/orderbook.json")
         self.svc = load_json(f"{BASE}/services/services.json")
+        self.fob = load_json(f"{BASE}/orders/fiat_orderbook.json") if os.path.exists(f"{BASE}/orders/fiat_orderbook.json") else {"bids": [], "asks": [], "trades": []}
         self.commission_maker = self.config["commission_rate"]["maker"]
         self.commission_taker = self.config["commission_rate"]["taker"]
         self._lock = threading.Lock()
@@ -127,6 +128,7 @@ class ATEX:
     def _save(self):
         save_json(f"{BASE}/accounts/accounts.json", self.accounts)
         save_json(f"{BASE}/orders/orderbook.json", self.ob)
+        save_json(f"{BASE}/orders/fiat_orderbook.json", self.fob)
         save_json(f"{BASE}/services/services.json", self.svc)
 
     def _log(self, msg):
@@ -228,6 +230,157 @@ class ATEX:
         self._log(f"fiat_withdraw:{acc_id},atex:{atex_amount},fee:{fee_atex},cny:{cny_amount},channel:{channel},dest:{dest}")
         return {"ok": True, "withdrawn_atex": atex_amount, "fee_atex": fee_atex,
                 "net_cny": cny_amount, "rate": rate, "new_balance": acc["balance"]}
+
+    # ── 法币竞价交易（C2C OTC模式）──
+
+    def fiat_buy(self, acc_id, price_cny, amount, payment_method="alipay"):
+        """买方挂单：用法币买ATEX，价格单位CNY/ATEX"""
+        valid, err = validate_account_id(acc_id)
+        if not valid: return {"ok": False, "err": err}
+        if price_cny <= 0: return {"ok": False, "err": "price_must_be_positive"}
+        if amount <= 0: return {"ok": False, "err": "amount_must_be_positive"}
+        acc = self.get_account(acc_id)
+        if not acc: return {"ok": False, "err": "account_not_found"}
+        order = {
+            "id": gen_id(), "account": acc_id, "side": "buy",
+            "price_cny": round(price_cny, 4), "amount": int(amount),
+            "total_cny": round(price_cny * amount, 2),
+            "status": "open", "payment_method": payment_method,
+            "filled": 0, "created": now_str()
+        }
+        self.fob["bids"].append(order)
+        self._save()
+        self._log(f"fiat_buy:{acc_id},price_cny:{price_cny},amount:{amount}")
+        # Try to match
+        trades = self._match_fiat_orders()
+        return {"ok": True, "order": order, "matched_trades": trades}
+
+    def fiat_sell(self, acc_id, price_cny, amount, payment_method="alipay"):
+        """卖方挂单：卖ATEX换法币，价格单位CNY/ATEX。ATEX冻结托管。"""
+        valid, err = validate_account_id(acc_id)
+        if not valid: return {"ok": False, "err": err}
+        if price_cny <= 0: return {"ok": False, "err": "price_must_be_positive"}
+        if amount <= 0: return {"ok": False, "err": "amount_must_be_positive"}
+        acc = self.get_account(acc_id)
+        if not acc: return {"ok": False, "err": "account_not_found"}
+        available = acc["balance"] - acc["frozen"]
+        if available < amount:
+            return {"ok": False, "err": "insufficient_balance", "available": available}
+        # Freeze ATEX (escrow)
+        acc["frozen"] += amount
+        order = {
+            "id": gen_id(), "account": acc_id, "side": "sell",
+            "price_cny": round(price_cny, 4), "amount": int(amount),
+            "total_cny": round(price_cny * amount, 2),
+            "status": "open", "payment_method": payment_method,
+            "filled": 0, "created": now_str()
+        }
+        self.fob["asks"].append(order)
+        self._save()
+        self._log(f"fiat_sell:{acc_id},price_cny:{price_cny},amount:{amount}")
+        # Try to match
+        trades = self._match_fiat_orders()
+        return {"ok": True, "order": order, "matched_trades": trades}
+
+    def _match_fiat_orders(self):
+        """撮合法币订单：买价>=卖价时成交，创建待结算交易"""
+        trades = []
+        # Sort bids desc by price, asks asc by price
+        self.fob["bids"].sort(key=lambda x: -x["price_cny"])
+        self.fob["asks"].sort(key=lambda x: x["price_cny"])
+        for bid in self.fob["bids"]:
+            if bid["status"] not in ("open", "partial"): continue
+            for ask in self.fob["asks"]:
+                if ask["status"] not in ("open", "partial"): continue
+                if bid["price_cny"] < ask["price_cny"]: break
+                if bid["account"] == ask["account"]: continue
+                trade_amount = min(bid["amount"] - bid["filled"], ask["amount"] - ask["filled"])
+                trade_price = ask["price_cny"]  # Taker pays ask price
+                trade = {
+                    "id": gen_id(), "buyer": bid["account"], "seller": ask["account"],
+                    "price_cny": trade_price, "amount": trade_amount,
+                    "total_cny": round(trade_price * trade_amount, 2),
+                    "status": "pending_payment",
+                    "payment_method": ask.get("payment_method", "alipay"),
+                    "escrow_atex": trade_amount,
+                    "created": now_str(), "paid_at": None, "confirmed_at": None
+                }
+                trades.append(trade)
+                self.fob["trades"].append(trade)
+                bid["filled"] += trade_amount
+                bid["status"] = "filled" if bid["filled"] >= bid["amount"] else "partial"
+                ask["filled"] += trade_amount
+                ask["status"] = "filled" if ask["filled"] >= ask["amount"] else "partial"
+                self._log(f"fiat_trade_matched:{trade['id']},{trade['buyer']}<-{trade['seller']},{trade_price}CNYx{trade_amount}")
+                if bid["filled"] >= bid["amount"]: break
+        # Clean up filled orders
+        self.fob["bids"] = [b for b in self.fob["bids"] if b["status"] in ("open", "partial")]
+        self.fob["asks"] = [a for a in self.fob["asks"] if a["status"] in ("open", "partial")]
+        self._save()
+        return trades
+
+    def fiat_confirm_payment(self, trade_id, confirmer):
+        """买方确认已付款"""
+        for t in self.fob["trades"]:
+            if t["id"] == trade_id:
+                if confirmer != t["buyer"]:
+                    return {"ok": False, "err": "only_buyer_can_confirm_payment"}
+                if t["status"] != "pending_payment":
+                    return {"ok": False, "err": f"invalid_status:{t['status']}"}
+                t["status"] = "paid"
+                t["paid_at"] = now_str()
+                self._save()
+                self._log(f"fiat_payment_confirmed:{trade_id}")
+                return {"ok": True, "trade": t}
+        return {"ok": False, "err": "trade_not_found"}
+
+    def fiat_confirm_receipt(self, trade_id, confirmer):
+        """卖方确认收款 → 释放托管ATEX给买方，扣佣金"""
+        for t in self.fob["trades"]:
+            if t["id"] == trade_id:
+                if confirmer != t["seller"]:
+                    return {"ok": False, "err": "only_seller_can_confirm_receipt"}
+                if t["status"] != "paid":
+                    return {"ok": False, "err": f"invalid_status:{t['status']}"}
+                # Release escrow ATEX to buyer, deduct commission from seller
+                commission_rate = self.commission_taker  # buyer side
+                commission_atex = round(t["escrow_atex"] * commission_rate, 2)
+                net_atex = t["escrow_atex"] - commission_atex
+                buyer = self.accounts["accounts"].get(t["buyer"])
+                seller = self.accounts["accounts"].get(t["seller"])
+                if not buyer or not seller:
+                    return {"ok": False, "err": "account_not_found"}
+                # Seller: unfreeze and deduct
+                seller["frozen"] -= t["escrow_atex"]
+                seller["balance"] -= t["escrow_atex"]
+                # Buyer: receive ATEX
+                buyer["balance"] += net_atex
+                # Platform: commission goes to platform account
+                platform = self.accounts["accounts"].get("platform")
+                if platform:
+                    platform["balance"] += commission_atex
+                t["status"] = "completed"
+                t["confirmed_at"] = now_str()
+                t["commission_atex"] = commission_atex
+                t["net_atex_to_buyer"] = net_atex
+                self._save()
+                self._log(f"fiat_trade_completed:{trade_id},buyer:{t['buyer']}+{net_atex},commission:{commission_atex}")
+                return {"ok": True, "trade": t, "buyer_received": net_atex, "commission": commission_atex}
+        return {"ok": False, "err": "trade_not_found"}
+
+    def fiat_orderbook(self):
+        """查看法币订单簿"""
+        bids = [{"price_cny": b["price_cny"], "amount": b["amount"] - b["filled"],
+                 "account": b["account"], "payment_method": b["payment_method"]}
+                for b in self.fob["bids"] if b["status"] in ("open", "partial")]
+        asks = [{"price_cny": a["price_cny"], "amount": a["amount"] - a["filled"],
+                 "account": a["account"], "payment_method": a["payment_method"]}
+                for a in self.fob["asks"] if a["status"] in ("open", "partial")]
+        recent = [{"id": t["id"], "buyer": t["buyer"], "seller": t["seller"],
+                   "price_cny": t["price_cny"], "amount": t["amount"],
+                   "total_cny": t["total_cny"], "status": t["status"]}
+                  for t in self.fob["trades"][-10:]]
+        return {"bids": bids, "asks": asks, "recent_trades": recent}
 
     # ── Token交易（订单簿撮合）──
 
@@ -678,6 +831,23 @@ def main():
     elif action == "withdraw_fiat":
         r = ex.withdraw_fiat(cmd.get("account", ""), cmd.get("atex_amount", 0),
                              cmd.get("channel", "alipay"), cmd.get("dest", ""))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "fiat_buy":
+        r = ex.fiat_buy(cmd.get("account", ""), cmd.get("price_cny", 0),
+                        cmd.get("amount", 0), cmd.get("payment_method", "alipay"))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "fiat_sell":
+        r = ex.fiat_sell(cmd.get("account", ""), cmd.get("price_cny", 0),
+                         cmd.get("amount", 0), cmd.get("payment_method", "alipay"))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "fiat_orderbook":
+        r = ex.fiat_orderbook()
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "fiat_confirm_payment":
+        r = ex.fiat_confirm_payment(cmd.get("trade_id", ""), cmd.get("account", ""))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "fiat_confirm_receipt":
+        r = ex.fiat_confirm_receipt(cmd.get("trade_id", ""), cmd.get("account", ""))
         print(json.dumps(r, ensure_ascii=False, indent=2))
     elif action == "order":
         o = cmd.get("order", {})

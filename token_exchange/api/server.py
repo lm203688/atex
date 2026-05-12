@@ -58,6 +58,7 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
+        elif p == '/api/v1/fiat/orderbook': self._json(exchange.fiat_orderbook())
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
@@ -106,6 +107,22 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/withdraw/fiat':
             r = exchange.withdraw_fiat(d.get("account",""), d.get("atex_amount",0),
                                        d.get("channel","alipay"), d.get("dest",""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/fiat/buy':
+            r = exchange.fiat_buy(d.get("account",""), d.get("price_cny",0),
+                                  d.get("amount",0), d.get("payment_method","alipay"))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/fiat/sell':
+            r = exchange.fiat_sell(d.get("account",""), d.get("price_cny",0),
+                                   d.get("amount",0), d.get("payment_method","alipay"))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/fiat/orderbook':
+            self._json(exchange.fiat_orderbook())
+        elif p == '/api/v1/fiat/confirm_payment':
+            r = exchange.fiat_confirm_payment(d.get("trade_id",""), d.get("account",""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/fiat/confirm_receipt':
+            r = exchange.fiat_confirm_receipt(d.get("trade_id",""), d.get("account",""))
             self._json(r, 200 if r.get("ok") else 400)
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
