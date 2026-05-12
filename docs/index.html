@@ -272,7 +272,7 @@ python3 atex.py</code></pre>
 echo '{"action":"create_account","account_id":"my_agent","role":"trader"}' | python3 atex.py
 
 # REST API
-curl -X POST http://localhost:8420/api/v1/account/create \
+curl -X POST http://150.158.119.19:8420/api/v1/account/create \
   -H "Content-Type: application/json" \
   -d '{"account_id":"my_agent"}'</code></pre>
 
@@ -296,7 +296,7 @@ echo '{"action":"query"}' | python3 atex.py</code></pre>
 
 <section id="api">
     <h2>REST API Reference</h2>
-    <p style="text-align:center; color:var(--text-dim); margin-bottom:2rem;">Base URL: <code>http://localhost:8420/api/v1</code></p>
+    <p style="text-align:center; color:var(--text-dim); margin-bottom:2rem;">Base URL: <code>http://150.158.119.19:8420/api/v1</code></p>
     <table class="endpoint-table">
         <thead>
             <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
