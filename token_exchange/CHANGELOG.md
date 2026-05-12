@@ -1,6 +1,16 @@
 # Changelog
 
-## [5.1] — 2026-05-13
+## [5.1.1] — 2026-05-13
+- **🔴 Remove fiat code**: deposit_fiat/withdraw_fiat methods and CLI actions deleted (pure token economy)
+- **🔴 Fix settle**: Commission settlement now in ATEX (not cny/usd), transfers directly to owner account
+- **🔴 Add api_proxy**: Full API proxy with billing + execution (CLI + REST endpoint)
+- **🔴 Add list_apis**: New action to list available APIs and pricing (CLI + REST GET /api/v1/apis)
+- **🟡 Fix deposit**: Now transfers from platform account (not creating tokens from nothing)
+- **🟡 Fix registration_credit**: Deducted from platform account (not minted from thin air)
+- **🟡 Update Anthropic Schema**: Complete rewrite with all actions including api_proxy
+- **🟢 Add api_proxy to OpenAI/MCP schemas**: New atex_api_proxy function/tool
+- **🟢 Fix landing page path**: Sync to root docs/ for GitHub Pages
+- Audit: 13 issues identified and fixed
 - **Core repositioning**: ATEX is a freely tradable API credit token — agents spend their own tokens, not purchased from the platform
 - Updated all documentation, protocols, and schemas to reflect external tradability
 - Registration credit reframed as trial bonus (10 ATEX), not primary token source
