@@ -1,0 +1,58 @@
+# ATEX - Agent Token Exchange
+# Sensitive data and internal files
+
+# Accounts and trading data
+accounts/
+orders/
+logs/
+data/
+settlements/
+
+# Internal operations
+promo/
+promote.py
+promotion_log.json
+promotion_plan.json
+strategy.json
+
+# Release artifacts
+releases/
+scripts/
+
+# Archive
+ATEX_v*_完整存档*.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Workspace config (private)
+HEARTBEAT.md
+AGENTS.md
+SOUL.md
+USER.md
+IDENTITY.md
+TOOLS.md
+BOOTSTRAP.md

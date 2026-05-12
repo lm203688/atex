@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://www.androidheadlines.com/2026/05/elon-musk-xai-used-openai-models-distillation-training-grok.html",
+    "name": "Elon Musk Admits xAI Used OpenAI to Train Grok Bot",
+    "snippet": "Elon Musk confirmed in a courtroom that xAI used OpenAI’s models to train Grok: Learn how \"model distillation\" is changing the AI industry.",
+    "host_name": "www.androidheadlines.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.geeky-gadgets.com/elon-musk-grok-5-agi-plan",
+    "name": "Elon Musk Leaks Grok 5 AGI Plan and xAI Roadmap - Geeky Gadgets",
+    "snippet": "Elon Musk has unveiled xAI’s ambitious roadmap for Grok 5, a next-generation AI model designed to push the boundaries of Artificial General Intelligence (AGI). As detailed by AI Grid,...",
+    "host_name": "www.geeky-gadgets.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://techcrunch.com/2026/04/30/elon-musk-testifies-that-xai-trained-grok-on-openai-models",
+    "name": "Elon Musk testifies that xAI trained Grok on OpenAI models",
+    "snippet": "In response, he ranked the world’s leading AI providers, saying Anthropic held the top spot, followed by OpenAI, Google, and Chinese open source models. He characterized xAI as a much smaller ...",
+    "host_name": "techcrunch.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://x.ai/news",
+    "name": "News: Research, Product & Company Updates | xAI",
+    "snippet": "SpaceX announced today that it has acquired xAI. State-of-the-art video generation across quality, cost, and latency. xAI is rapidly accelerating its progress in building advanced AI. The best assistant in the world is now Enterprise ready. State-of-the-art RAG system built directly into our API.",
+    "host_name": "x.ai",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://opentools.ai/news/elon-musks-xais-grok-5-launch-pushed-to-2026-heres-why-it-matters",
+    "name": "Elon Musk's xAI's Grok 5 Launch Pushed to 2026: Here's Wh",
+    "snippet": "Elon Musk has announced that xAI is delaying the launch of Grok 5 until next year, marking a significant shift from previous statements. Originally slated for release before the end of 2025, Grok 5's delay could impact xAI's competitive standing in the AI landscape.",
+    "host_name": "opentools.ai",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.nxcode.io/resources/news/grok-5-release-date-6t-parameters-agi-xai-complete-guide-2026",
+    "name": "Grok 5: Release Date, Features & Everything We Know So Far (2026)",
+    "snippet": "Grok 5 is xAI's next flagship large language model, confirmed by Elon Musk for a Q1 2026 release. With a reported 6 trillion parameters trained on the world's first gigawatt-scale AI supercluster (Colossus 2), Grok 5 represents the most ambitious AI scaling effort to date.",
+    "host_name": "www.nxcode.io",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://explore.n1n.ai/blog/elon-musk-admits-xai-used-openai-models-for-grok-training-2026-05-01",
+    "name": "Elon Musk Admits xAI Used OpenAI Models for Grok Training",
+    "snippet": "In a landmark courtroom testimony, Elon Musk confirmed that xAI utilized OpenAI's models to train and refine Grok through model distillation, sparking debates on industry ethics and the future of synthetic data in LLM development.",
+    "host_name": "explore.n1n.ai",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  }
+]

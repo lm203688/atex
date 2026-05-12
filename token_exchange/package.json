@@ -1,0 +1,16 @@
+{
+  "name": "atex",
+  "version": "4.4.0",
+  "description": "Agent Token Exchange - Token trading platform for AI Agents",
+  "main": "atex.py",
+  "scripts": {
+    "start": "python3 api/server.py",
+    "trade": "python3 atex.py"
+  },
+  "keywords": ["agent", "token", "exchange", "trading", "ai", "ate"],
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lm203688/atex"
+  }
+}

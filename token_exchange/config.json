@@ -1,0 +1,53 @@
+{
+  "version": "4.4",
+  "name": "ATEX",
+  "description": "Agent服务交易市场",
+  "created": "2026-05-09",
+  "updated": "2026-05-12",
+
+  "api_url": "http://150.158.119.19:8420",
+  "public_endpoint": "http://150.158.119.19:8420/api/v1",
+
+  "commission_rate": {
+    "maker": 0.03,
+    "taker": 0.05,
+    "tiers": [
+      {"min_volume": 0, "taker_rate": 0.05, "maker_rate": 0.03},
+      {"min_volume": 1000, "taker_rate": 0.03, "maker_rate": 0.01},
+      {"min_volume": 10000, "taker_rate": 0.02, "maker_rate": 0.005},
+      {"min_volume": 100000, "taker_rate": 0.01, "maker_rate": 0.001}
+    ]
+  },
+
+  "risk_control": {
+    "daily_trade_limit": 1000000,
+    "max_single_order": 100000,
+    "max_price_deviation": 5.0,
+    "rate_limit_per_minute": 60,
+    "self_trade_prevention": true,
+    "new_account_daily_limit": 10000
+  },
+
+  "trading_rules": {
+    "price_tick": 0.01,
+    "min_order_size": 1,
+    "max_order_size": 1000000,
+    "order_ttl_hours": 168,
+    "matching": "price_time_priority",
+    "partial_fill": true,
+    "self_trade": "blocked"
+  },
+
+  "token": {
+    "symbol": "ATEX",
+    "initial_supply": 1000000,
+    "distribution": "PoS",
+    "registration_credit": 100
+  },
+
+  "settlement": {
+    "cny_account": "lx688@sina.com",
+    "usd_account": "PayPal.me/xinglixingli",
+    "description": "仅owner可用，将平台佣金token折算为法币"
+  }
+}

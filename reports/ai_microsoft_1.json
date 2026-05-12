@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://techcommunity.microsoft.com/blog/marketplace-blog/new-in-microsoft-marketplace-april-2-2026/4499194",
+    "name": "New in Microsoft Marketplace: April 2, 2026",
+    "snippet": "It features AI-ready data stacks, content safety, LibreChat UI, full observability, enterprise security, and LLM flexibility with Azure OpenAI ...",
+    "host_name": "techcommunity.microsoft.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blogs.microsoft.com/blog/2026/04/28/unlocking-human-ambition-to-drive-business-growth-with-ai",
+    "name": "Unlocking human ambition to drive business growth with AI",
+    "snippet": "To accelerate execution at scale, Cemex built LUCA Bot — an AI agent built in Microsoft Foundry with Azure OpenAI — giving approximately 100 ...",
+    "host_name": "blogs.microsoft.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blogs.microsoft.com/blog/2026/02/27/microsoft-and-openai-joint-statement-on-continuing-partnership",
+    "name": "Microsoft and OpenAI joint statement on continuing partnership",
+    "snippet": "Azure remains the exclusive cloud provider of stateless OpenAI APIs. Microsoft is the exclusive cloud provider for stateless APIs that provide ...",
+    "host_name": "blogs.microsoft.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.lits.services/start-project-azure-ai-copilot-studio-2026",
+    "name": "Start Your Project with Azure AI for Smarter Apps 2026 - lits services",
+    "snippet": "Build intelligent applications fast with Azure, AI services, and Copilot Studio. Ideal for new projects seeking scalable, secure, and smart ...",
+    "host_name": "www.lits.services",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://redresscompliance.com/microsoft-ai-licensing-for-copilot-and-azure-openai.html",
+    "name": "Microsoft AI Licensing: Copilot & Azure OpenAI Guide",
+    "snippet": "Microsoft 365 Copilot costs $30 per user per month as a standalone add-on, or is included in E7 at $99. Azure OpenAI offers flexible pay-as-you-go pricing or ...",
+    "host_name": "redresscompliance.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.linkedin.com/posts/sabihahmedkhan_agenticai-microsoftcopilot-azureopenai-activity-7430679838065287168-W5CR",
+    "name": "Microsoft Agentic AI Roadmap 2026: Enterprise Stack - LinkedIn",
+    "snippet": "As Microsoft accelerates innovation across Copilot Studio, Azure OpenAI, and AI ... New integrations tied to Copilot Cowork and SharePoint ...",
+    "host_name": "www.linkedin.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://samexpert.com/microsoft-copilot-reorganisation-march-2026",
+    "name": "Inside Microsoft's March 2026 Copilot Reorg | SAMexpert Blog",
+    "snippet": "The core structural change was the unification of consumer and commercial Copilot into one organisation, spanning four connected pillars.",
+    "host_name": "samexpert.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://learn.microsoft.com/en-us/ssms/copilot/use-azure-openai-with-copilot-in-ssms",
+    "name": "Use Azure OpenAI with Copilot in SSMS - Microsoft Learn",
+    "snippet": "Sign in to the Azure portal. · Go to Services. · Under AI + machine learning, select Azure OpenAI. · Select + Create, and then select Azure OpenAI ...",
+    "host_name": "learn.microsoft.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://microsoft.github.io/Microsoft-AI-Decision-Framework/docs/technologies.html",
+    "name": "Microsoft AI Technologies Reference",
+    "snippet": "Improved ServiceNow and Azure DevOps connector responses. (What's new in Copilot Studio - Updated: 2026-03-06); Mar 2026: Work IQ MCP tools integration (Preview) ...",
+    "host_name": "microsoft.github.io",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://windowsforum.com/threads/microsoft-ai-play-for-2026-copilot-openai-link-azure-scale.395991",
+    "name": "Microsoft AI Play for 2026: Copilot, OpenAI Link, Azure Scale",
+    "snippet": "Q1 FY26 results and publicly announced Copilot pricing converted many soft signals into measurable inputs that analysts can use in disciplined ...",
+    "host_name": "windowsforum.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://www.microsoft.com/en-us/security/blog/2026/05/01/microsoft-agent-365-now-generally-available-expands-capabilities-and-integrations",
+    "name": "Microsoft Agent 365, now generally available, expands",
+    "snippet": "We’re announcing the general availability of Agent 365, plus previews of new capabilities to discover and manage shadow AI agents. Learn more.",
+    "host_name": "www.microsoft.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://nerdleveltech.com/microsoft-agent-365-ga-ai-agent-control-plane",
+    "name": "Microsoft Agent 365 Goes GA: AI Agent Control Plane 2026",
+    "snippet": "Microsoft Agent 365 hit GA on May 1, 2026 at $15/user. The control plane gives AI agents Entra identities and governs them via Defender, Purview, and Intune.",
+    "host_name": "nerdleveltech.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.constellationr.com/insights/news/microsoft-launches-new-e7-suite-integrate-ai-agents-work-iq",
+    "name": "Microsoft launches new E7 suite to integrate AI agents, Work IQ",
+    "snippet": "Microsoft launched a new suite for AI agents, Copilot Cowork in partnership with Anthropic and said Agent 365 will be available May 1. The moves are part of Microsoft's effort to differentiate in agentic AI with the context and trust layers. The company is looking to address enterprise pain points with scaling AI agents while providing the security, compliance and observability to wrangle them.",
+    "host_name": "www.constellationr.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://robquickenden.blog/2026/03/agent-365-nears-ga",
+    "name": "Agent 365: Microsoft's Enterprise AI Control Plane explained",
+    "snippet": "Microsoft have confirmed that Agent 365 will hit general availability on May 1st 2026, priced at $15 per user per month. It’s also included within the newly announced Microsoft 365 E7 suite.",
+    "host_name": "robquickenden.blog",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://redmondmag.com/articles/2026/05/01/microsoft-agent-365-goes-live-as-company-unveils-e7-suite.aspx",
+    "name": "Microsoft Agent 365 Goes Live as Company Unveils E7 Suite",
+    "snippet": "Microsoft on Friday announced the general availability of Agent 365, its control plane for governing and securing AI agents across enterprise environments, alongside the release of Microsoft 365 E7.",
+    "host_name": "redmondmag.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://vfuturemedia.com/ai/microsoft-copilot-multi-model-2026-agentic-ai-updates",
+    "name": "Microsoft Copilot Multi-Model 2026: Agentic AI Updates",
+    "snippet": "Microsoft Copilot 2026 introduces multi-model AI with GPT and Claude, Critique feature, and Copilot Cowork agent. Discover how agentic AI is transforming workflows.",
+    "host_name": "vfuturemedia.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.crn.com/news/ai/2026/microsoft-unveils-e7-suite-copilot-cowork-in-enterprise-ai-offensive",
+    "name": "Microsoft Unveils E7 Suite, Copilot Cowork In Enterprise AI Push",
+    "snippet": "Microsoft unveiled a new Microsoft 365 E7 suite, previewed Copilot Cowork with Anthropic, and set Agent 365 for general availability in May.",
+    "host_name": "www.crn.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://openai.com/index/gpt-5-5-instant",
+    "name": "GPT‑5.5 Instant: smarter, clearer, and more  - OpenAI",
+    "snippet": "GPT‑5.5 Instant is rolling out starting today to all ChatGPT users, replacing GPT‑5.3 Instant as the default model, and in the API as chat-latest. For paid users, GPT‑5.3 Instant will remain available for three months, accessible through model configuration settings, before being retired.",
+    "host_name": "openai.com",
+    "rank": 0,
+    "date": "May 5, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://techcrunch.com/2026/05/05/openai-releases-gpt-5-5-instant-a-new-default-model-for-chatgpt",
+    "name": "OpenAI releases GPT-5.5 Instant, a new default model for",
+    "snippet": "On Tuesday, OpenAI released a new foundation model called GPT-5.5 Instant, which will replace GPT-5.3 Instant as the default ChatGPT model. The company said the model reduces hallucination in ...",
+    "host_name": "techcrunch.com",
+    "rank": 1,
+    "date": "May 5, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://letsdatascience.com/news/openai-updates-chatgpt-with-gpt-55-instant-9a3303c2",
+    "name": "OpenAI updates ChatGPT with GPT-5.5 Instant | Let's Data Science",
+    "snippet": "OpenAI updated ChatGPT's default model to **GPT-5.5 Instant**, the company announced in a blog post on May 5, 2026. According to OpenAI's blog post, internal evaluations show **GPT-5.5 Instant** produced **52.5%** fewer hallucinated claims on high-stakes prompts and **37.3%** fewer inaccurate claims on conversations users had flagged for factual errors. TechCrunch reports the model scored **81 ...",
+    "host_name": "letsdatascience.com",
+    "rank": 2,
+    "date": "May 5, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://9to5mac.com/2026/05/05/gpt-5-5-instant-makes-chatgpt-more-accurate-while-nixing-gratuitous-emojis",
+    "name": "OpenAI releases GPT-5.5 Instant update to make ChatGPT",
+    "snippet": "ChatGPT should feel “smarter and more accurate” starting today, according to OpenAI. That’s because the company is replacing the default model with an update called GPT-5.5 Instant. OpenAI ...",
+    "host_name": "9to5mac.com",
+    "rank": 3,
+    "date": "May 5, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.knightli.com/en/2026/05/07/chatgpt-release-notes-memory-gpt-5-5-sheets",
+    "name": "ChatGPT Release Notes update: memory sources, GPT-5.5 Instant",
+    "snippet": "A summary of the latest OpenAI ChatGPT Release Notes updates: memory sources, more personalized responses, the GPT-5.5 Instant default model, and ChatGPT for Excel and Google Sheets.",
+    "host_name": "www.knightli.com",
+    "rank": 4,
+    "date": "May 7, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://mwm.ai/articles/openai-upgrades-chatgpt-default-model-to-gpt-5-5-instant-in-may-2026",
+    "name": "OpenAI Upgrades ChatGPT Default Model to GPT-5.5 Instant",
+    "snippet": "May 6, 2026 · 3 min read OpenAI Upgrades ChatGPT Default Model to GPT-5.5 Instant in May 2026 OpenAI has updated ChatGPT's default model to GPT-5.5 Instant for all users as of May 2026. The new model is designed to deliver more accurate and concise responses with fewer errors, especially in technical fields.",
+    "host_name": "mwm.ai",
+    "rank": 5,
+    "date": "May 6, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://techresearchonline.com/news/gpt-5-5-instant-chatgpt-default-model-2026",
+    "name": "GPT 5.5 Instant Becomes ChatGPT Default Model in 2026",
+    "snippet": "The ChatGPT AI model update comes two months after OpenAI started testing ads on the chatbot in the U.S. The company said ads would be visible to logged-in adult users on the Free tier and the lower-cost Go plan. Who Can Access GPT-5.5 Instant?",
+    "host_name": "techresearchonline.com",
+    "rank": 6,
+    "date": "May 6, 2026",
+    "favicon": ""
+  }
+]

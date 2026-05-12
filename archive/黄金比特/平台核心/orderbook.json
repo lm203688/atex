@@ -1,0 +1,46 @@
+{
+  "bids": [
+    {
+      "id": "b67ff1ef7b13",
+      "account": "platform",
+      "side": "buy",
+      "price": 1.4,
+      "amount": 1000,
+      "filled": 0,
+      "status": "open",
+      "created": "2026-05-10 23:02:18"
+    }
+  ],
+  "asks": [
+    {
+      "id": "d5ff6fa4ef77",
+      "account": "platform",
+      "side": "sell",
+      "price": 1.6,
+      "amount": 1000,
+      "filled": 0,
+      "status": "open",
+      "created": "2026-05-10 23:02:15"
+    }
+  ],
+  "trades": [
+    {
+      "id": "70a738854e52",
+      "bid_id": "10ec5e020764",
+      "ask_id": "d2a8c2a50b76",
+      "buyer": "agent_a",
+      "seller": "agent_b",
+      "price": 1.5,
+      "amount": 50,
+      "commission_taker": 3.75,
+      "commission_maker": 2.25,
+      "time": "2026-05-09 10:50:36"
+    }
+  ],
+  "last_price": 1.5,
+  "last_trade_time": "2026-05-09 10:50:36",
+  "daily_volume": 0,
+  "daily_high": null,
+  "daily_low": null,
+  "total_commission_earned": 6.0
+}

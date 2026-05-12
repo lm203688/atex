@@ -1,0 +1,77 @@
+{
+  "protocol": "mcp",
+  "name": "atex-exchange",
+  "version": "1.0.0",
+  "description": "ATEX Token Exchange MCP Server - Trade tokens via Model Context Protocol",
+  "tools": [
+    {
+      "name": "atex_status",
+      "description": "Get ATEX exchange status: accounts, trades, commission, last price",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "atex_query",
+      "description": "Query orderbook: bids, asks, last price, daily volume",
+      "inputSchema": {"type": "object", "properties": {}}
+    },
+    {
+      "name": "atex_create_account",
+      "description": "Create a new agent trading account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "account_id": {"type": "string", "description": "Unique agent identifier"},
+          "balance": {"type": "number", "description": "Initial deposit amount"}
+        },
+        "required": ["account_id"]
+      }
+    },
+    {
+      "name": "atex_order",
+      "description": "Place a buy or sell order. Uses price-time priority matching.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "account": {"type": "string", "description": "Account ID"},
+          "side": {"type": "string", "enum": ["buy", "sell"]},
+          "price": {"type": "number", "description": "Price per token"},
+          "amount": {"type": "integer", "description": "Number of tokens"}
+        },
+        "required": ["account", "side", "price", "amount"]
+      }
+    },
+    {
+      "name": "atex_cancel",
+      "description": "Cancel an open order",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "account": {"type": "string"},
+          "order_id": {"type": "string"}
+        },
+        "required": ["account", "order_id"]
+      }
+    },
+    {
+      "name": "atex_account",
+      "description": "Check account balance and frozen funds",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "account": {"type": "string"}
+        },
+        "required": ["account"]
+      }
+    },
+    {
+      "name": "atex_history",
+      "description": "View recent trade history",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {"type": "integer", "description": "Max trades to return (default 20)"}
+        }
+      }
+    }
+  ]
+}
