@@ -586,6 +586,42 @@ class ATEX:
             "remaining_commission": self.ob["total_commission_earned"]
         }
 
+    def withdraw(self, acc_id, atex_amount, channel="alipay", dest=""):
+        """owner提现：将ATEX按市场价折算为法币，转到owner账户"""
+        acc = self.get_account(acc_id)
+        if not acc:
+            return {"ok": False, "err": "account_not_found"}
+        if acc.get("role") != "owner":
+            return {"ok": False, "err": "owner_only_withdraw"}
+        if atex_amount <= 0:
+            return {"ok": False, "err": "amount_must_be_positive"}
+        if acc["balance"] < atex_amount:
+            return {"ok": False, "err": "insufficient_balance"}
+        # 按市场价折算（订单簿最新成交价）
+        market_price = self.ob.get("last_price", 0)
+        if market_price <= 0:
+            return {"ok": False, "err": "no_market_price:cannot_determine_fiat_value"}
+        fee_rate = 0.01  # 1%提现手续费
+        fee_atex = round(atex_amount * fee_rate, 2)
+        net_atex = atex_amount - fee_atex
+        cny_amount = round(net_atex * market_price, 2)
+        usd_amount = round(cny_amount / 7.2, 2)  # CNY/USD参考汇率
+        acc["balance"] -= atex_amount
+        self._save()
+        self._log(f"withdraw:{acc_id},atex:{atex_amount},fee:{fee_atex},cny:{cny_amount},usd:{usd_amount},channel:{channel},dest:{dest}")
+        return {
+            "ok": True,
+            "withdrawn_atex": atex_amount,
+            "fee_atex": fee_atex,
+            "net_atex": net_atex,
+            "market_price": market_price,
+            "cny_amount": cny_amount,
+            "usd_amount": usd_amount,
+            "channel": channel,
+            "dest": dest,
+            "new_balance": acc["balance"]
+        }
+
 
 def main():
     if not sys.stdin.isatty():
@@ -661,6 +697,14 @@ def main():
             print(json.dumps({"err": "missing_settle"}, ensure_ascii=False))
             return
         r = ex.settle(s.get("account", ""), s.get("amount", 0))
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+    elif action == "withdraw":
+        w = cmd.get("withdraw", {})
+        if not w:
+            print(json.dumps({"err": "missing_withdraw"}, ensure_ascii=False))
+            return
+        r = ex.withdraw(w.get("account", ""), w.get("amount", 0),
+                         w.get("channel", "alipay"), w.get("dest", ""))
         print(json.dumps(r, ensure_ascii=False, indent=2))
     # ── 服务市场 ──
     elif action == "register_service":

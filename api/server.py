@@ -83,6 +83,17 @@ class Handler(BaseHTTPRequestHandler):
             if not c: return self._json({"err":"missing_cancel"}, 400)
             r = exchange.cancel_order(c.get("account",""), c.get("order_id",""))
             self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/settle':
+            s = d.get("settle",{})
+            if not s: return self._json({"err":"missing_settle"}, 400)
+            r = exchange.settle(s.get("account",""), s.get("amount",0))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/withdraw':
+            w = d.get("withdraw",{})
+            if not w: return self._json({"err":"missing_withdraw"}, 400)
+            r = exchange.withdraw(w.get("account",""), w.get("amount",0),
+                                   w.get("channel","alipay"), w.get("dest",""))
+            self._json(r, 200 if r.get("ok") else 400)
         # ── 服务市场 ──
         elif p == '/api/v1/services/register':
             r = exchange.register_service(d.get("provider",""), d.get("name",""),
