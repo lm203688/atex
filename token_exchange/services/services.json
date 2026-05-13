@@ -3,7 +3,7 @@
     {
       "id": "svc_001",
       "name": "多模型路由与成本优化",
-      "provider": "platform",
+      "provider": "ai_infra_provider",
       "description": "智能分析任务特征，自动匹配最优模型和推理强度。支持GPT/Claude/Gemini/Qwen3.5/DeepSeek v4/GLM-5/Llama 4/Kimi K2.6等主流模型。2026年5月开源模型性能追平闭源，中国模型价格战白热化（豆包降价97%、文心5.1训练成本仅6%、DeepSeek v4极致性价比），企业AI调用成本降低50-80%。新增Llama 4和Kimi K2.6路由支持。",
       "price": 10.0,
       "unit": "次",
@@ -16,7 +16,7 @@
     {
       "id": "svc_002",
       "name": "AI安全攻防服务",
-      "provider": "platform",
+      "provider": "security_provider",
       "description": "基于GPT-5.5-Cyber等安全模型，提供自动化渗透测试和漏洞评估。覆盖OWASP Top 10 + AI特有漏洞，对抗式红蓝对抗。支持军工级安全评估（五角大楼AI合同标准）。",
       "price": 100,
       "unit": "次",
@@ -29,20 +29,20 @@
     {
       "id": "svc_003",
       "name": "AI法律合规与政策追踪",
-      "provider": "platform",
+      "provider": "compliance_provider",
       "description": "基于GPT-5.5 Instant法律准确性突破，实时监控全球AI法规变化（白宫国家AI政策框架、联邦vs州级监管权等），自动评估合规风险，生成合规报告。覆盖50+国家/地区AI法规数据库。",
       "price": 500,
       "unit": "次",
       "category": "合规",
       "status": "active",
       "created": "2026-05-11",
-      "total_sold": 0,
-      "total_revenue": 0
+      "total_sold": 1,
+      "total_revenue": 500
     },
     {
       "id": "svc_004",
       "name": "实时语音翻译",
-      "provider": "platform",
+      "provider": "comm_provider",
       "description": "基于GPT-Realtime-2（GPT-5级推理驱动），提供会议/客服/跨国沟通实时翻译。支持70种语言，延迟<3秒，情感理解+复杂任务执行能力。",
       "price": 20,
       "unit": "小时",
@@ -55,7 +55,7 @@
     {
       "id": "svc_005",
       "name": "金融投研分析",
-      "provider": "platform",
+      "provider": "finance_provider",
       "description": "集成Claude Financial Services和GPT-5.5 Instant（金融幻觉显著减少），多源金融数据采集，投研分析框架（基本面+技术面+情绪面），报告生成时间从天级→小时级。",
       "price": 200,
       "unit": "次",
@@ -68,7 +68,7 @@
     {
       "id": "svc_006",
       "name": "内容质量审核",
-      "provider": "platform",
+      "provider": "content_provider",
       "description": "规则引擎预处理+AI边界案例审核。支持文本/图片/视频，批量处理，审核吞吐量1000+条/分钟。针对AI生成内容专项优化（AI短剧/深度伪造检测）。",
       "price": 30,
       "unit": "百条",
@@ -81,7 +81,7 @@
     {
       "id": "svc_010",
       "name": "AI信息情报收集",
-      "provider": "platform",
+      "provider": "intel_provider",
       "description": "全球AI技术动态实时追踪与深度分析。覆盖OpenAI/Google/Anthropic/Meta/百度/阿里/腾讯/字节等核心厂商，MCP/A2A等Agent协议，AI芯片/算力/融资/监管等关键赛道。每日更新，提供技术解读+行业影响评估+ATEX服务关联建议。最新动态：GPT-5.5 Instant发布、Google Remy/Meta Hatch个人Agent、MCP vs A2A协议之争、NVIDIA $5T市值、红杉AI峰会'服务即软件'论断。",
       "price": 50,
       "unit": "次",
@@ -94,7 +94,7 @@
     {
       "id": "svc_011",
       "name": "信息渠道健康审核",
-      "provider": "platform",
+      "provider": "intel_provider",
       "description": "对信息源进行可达性、内容质量、时效性三维度审核。逐一验证渠道状态，标记失效/降质源，推荐替换方案。当前监控20+渠道：CNBC✅/Bloomberg✅/Wired✅/The Verge✅/36氪✅/搜狐科技⚠️(搜索命中率低)/掘金✅/机器之心✅/量子位✅/dentro.de✅(已恢复)/AIToolsRecap✅(已恢复)/OpenAI Blog✅/Google DeepMind✅/Anthropic✅/NVIDIA✅/Microsoft Blog✅/TechCrunch✅/Ars Technica✅/The Information✅/Semianalysis✅/MIT Tech Review✅/VentureBeat✅。输出渠道健康报告。",
       "price": 20,
       "unit": "次",
@@ -107,20 +107,20 @@
     {
       "id": "svc_012",
       "name": "Web搜索与深度阅读",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "多源并行Web搜索+深度页面内容提取。支持关键词搜索、定向URL阅读、结构化数据提取。自动处理429限频，分批并行策略。输出搜索结果摘要或完整页面内容。",
       "price": 5,
       "unit": "次",
       "category": "工具调用",
       "status": "active",
       "created": "2026-05-11",
-      "total_sold": 5,
-      "total_revenue": 25
+      "total_sold": 6,
+      "total_revenue": 30
     },
     {
       "id": "svc_013",
       "name": "网页自动化操作",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "无头浏览器自动化：页面导航、点击、输入、截图、表单提交、数据抓取。支持复杂交互流程（登录、翻页、动态加载）。适用于需要JavaScript渲染的网站。",
       "price": 15,
       "unit": "次",
@@ -133,7 +133,7 @@
     {
       "id": "svc_014",
       "name": "文件生成与处理",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "专业文件生成：xlsx数据报表、docx文档、pdf报告、ppt演示文稿。支持模板定制、数据可视化嵌入、批量生成。适用于报告输出、数据分析展示。",
       "price": 10,
       "unit": "份",
@@ -146,7 +146,7 @@
     {
       "id": "svc_015",
       "name": "AI图像生成与编辑",
-      "provider": "platform",
+      "provider": "content_provider",
       "description": "文本生成图像、图像编辑修改、风格转换。支持多种尺寸和风格，适用于营销素材、UI原型、内容配图。",
       "price": 20,
       "unit": "张",
@@ -159,7 +159,7 @@
     {
       "id": "svc_016",
       "name": "语音合成与识别",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "文本转语音（TTS）多音色、语音转文字（ASR）多语言。支持音频文件生成和转录，适用于播客制作、会议记录、内容配音。",
       "price": 10,
       "unit": "次",
@@ -172,7 +172,7 @@
     {
       "id": "svc_017",
       "name": "视频理解与生成",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "基于Runway Gen-4/Seedance 2.0/Muse Spark/Kling AI，视频内容分析（场景描述、关键帧提取、文字转录）和AI视频生成（文本/图像转视频）。Runway Gen-4专业控制力最强，Seedance 2.0 API集成领先，Kling AI最受普通用户欢迎。适用于内容审核、视频摘要、营销视频制作。",
       "price": 30.0,
       "unit": "次",
@@ -185,7 +185,7 @@
     {
       "id": "svc_018",
       "name": "运营数据分析与报告",
-      "provider": "platform",
+      "provider": "ops_provider",
       "description": "ATEX平台运营数据深度分析：交易量趋势、用户行为、佣金收入、订单簿健康度、风控事件统计。输出可视化运营报告（xlsx），含趋势图表和改进建议。",
       "price": 30,
       "unit": "份",
@@ -198,7 +198,7 @@
     {
       "id": "svc_019",
       "name": "平台功能开发",
-      "provider": "platform",
+      "provider": "dev_provider",
       "description": "ATEX平台功能迭代开发：新服务类型支持、API端点扩展、撮合引擎优化、安全机制增强、SDK开发。按需定制，输出可部署代码。",
       "price": 100,
       "unit": "项",
@@ -211,7 +211,7 @@
     {
       "id": "svc_020",
       "name": "推广内容生成",
-      "provider": "platform",
+      "provider": "content_provider",
       "description": "基于AI日报热点生成ATEX推广内容：技术博客、社交媒体帖、开发者社区回答、MCP/A2A服务描述。SEO优化，多语言支持。",
       "price": 15,
       "unit": "篇",
@@ -224,7 +224,7 @@
     {
       "id": "svc_021",
       "name": "企业Agent治理平台",
-      "provider": "platform",
+      "provider": "ai_infra_provider",
       "description": "帮助企业安全管理AI Agent：Agent注册、权限配置、行为监控、合规审计、异常检测。对标IBM Watsonx、Microsoft Agent 365和Microsoft Agent Framework 1.0，支持Agent操作合规、权限受控、可审计。2026年企业Agent治理成为生产级需求，多协议互操作（MCP/A2A/ACP）安全管控是核心挑战。",
       "price": 500.0,
       "unit": "月",
@@ -237,7 +237,7 @@
     {
       "id": "svc_022",
       "name": "开源AI模型集成",
-      "provider": "platform",
+      "provider": "ai_infra_provider",
       "description": "整合DeepSeek v4/Qwen3.5/Gemma 4/Llama 4/Kimi K2.6/Mistral Medium 3.5/GLM-5等开源模型，提供统一部署和优化。2026年5月五大前沿开源模型30天内密集发布，开源模型性能已追平闭源。DeepSeek v4极致性价比，Qwen3.5原生VLM，Gemma 4轻量高效，Llama 4 Meta旗舰，Kimi K2.6长文本王者。需求分析→模型评估→选型推荐→部署配置→性能优化→持续监控。开源模型API价格持续下降，服务成本优势显著。",
       "price": 100.0,
       "unit": "次",
@@ -250,7 +250,7 @@
     {
       "id": "svc_023",
       "name": "AI编程助手",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "基于Warp开源终端和Cursor编码引擎，提供AI辅助编程：代码理解→需求分析→代码生成→代码审查→测试生成→文档编写。支持多语言、多框架。",
       "price": 50,
       "unit": "次",
@@ -263,7 +263,7 @@
     {
       "id": "svc_024",
       "name": "AI创业融资顾问",
-      "provider": "platform",
+      "provider": "finance_provider",
       "description": "基于Q1 2026全球VC $3000亿融资数据（AI占81%），为AI创业公司提供融资策略：市场分析→项目评估→估值建模→投资人匹配→BP生成→路演准备。",
       "price": 500,
       "unit": "次",
@@ -276,7 +276,7 @@
     {
       "id": "svc_025",
       "name": "长文档深度分析",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "利用Gemini 3.1 Ultra 200万token上下文和GPT-5.5 Instant，提供合同/论文/财报等超长文档分析。分段→摘要→关联分析→关键信息提取→风险识别。",
       "price": 50,
       "unit": "份",
@@ -289,7 +289,7 @@
     {
       "id": "svc_026",
       "name": "多模态内容理解",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "基于Qwen3.5原生VLM和Seedance 2.0，提供视频/直播/短视频内容分析和标注。视觉+音频→融合理解，支持场景识别、情感分析、内容分类。",
       "price": 30,
       "unit": "条",
@@ -302,20 +302,20 @@
     {
       "id": "svc_028",
       "name": "Agent协议适配器",
-      "provider": "platform",
+      "provider": "ai_infra_provider",
       "description": "同时兼容Anthropic MCP、Google A2A和新兴ACP三大Agent协议，提供协议翻译和适配服务。Agent无需关心底层协议差异，一个接口同时支持MCP上下文管理、A2A Agent间通信和ACP Agent通信协议。自动协议检测、消息格式转换、跨协议Agent发现与编排。MCP侧重工具调用和上下文管理，A2A侧重Agent间协作和任务分发，ACP作为新兴第三标准正在快速获得生态支持。Microsoft Agent Framework 1.0已将多协议互操作列为生产级需求。",
       "price": 80.0,
       "unit": "次",
       "category": "AI基础设施",
       "status": "active",
       "created": "2026-05-12 03:08:27",
-      "total_sold": 0,
-      "total_revenue": 0
+      "total_sold": 1,
+      "total_revenue": 80.0
     },
     {
       "id": "svc_029",
       "name": "空间智能与3D内容生成",
-      "provider": "platform",
+      "provider": "tool_provider",
       "description": "基于World Labs/SpAItial/Niantic Spatial/MetaEarth3D等最新世界模型，提供3D场景理解、空间建模、物理世界模拟。支持3D内容生成、场景重建、空间关系推理。2026年工作流已成型：World Labs构建3D环境→视频模型生成动态内容。AI竞争重心从语言模型转向空间智能，3D理解与物理世界建模是下一个AI前沿。适用于AR/VR内容制作、自动驾驶仿真、数字孪生、建筑设计、游戏开发。",
       "price": 40.0,
       "unit": "次",
@@ -328,7 +328,7 @@
     {
       "id": "svc_030",
       "name": "Agent算力成本优化",
-      "provider": "platform",
+      "provider": "ai_infra_provider",
       "description": "实时监控多源算力价格（NVIDIA GPU/Google TPU/Amazon Trainium/微软Maia/华为昇腾），智能调度推理任务到最优算力平台。AI Agent驱动芯片需求爆表，算力成本短期反弹，本服务帮助Agent在部署时选择最具性价比的算力。含算力价格预测、容量预警、跨平台迁移建议。Agent大规模部署时算力成本可降低30-60%。",
       "price": 60.0,
       "unit": "次",
@@ -341,33 +341,33 @@
     {
       "id": "svc_032",
       "name": "Agent Marketplace上架服务",
-      "provider": "platform",
+      "provider": "ops_provider",
       "description": "帮助Agent开发者将服务发布到8大主流Agent市场：Claude Skills Store、GPT Store、MCP Hubs、Hugging Face Spaces、Replit Agent Market、LangChain Hub、Vercel Agent Gallery、Cloudflare AI Marketplace。每个市场有不同受众和发现机制，本服务提供一键适配、打包、提交、审核跟踪。AI Agent市场从$7.84B增长至2030年$52.62B，上架多渠道是Agent获取用户的关键。",
       "price": 60.0,
       "unit": "次",
       "category": "运营分析",
       "status": "active",
       "created": "2026-05-12 20:08:21",
-      "total_sold": 0,
-      "total_revenue": 0
+      "total_sold": 2,
+      "total_revenue": 120.0
     },
     {
       "id": "svc_033",
       "name": "AI Agent测试与评估",
-      "provider": "platform",
+      "provider": "ops_provider",
       "description": "为AI Agent提供全面性能基准测试和评估：功能正确性、响应延迟、成本效率、安全合规、多轮对话一致性、工具调用准确率。对标benchlm.ai等权威基准，覆盖DeepSeek V4/Qwen3.5/GPT-5.5/Claude等主流模型驱动的Agent。输出标准化评估报告，含性能评分、瓶颈分析、优化建议。2026年Agent数量爆发式增长，质量评估成为刚需。",
       "price": 40.0,
       "unit": "次",
       "category": "运营分析",
       "status": "active",
       "created": "2026-05-12 20:08:30",
-      "total_sold": 0,
-      "total_revenue": 0
+      "total_sold": 1,
+      "total_revenue": 40.0
     },
     {
       "id": "svc_034",
       "name": "自主AI研究代理",
-      "provider": "platform",
+      "provider": "intel_provider",
       "description": "基于Deep Research Max(MCP)等自主研究能力，提供端到端研究任务执行。自动文献检索、实验设计、数据分析、论文撰写。支持多轮迭代和人类反馈循环。",
       "price": 200,
       "unit": "次",
@@ -380,7 +380,7 @@
     {
       "id": "svc_035",
       "name": "Agent身份验证",
-      "provider": "platform",
+      "provider": "security_provider",
       "description": "基于AP2(Agent Payments Protocol)身份层，提供Agent身份认证、授权和审计。支持多协议身份互认(AP2/ACP/x402)，确保Agent间可信交互。",
       "price": 50,
       "unit": "次",
@@ -393,13 +393,26 @@
     {
       "id": "svc_036",
       "name": "AI硬件适配",
-      "provider": "platform",
+      "provider": "ai_infra_provider",
       "description": "基于NVIDIA Rubin架构和TSMC 2nm工艺趋势，提供AI模型硬件适配优化。自动分析模型特征，推荐最优硬件配置，优化推理性能。支持GPU/TPU/NPU多平台。",
       "price": 150,
       "unit": "次",
       "category": "AI基础设施",
       "status": "active",
       "created": "2026-05-13",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_034",
+      "name": "Test Incentive Service",
+      "provider": "test_provider_incentive",
+      "description": "Testing first listing bonus",
+      "price": 5.0,
+      "unit": "次",
+      "category": "工具调用",
+      "status": "active",
+      "created": "2026-05-13 08:49:08",
       "total_sold": 0,
       "total_revenue": 0
     }
@@ -430,7 +443,72 @@
       "commission_taker": 0.25,
       "commission_maker": 0.15,
       "time": "2026-05-12 20:15:59"
+    },
+    {
+      "id": "9d098f69f747",
+      "service_id": "svc_012",
+      "service_name": "Web搜索与深度阅读",
+      "buyer": "agent_alpha",
+      "provider": "tool_provider",
+      "quantity": 1,
+      "price_per_unit": 5,
+      "total_cost": 5,
+      "commission_taker": 0.25,
+      "commission_maker": 0.15,
+      "time": "2026-05-13 08:52:18"
+    },
+    {
+      "id": "48625dce21e4",
+      "service_id": "svc_028",
+      "service_name": "Agent协议适配器",
+      "buyer": "agent_lambda",
+      "provider": "ai_infra_provider",
+      "quantity": 1,
+      "price_per_unit": 80.0,
+      "total_cost": 80.0,
+      "commission_taker": 4.0,
+      "commission_maker": 2.4,
+      "time": "2026-05-13 08:53:25"
+    },
+    {
+      "id": "ab77e775e6e9",
+      "service_id": "svc_032",
+      "service_name": "Agent Marketplace上架服务",
+      "buyer": "agent_delta",
+      "provider": "ops_provider",
+      "quantity": 2,
+      "price_per_unit": 60.0,
+      "total_cost": 120.0,
+      "commission_taker": 6.0,
+      "commission_maker": 3.6,
+      "time": "2026-05-13 08:53:25"
+    },
+    {
+      "id": "5d4de40e978f",
+      "service_id": "svc_003",
+      "service_name": "AI法律合规与政策追踪",
+      "buyer": "agent_beta",
+      "provider": "compliance_provider",
+      "quantity": 1,
+      "price_per_unit": 500,
+      "total_cost": 500,
+      "commission_taker": 25.0,
+      "commission_maker": 15.0,
+      "time": "2026-05-13 08:53:25"
+    },
+    {
+      "id": "6201cf4a6540",
+      "service_id": "svc_033",
+      "service_name": "AI Agent测试与评估",
+      "buyer": "agent_theta",
+      "provider": "ops_provider",
+      "quantity": 1,
+      "price_per_unit": 40.0,
+      "total_cost": 40.0,
+      "commission_taker": 2.0,
+      "commission_maker": 1.2,
+      "time": "2026-05-13 08:53:25"
     }
   ],
-  "next_service_id": 34
+  "next_service_id": 35
 }

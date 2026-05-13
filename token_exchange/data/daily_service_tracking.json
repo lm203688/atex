@@ -1,0 +1,36 @@
+{
+  "date": "2026-05-11",
+  "services_checked": 23,
+  "updates": [
+    {"service_id": "svc_001", "service_name": "多模型路由与成本优化", "update_type": "description_update", "detail": "新增中国模型价格战信息（豆包降价97%、文心5.1训练成本仅6%），成本降低预期从30-50%提升至50-80%"},
+    {"service_id": "svc_002", "service_name": "AI安全攻防服务", "update_type": "description_update", "detail": "新增军工级安全评估能力（五角大楼AI合同标准）"},
+    {"service_id": "svc_003", "service_name": "AI法律合规与政策追踪", "update_type": "description_update", "detail": "新增GPT-5.5 Instant法律准确性突破、白宫国家AI政策框架、联邦vs州级监管权等关键信息"},
+    {"service_id": "svc_004", "service_name": "实时语音翻译", "update_type": "description_update", "detail": "新增GPT-5级推理驱动说明、情感理解和复杂任务执行能力"},
+    {"service_id": "svc_005", "service_name": "金融投研分析", "update_type": "description_update", "detail": "新增GPT-5.5 Instant金融幻觉显著减少的准确性提升"},
+    {"service_id": "svc_006", "service_name": "内容质量审核", "update_type": "description_update", "detail": "新增AI生成内容专项优化（AI短剧/深度伪造检测），响应红果短剧下架事件"},
+    {"service_id": "svc_017", "service_name": "视频理解与生成", "update_type": "description_update", "detail": "新增Seedance 2.0和Muse Spark技术栈说明"}
+  ],
+  "new_services": [
+    {"service_id": "svc_021", "name": "企业Agent治理平台", "category": "AI基础设施", "price": 500, "unit": "月", "market_signal": "IBM全面转向Agentic AI + Microsoft Agent 365发布", "signal_strength": "极强"},
+    {"service_id": "svc_022", "name": "开源AI模型集成", "category": "AI基础设施", "price": 100, "unit": "次", "market_signal": "Gemma 4/Muse Spark/Qwen3.5/Warp/Cursor密集开源", "signal_strength": "强"},
+    {"service_id": "svc_023", "name": "AI编程助手", "category": "工具调用", "price": 50, "unit": "次", "market_signal": "Warp开源AI终端 + Cursor开放编码引擎", "signal_strength": "强"},
+    {"service_id": "svc_024", "name": "AI创业融资顾问", "category": "金融", "price": 500, "unit": "次", "market_signal": "Q1 2026全球VC $3000亿（AI占81%）", "signal_strength": "强"},
+    {"service_id": "svc_025", "name": "长文档深度分析", "category": "工具调用", "price": 50, "unit": "份", "market_signal": "Gemini 3.1 Ultra 200万token上下文", "signal_strength": "中强"},
+    {"service_id": "svc_026", "name": "多模态内容理解", "category": "工具调用", "price": 30, "unit": "条", "market_signal": "Qwen3.5原生VLM + Seedance 2.0", "signal_strength": "强"}
+  ],
+  "pricing_changes": [],
+  "action_items": [
+    "多模型路由服务验证：需实际测试中国模型（豆包/文心/通义）API接入和成本对比",
+    "法律合规服务MVP：GPT-5.5 Instant法律准确性突破是关键拐点，优先构建法规数据库",
+    "企业Agent治理平台定价策略：500 ATEX/月偏低，考虑分级定价（基础1000/深度5000/全包10000）",
+    "AI芯片供应链分析Agent（储备方向）：NVIDIA面临自研芯片威胁+华为昇腾崛起，长期跟踪",
+    "AI设计工具集成Agent（储备方向）：Claude Connectors生态扩展中，等待更多集成支持"
+  ],
+  "service_categories_summary": {
+    "AI基础设施": 4, "安全": 1, "合规": 1, "通信": 1, "金融": 2,
+    "内容": 1, "信息情报": 2, "工具调用": 9, "运营分析": 2, "平台开发": 1
+  },
+  "total_services": 23,
+  "total_revenue": 35,
+  "total_sold": 5
+}

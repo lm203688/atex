@@ -175,23 +175,35 @@ class ATEX:
         if acc_id in self.accounts["accounts"]:
             return {"ok": False, "err": "account_exists"}
         credit = self.config.get("token", {}).get("registration_credit", 0)
+        # Provider Early Bird: 注册为provider额外奖励
+        provider_bonus = 0
+        if role == "provider":
+            provider_bonus = self.config.get("provider_incentive", {}).get("register_bonus", 50)
+        total_credit = credit + provider_bonus
         # 试用额度从platform账户扣除（非凭空铸造）
-        if credit > 0:
+        if total_credit > 0:
             platform = self.get_account("platform")
-            if platform and platform["balance"] >= credit:
-                platform["balance"] -= credit
+            if platform and platform["balance"] >= total_credit:
+                platform["balance"] -= total_credit
             else:
-                credit = 0  # platform余额不足则不赠送
+                total_credit = 0
         self.accounts["accounts"][acc_id] = {
-            "balance": credit,
+            "balance": total_credit,
             "frozen": 0,
             "role": role,
             "created": now_str(),
             "daily_traded": 0,
         }
         self._save()
-        self._log(f"account_created:{acc_id},role:{role},credit:{credit}")
-        return {"ok": True, "account": acc_id, "balance": credit, "note": "Registration credit is a trial bonus. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."}
+        msg = f"account_created:{acc_id},role:{role},credit:{credit}"
+        if provider_bonus > 0:
+            msg += f",provider_bonus:{provider_bonus}"
+        self._log(msg)
+        result = {"ok": True, "account": acc_id, "balance": total_credit, "note": "Registration credit is a trial bonus. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."}
+        if provider_bonus > 0:
+            result["provider_bonus"] = provider_bonus
+            result["note"] += f" Provider Early Bird bonus: {provider_bonus} ATEX!"
+        return result
 
     def deposit(self, acc_id, amount):
         """存入Token：从platform账户转入（非凭空创造）"""
@@ -419,9 +431,27 @@ class ATEX:
             "total_sold": 0, "total_revenue": 0
         }
         self.svc["services"].append(service)
+
+        # Provider Early Bird: 首次上架奖励
+        listing_bonus = 0
+        existing = [s for s in self.svc["services"] if s["provider"] == provider_id and s["id"] != svc_id]
+        if len(existing) == 0:  # 第一个服务
+            listing_bonus = self.config.get("provider_incentive", {}).get("first_listing_bonus", 100)
+            platform = self.get_account("platform")
+            if platform and platform["balance"] >= listing_bonus:
+                platform["balance"] -= listing_bonus
+                acc["balance"] += listing_bonus
+            else:
+                listing_bonus = 0
+
         self._save()
-        self._log(f"service_registered:{svc_id},{name},{provider_id},{price}/{unit}")
-        return {"ok": True, "service": service}
+        self._log(f"service_registered:{svc_id},{name},{provider_id},{price}/{unit},listing_bonus:{listing_bonus}")
+        result = {"ok": True, "service": service}
+        if listing_bonus > 0:
+            result["listing_bonus"] = listing_bonus
+            result["new_balance"] = acc["balance"]
+            result["note"] = f"First listing bonus: {listing_bonus} ATEX!"
+        return result
 
     def list_services(self, category=None, provider=None):
         """浏览服务市场"""
@@ -501,13 +531,29 @@ class ATEX:
             "time": now_str()
         }
         self.svc["orders"].append(order)
+
+        # Provider Early Bird: 首笔成交奖励
+        first_sale_bonus = 0
+        if service["total_sold"] == 0:  # 这是第一笔成交
+            first_sale_bonus = self.config.get("provider_incentive", {}).get("first_sale_bonus", 200)
+            platform = self.get_account("platform")
+            if platform and platform["balance"] >= first_sale_bonus:
+                platform["balance"] -= first_sale_bonus
+                seller["balance"] += first_sale_bonus
+            else:
+                first_sale_bonus = 0
+
         self._save()
-        self._log(f"service_bought:{service_id},{service['name']},{buyer_id}->{service['provider']},{quantity}x{service['price']},comm:{taker_comm+maker_comm}")
-        return {
+        self._log(f"service_bought:{service_id},{service['name']},{buyer_id}->{service['provider']},{quantity}x{service['price']},comm:{taker_comm+maker_comm},first_sale_bonus:{first_sale_bonus}")
+        result = {
             "ok": True, "order": order,
             "buyer_balance": buyer["balance"],
             "seller_balance": seller["balance"]
         }
+        if first_sale_bonus > 0:
+            result["first_sale_bonus"] = first_sale_bonus
+            result["note"] = f"Provider first sale bonus: {first_sale_bonus} ATEX!"
+        return result
 
     def update_service(self, provider_id, service_id, **kwargs):
         """更新服务信息（仅提供者可操作）"""

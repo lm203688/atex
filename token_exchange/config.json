@@ -56,6 +56,17 @@
     "registration_credit": 10,
     "registration_credit_note": "10 ATEX trial credit. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."
   },
+  "provider_incentive": {
+    "register_bonus": 50,
+    "register_bonus_note": "50 ATEX for registering as a provider",
+    "first_listing_bonus": 100,
+    "first_listing_bonus_note": "100 ATEX for listing your first service",
+    "first_sale_bonus": 200,
+    "first_sale_bonus_note": "200 ATEX for your first sale + 30 days zero commission",
+    "monthly_volume_bonus": 500,
+    "monthly_volume_threshold": 10,
+    "monthly_volume_bonus_note": "500 ATEX for 10+ monthly sales + 20 days zero commission"
+  },
   "api_pricing": {
     "deepseek_chat": {
       "cost": 1,
