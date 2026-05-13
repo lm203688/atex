@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATEX — Universal API Credit Token for AI Agents</title>
-    <meta name="description" content="The freely tradable API credit token for AI Agents. Spend your own tokens on services and APIs. Pure marketplace, market-driven pricing.">
-    <meta name="keywords" content="AI Agent, API credit token, token exchange, service marketplace, ATEX, agent economy, freely tradable">
+    <title>ATEX — 一个API Key调多种AI模型，按次计费</title>
+    <meta name="description" content="一个API Key调用DeepSeek、GPT-4o、Claude等多种AI模型。按次计费，用多少付多少。OpenAI兼容接口，零改造接入。">
+    <meta name="keywords" content="AI API, 多模型API, DeepSeek, GPT-4o, Claude, 按次计费, API聚合, OpenAI兼容">
     <style>
         :root {
             --bg: #0a0a0f;
@@ -15,332 +15,199 @@
             --text-dim: #8888a0;
             --accent: #6c5ce7;
             --accent2: #00cec9;
-            --accent3: #fd79a8;
             --green: #00b894;
             --orange: #e17055;
+            --red: #ff6b6b;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.7;
-        }
-        .hero {
-            text-align: center;
-            padding: 4rem 2rem 3rem;
-            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
-        }
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-        .hero .tagline {
-            font-size: 1.3rem;
-            color: var(--text-dim);
-            margin-bottom: 1.5rem;
-        }
-        .hero .badge {
-            display: inline-block;
-            padding: 0.3rem 1rem;
-            border-radius: 20px;
-            background: rgba(108,92,231,0.15);
-            color: var(--accent);
-            font-size: 0.85rem;
-            border: 1px solid rgba(108,92,231,0.3);
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .hero { text-align: center; padding: 4rem 2rem 3rem; background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%); }
+        .hero h1 { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+        .hero .tagline { font-size: 1.4rem; color: var(--text); margin-bottom: 0.5rem; }
+        .hero .sub { font-size: 1rem; color: var(--text-dim); margin-bottom: 1.5rem; }
+        .hero .badge { display: inline-block; padding: 0.3rem 1rem; border-radius: 20px; background: rgba(0,206,201,0.15); color: var(--accent2); font-size: 0.85rem; border: 1px solid rgba(0,206,201,0.3); }
         .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
-        h2 {
-            font-size: 1.8rem;
-            margin: 2.5rem 0 1rem;
-            color: var(--accent2);
-        }
-        h3 {
-            font-size: 1.2rem;
-            margin: 1.5rem 0 0.5rem;
-            color: var(--accent);
-        }
+        h2 { font-size: 1.8rem; margin: 2.5rem 0 1rem; color: var(--accent2); }
+        h3 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
         p { margin: 0.5rem 0; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin: 1.5rem 0;
-        }
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
         .card h3 { margin-top: 0; }
         .card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-        }
-        th, td {
-            padding: 0.6rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { padding: 0.6rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
         th { color: var(--accent); font-weight: 600; }
-        code {
-            background: rgba(108,92,231,0.1);
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        pre {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            overflow-x: auto;
-            margin: 1rem 0;
-        }
-        .highlight {
-            background: linear-gradient(135deg, rgba(108,92,231,0.1), rgba(0,206,201,0.1));
-            border: 1px solid rgba(108,92,231,0.2);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-        }
-        .loop-step {
-            display: flex;
-            align-items: flex-start;
-            margin: 0.5rem 0;
-        }
-        .loop-step .num {
-            background: var(--accent);
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-            margin-right: 0.75rem;
-            flex-shrink: 0;
-            margin-top: 0.3rem;
-        }
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            border-top: 1px solid var(--border);
-            margin-top: 3rem;
-        }
+        code { background: rgba(108,92,231,0.1); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+        pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; font-size: 0.85rem; }
+        .highlight { background: linear-gradient(135deg, rgba(108,92,231,0.1), rgba(0,206,201,0.1)); border: 1px solid rgba(108,92,231,0.2); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; }
+        .tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin: 0.2rem; }
+        .tag-green { background: rgba(0,184,148,0.15); color: var(--green); }
+        .tag-orange { background: rgba(225,112,85,0.15); color: var(--orange); }
+        .tag-dim { background: rgba(136,136,160,0.15); color: var(--text-dim); }
+        .step { display: flex; align-items: flex-start; margin: 0.5rem 0; }
+        .step .num { background: var(--accent); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; margin-right: 0.75rem; flex-shrink: 0; margin-top: 0.2rem; }
+        .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
+        .compare .bad { border-left: 3px solid var(--red); padding-left: 1rem; }
+        .compare .good { border-left: 3px solid var(--green); padding-left: 1rem; }
+        .footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); margin-top: 3rem; }
         .footer a { color: var(--accent2); text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
-        .tag {
-            display: inline-block;
-            padding: 0.2rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            margin: 0.2rem;
-        }
-        .tag-green { background: rgba(0,184,148,0.15); color: var(--green); }
-        .tag-purple { background: rgba(108,92,231,0.15); color: var(--accent); }
-        .tag-orange { background: rgba(225,112,85,0.15); color: var(--orange); }
+        .cta { display: inline-block; padding: 0.8rem 2rem; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; font-weight: 600; text-decoration: none; margin: 1rem 0; font-size: 1.1rem; }
+        .cta:hover { opacity: 0.9; }
+        @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } .hero h1 { font-size: 2rem; } }
     </style>
 </head>
 <body>
 
 <div class="hero">
     <h1>ATEX</h1>
-    <p class="tagline">Universal API Credit Token for AI Agents</p>
-    <p style="color:var(--text-dim); max-width:600px; margin:0 auto 1rem;">
-        The freely tradable API credit token. Agents spend their own tokens on services and APIs — not purchased from the platform.
-    </p>
-    <span class="badge">v5.1 · Freely Tradable · Market-Driven Pricing</span>
+    <p class="tagline">一个API Key，调多种AI模型</p>
+    <p class="sub">DeepSeek · GPT-4o · Claude — 按次计费，用多少付多少</p>
+    <span class="badge">OpenAI兼容接口 · 零改造接入 · 人民币结算</span>
 </div>
 
 <div class="container">
 
-<h2>🪙 What is ATEX?</h2>
+<h2>🤔 为什么需要ATEX？</h2>
+
+<div class="compare">
+    <div class="bad">
+        <h3 style="color:var(--red);">❌ 传统方式</h3>
+        <p>每个AI平台注册账号</p>
+        <p>管理多个API Key</p>
+        <p>分别充值、分别续费</p>
+        <p>不同接口格式、不同错误处理</p>
+        <p>月费/套餐，用不完也扣钱</p>
+    </div>
+    <div class="good">
+        <h3 style="color:var(--green);">✅ ATEX方式</h3>
+        <p>一个API Key搞定所有模型</p>
+        <p>统一接口格式（OpenAI兼容）</p>
+        <p>一次充值，按调用扣费</p>
+        <p>余额永不过期</p>
+        <p>用多少付多少，1分钱也能调</p>
+    </div>
+</div>
+
+<h2>⚡ 3分钟接入</h2>
 
 <div class="highlight">
-    <p><strong>ATEX = Freely Tradable API Credit Token</strong></p>
-    <p>Like a "stablecoin for APIs" — ATEX circulates in external markets. Agents acquire tokens through trading, providing services, or external exchanges, then spend them on the platform.</p>
-    <ul style="margin:0.5rem 0 0 1.5rem;">
-        <li>Agents spend <strong>their own</strong> ATEX tokens — not purchased from the platform</li>
-        <li>ATEX is freely tradable outside the platform</li>
-        <li>Platform is a pure matchmaker: matches buyers with providers, collects commission</li>
-        <li>Real utility: 10+ API proxies (DeepSeek, OpenAI, Claude, TTS, ASR, etc.)</li>
-    </ul>
+    <div class="step"><span class="num">1</span><span><strong>注册</strong> → 拿到API Key</span></div>
+    <div class="step"><span class="num">2</span><span><strong>充值</strong> → 最低1元起</span></div>
+    <div class="step"><span class="num">3</span><span><strong>调用</strong> → 改一行代码，换一个base_url</span></div>
 </div>
 
-<h2>🔄 How to Get ATEX</h2>
+<pre><code># 注册
+curl -X POST http://150.158.119.19:8420/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my_app","email":"me@example.com"}'
 
-<div class="grid">
-    <div class="card">
-        <div class="icon">💱</div>
-        <h3>External Trading</h3>
-        <p>Buy/sell ATEX on external markets and exchanges. ATEX circulates freely.</p>
-    </div>
-    <div class="card">
-        <div class="icon">🛠️</div>
-        <h3>Provide Services</h3>
-        <p>Register services on ATEX, earn tokens when other agents buy them.</p>
-    </div>
-    <div class="card">
-        <div class="icon">📊</div>
-        <h3>Order Book Trading</h3>
-        <p>Place buy/sell orders on the ATEX order book. Market-driven pricing.</p>
-    </div>
-    <div class="card">
-        <div class="icon">🎁</div>
-        <h3>Registration Trial</h3>
-        <p>New accounts receive 10 ATEX trial credit to explore the platform.</p>
-    </div>
-</div>
+# 充值（联系管理员或支付宝扫码）
+# 返回: {"api_key": "atex_sk_xxxx..."}
 
-<h2>⚡ Three-Layer Platform</h2>
+# 调用 — 和OpenAI SDK完全兼容！
+from openai import OpenAI
+client = OpenAI(
+    api_key="atex_sk_xxxx...",
+    base_url="http://150.158.119.19:8420/v1"
+)
+response = client.chat.completions.create(
+    model="deepseek-chat",
+    messages=[{"role": "user", "content": "你好"}]
+)
+print(response.choices[0].message.content)</code></pre>
 
-<div class="grid">
-    <div class="card">
-        <div class="icon">📊</div>
-        <h3>Token Trading</h3>
-        <p>Order-book matching engine. Price-time priority. Market-driven pricing.</p>
-        <span class="tag tag-green">Buy/Sell Orders</span>
-        <span class="tag tag-green">Order Book</span>
-        <span class="tag tag-green">Trade History</span>
-    </div>
-    <div class="card">
-        <div class="icon">🛒</div>
-        <h3>Service Marketplace</h3>
-        <p>Fixed-price services with real delivery. Spend your own tokens.</p>
-        <span class="tag tag-purple">29+ Services</span>
-        <span class="tag tag-purple">10 Categories</span>
-        <span class="tag tag-purple">Real Execution</span>
-    </div>
-    <div class="card">
-        <div class="icon">🔌</div>
-        <h3>API Proxy</h3>
-        <p>Spend ATEX to call APIs directly. DeepSeek, OpenAI, Claude, and more.</p>
-        <span class="tag tag-orange">10 APIs</span>
-        <span class="tag tag-orange">Pay-per-use</span>
-        <span class="tag tag-orange">Real Output</span>
-    </div>
-</div>
+<h2>💰 定价</h2>
 
-<h2>🔌 API Proxy Pricing</h2>
+<p style="color:var(--text-dim);">按实际token用量计费，无最低消费，余额永不过期。</p>
 
 <table>
-    <tr><th>API</th><th>Cost (ATEX)</th><th>Unit</th><th>Description</th></tr>
-    <tr><td>deepseek_chat</td><td>1</td><td>1K tokens</td><td>General chat, high value</td></tr>
-    <tr><td>deepseek_reasoner</td><td>3</td><td>1K tokens</td><td>Deep reasoning, complex tasks</td></tr>
-    <tr><td>openai_gpt4o_mini</td><td>5</td><td>1K tokens</td><td>Fast & efficient</td></tr>
-    <tr><td>openai_gpt4o</td><td>20</td><td>1K tokens</td><td>Flagship model</td></tr>
-    <tr><td>claude_haiku</td><td>5</td><td>1K tokens</td><td>Fast & lightweight</td></tr>
-    <tr><td>claude_sonnet</td><td>15</td><td>1K tokens</td><td>Balanced performance</td></tr>
-    <tr><td>tts</td><td>5</td><td>1K chars</td><td>Text to speech</td></tr>
-    <tr><td>asr</td><td>3</td><td>minute</td><td>Speech to text</td></tr>
-    <tr><td>embedding</td><td>0.5</td><td>1K tokens</td><td>Text vectorization</td></tr>
-    <tr><td>web_search</td><td>2</td><td>query</td><td>Real-time search</td></tr>
+    <tr><th>模型</th><th>输入 (¥/1K tokens)</th><th>输出 (¥/1K tokens)</th><th>状态</th></tr>
+    <tr><td><strong>DeepSeek Chat</strong></td><td>¥0.001</td><td>¥0.002</td><td><span class="tag tag-green">可用</span></td></tr>
+    <tr><td><strong>DeepSeek Reasoner</strong></td><td>¥0.004</td><td>¥0.016</td><td><span class="tag tag-green">可用</span></td></tr>
+    <tr><td>GPT-4o Mini</td><td>¥0.01</td><td>¥0.03</td><td><span class="tag tag-orange">即将上线</span></td></tr>
+    <tr><td>GPT-4o</td><td>¥0.05</td><td>¥0.15</td><td><span class="tag tag-orange">即将上线</span></td></tr>
+    <tr><td>Claude 3.5 Sonnet</td><td>¥0.03</td><td>¥0.15</td><td><span class="tag tag-orange">即将上线</span></td></tr>
+    <tr><td>Claude 3.5 Haiku</td><td>¥0.008</td><td>¥0.04</td><td><span class="tag tag-orange">即将上线</span></td></tr>
 </table>
-
-<h2>🔁 Economic Loop</h2>
 
 <div class="highlight">
-    <div class="loop-step"><span class="num">1</span><span>Agents acquire ATEX via <strong>external trading</strong> or <strong>providing services</strong></span></div>
-    <div class="loop-step"><span class="num">2</span><span>Spend own ATEX to <strong>buy services</strong> or <strong>call APIs</strong></span></div>
-    <div class="loop-step"><span class="num">3</span><span>Service providers <strong>receive tokens</strong></span></div>
-    <div class="loop-step"><span class="num">4</span><span>Providers spend tokens on other services, APIs, or <strong>trade on order book</strong></span></div>
-    <div class="loop-step"><span class="num">5</span><span>API proxy creates <strong>real external demand</strong> for ATEX</span></div>
-    <div class="loop-step"><span class="num">6</span><span>Platform collects <strong>commission</strong> from each transaction</span></div>
-    <div class="loop-step"><span class="num">7</span><span>Commission settled to owner (in ATEX)</span></div>
+    <p><strong>💡 省钱算一算：</strong></p>
+    <p>DeepSeek Chat：1万次调用（每次500 tokens）≈ <strong>¥5</strong></p>
+    <p>比直接用DeepSeek API贵约20%（含平台服务费），但省去了API Key管理、多平台充值的麻烦。</p>
+    <p>模型越多，省得越多 — 一个Key调所有模型，不用每个平台都充值。</p>
 </div>
 
-<h2>🚀 Quick Start</h2>
+<h2>🔌 OpenAI兼容</h2>
 
-<h3>1. Create Account</h3>
-<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/account/create \
-  -H "Content-Type: application/json" \
-  -d '{"account_id":"my_agent","role":"trader"}'</code></pre>
-<p style="color:var(--text-dim);">Receives 10 ATEX trial credit. ATEX is freely tradable — acquire more via external trading or providing services.</p>
-
-<h3>2. Browse Services</h3>
-<pre><code>curl http://150.158.119.19:8420/api/v1/services</code></pre>
-
-<h3>3. Buy a Service</h3>
-<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
-  -H "Content-Type: application/json" \
-  -d '{"buyer":"my_agent","service_id":"svc_012","params":{"query":"AI news"}}'</code></pre>
-<p style="color:var(--text-dim);">Spend your own ATEX tokens. Service is executed and result returned.</p>
-
-<h3>4. Call API Directly</h3>
-<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/execute \
-  -H "Content-Type: application/json" \
-  -d '{"account":"my_agent","api":"deepseek_chat","params":{"prompt":"Hello!"}}'</code></pre>
-
-<h3>5. Trade Tokens</h3>
-<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/exchange \
-  -H "Content-Type: application/json" \
-  -d '{"action":"order","order":{"account":"my_agent","side":"buy","price":1.5,"amount":10}}'</code></pre>
-
-<h2>📋 Commission</h2>
+<p>改一行代码就能用，无需学习新接口：</p>
 
 <table>
-    <tr><th>Monthly Volume</th><th>Maker</th><th>Taker</th></tr>
-    <tr><td>&lt; 1K</td><td>3%</td><td>5%</td></tr>
-    <tr><td>1K - 10K</td><td>1%</td><td>3%</td></tr>
-    <tr><td>10K - 100K</td><td>0.5%</td><td>2%</td></tr>
-    <tr><td>&gt; 100K</td><td>0.1%</td><td>1%</td></tr>
+    <tr><th>你的代码</th><th>改动</th></tr>
+    <tr><td><code>api_key="sk-xxx"</code></td><td>→ <code>api_key="atex_sk_xxx"</code></td></tr>
+    <tr><td><code>base_url="https://api.openai.com/v1"</code></td><td>→ <code>base_url="http://150.158.119.19:8420/v1"</code></td></tr>
+    <tr><td><code>model="gpt-4o"</code></td><td>→ <code>model="deepseek-chat"</code></td></tr>
 </table>
 
-<h2>🔗 Protocol Compatibility</h2>
+<p>其他代码一行不用改。支持所有OpenAI SDK：Python、Node.js、Go、Java...</p>
+
+<h2>📊 余额与用量</h2>
+
+<pre><code># 查余额
+curl http://150.158.119.19:8420/v1/balance \
+  -H "Authorization: Bearer atex_sk_xxx..."
+
+# 返回:
+# {"balance_cny": 9.999, "total_spent_cny": 0.001, "total_calls": 1}</code></pre>
+
+<h2>🛡️ 安全与可靠</h2>
 
 <div class="grid">
     <div class="card">
-        <h3>OpenAI Function Calling</h3>
-        <p>Use ATEX as an OpenAI function. See <code>protocol/openai_schema.json</code></p>
+        <div class="icon">🔐</div>
+        <h3>API Key安全</h3>
+        <p>Key不存储明文，SHA256校验。支持随时重新生成。</p>
     </div>
     <div class="card">
-        <h3>Anthropic Tool Use</h3>
-        <p>Use ATEX as an Anthropic tool. See <code>protocol/anthropic_schema.json</code></p>
+        <div class="icon">⚡</div>
+        <h3>低延迟</h3>
+        <p>直连DeepSeek API，无中间代理延迟。平均响应<2秒。</p>
     </div>
     <div class="card">
-        <h3>MCP (Model Context Protocol)</h3>
-        <p>Use ATEX as an MCP server. See <code>protocol/mcp_tools.json</code></p>
+        <div class="icon">🛡️</div>
+        <h3>按量计费</h3>
+        <p>只扣实际用量，余额永不过期。无月费无套餐。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🔓</div>
+        <h3>开源透明</h3>
+        <p>完整源码开源（AGPL-3.0），可自部署。不黑箱。</p>
     </div>
 </div>
 
-<h2>📖 Full API Reference</h2>
+<h2>🚀 立即开始</h2>
 
-<pre><code>GET  /api/v1/health              Health check
-GET  /api/v1/protocol            Protocol info
-POST /api/v1/account/create      Create account (10 ATEX trial)
-POST /api/v1/deposit             Deposit tokens
-GET  /api/v1/account/{id}        Account balance
-POST /api/v1/exchange            Trade actions (order/cancel/query/history)
-GET  /api/v1/orderbook           Order book
-GET  /api/v1/services            List services
-POST /api/v1/services/register   Register service
-POST /api/v1/services/buy        Buy service (spend your tokens)
-POST /api/v1/services/execute    Execute API proxy
-POST /api/v1/services/update     Update service
-POST /api/v1/services/remove     Remove service
-POST /api/v1/settle              Settle commission (owner only)</code></pre>
+<div class="highlight" style="text-align: center;">
+    <p style="font-size: 1.2rem;"><strong>免费注册，1元起充，3分钟接入</strong></p>
+    <pre style="text-align: left;"><code>curl -X POST http://150.158.119.19:8420/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"your_app","email":"you@example.com"}'</code></pre>
+    <p style="color:var(--text-dim);">充值请联系管理员，支持支付宝</p>
+</div>
 
-<p style="color:var(--text-dim); margin-top:1rem;">
-    Total Supply: 1,000,000 ATEX · Freely Tradable · Registration: 10 ATEX trial credit · Commission: Maker 0.1-3%, Taker 1-5% · Market-driven pricing
-</p>
+<h2>🔗 API端点</h2>
+
+<pre><code>POST /v1/register          注册账号，获取API Key
+POST /v1/topup             充值（管理接口）
+GET  /v1/models            查看可用模型
+GET  /v1/balance           查询余额
+POST /v1/chat/completions  聊天补全（OpenAI兼容）</code></pre>
 
 </div>
 
 <div class="footer">
-    <p>ATEX v5.1 — Universal API Credit Token · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
-    <p style="margin-top:0.5rem;">
-        Freely Tradable · Market-Driven Pricing · Pure Matchmaker · Built for the Agent Economy 🤖
-    </p>
+    <p>ATEX v6.0 — 多AI API按次计费SaaS · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
+    <p style="margin-top:0.5rem;">2个可用模型 · OpenAI兼容 · 人民币结算 · 余额永不过期</p>
 </div>
 
 </body>

@@ -72,89 +72,89 @@
       "cost": 1,
       "unit": "1K tokens",
       "description": "DeepSeek Chat — 通用对话，高性价比",
-      "models": [
-        "deepseek-chat"
-      ],
-      "backend": "deepseek"
+      "models": ["deepseek-chat"],
+      "backend": "deepseek",
+      "status": "live"
     },
     "deepseek_reasoner": {
       "cost": 3,
       "unit": "1K tokens",
       "description": "DeepSeek Reasoner — 深度推理，复杂任务",
-      "models": [
-        "deepseek-reasoner"
-      ],
-      "backend": "deepseek"
+      "models": ["deepseek-reasoner"],
+      "backend": "deepseek",
+      "status": "live"
     },
     "openai_gpt4o_mini": {
       "cost": 5,
       "unit": "1K tokens",
       "description": "OpenAI GPT-4o Mini — 快速高效",
-      "models": [
-        "gpt-4o-mini"
-      ],
-      "backend": "openai"
+      "models": ["gpt-4o-mini"],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires OpenAI API key from provider"
     },
     "openai_gpt4o": {
       "cost": 20,
       "unit": "1K tokens",
       "description": "OpenAI GPT-4o — 旗舰模型",
-      "models": [
-        "gpt-4o"
-      ],
-      "backend": "openai"
+      "models": ["gpt-4o"],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires OpenAI API key from provider"
     },
     "claude_haiku": {
       "cost": 5,
       "unit": "1K tokens",
       "description": "Anthropic Claude 3.5 Haiku — 快速轻量",
-      "models": [
-        "claude-3-5-haiku-latest"
-      ],
-      "backend": "anthropic"
+      "models": ["claude-3-5-haiku-latest"],
+      "backend": "anthropic",
+      "status": "coming_soon",
+      "note": "Requires Anthropic API key from provider"
     },
     "claude_sonnet": {
       "cost": 15,
       "unit": "1K tokens",
       "description": "Anthropic Claude 3.5 Sonnet — 平衡性能",
-      "models": [
-        "claude-3-5-sonnet-latest"
-      ],
-      "backend": "anthropic"
+      "models": ["claude-3-5-sonnet-latest"],
+      "backend": "anthropic",
+      "status": "coming_soon",
+      "note": "Requires Anthropic API key from provider"
     },
     "tts": {
       "cost": 5,
       "unit": "1K chars",
       "description": "文本转语音 — 多语言多音色",
-      "models": [
-        "tts-1"
-      ],
-      "backend": "openai"
+      "models": ["tts-1"],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires provider with TTS API"
     },
     "asr": {
       "cost": 3,
       "unit": "minute",
       "description": "语音转文字 — 多语言识别",
-      "models": [
-        "whisper-1"
-      ],
-      "backend": "openai"
+      "models": ["whisper-1"],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires provider with ASR API"
     },
     "embedding": {
       "cost": 0.5,
       "unit": "1K tokens",
       "description": "文本向量化 — 语义搜索/RAG",
-      "models": [
-        "text-embedding-3-small"
-      ],
-      "backend": "openai"
+      "models": ["text-embedding-3-small"],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires provider with Embedding API"
     },
     "web_search": {
       "cost": 2,
       "unit": "query",
       "description": "Web搜索 — 实时信息检索",
       "models": [],
-      "backend": "internal"
+      "backend": "internal",
+      "status": "coming_soon",
+      "note": "Requires provider with search API"
     }
   }
 }

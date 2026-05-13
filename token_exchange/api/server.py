@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.1 — Agent服务交易市场 + 通用API信用Token"""
-import json, os, sys, time, threading
+"""ATEX HTTP API v6.0 — 多AI API按次收费SaaS + Agent服务交易市场"""
+import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from collections import defaultdict
+from datetime import datetime, timezone, timedelta
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
@@ -11,6 +12,54 @@ from atex import ATEX, validate_account_id, safe_json_loads, MAX_INPUT_SIZE
 from service_executor import execute_service, execute_api_proxy
 
 exchange = ATEX()
+TZ = timezone(timedelta(hours=8))
+
+# ── SaaS用户系统 ──
+SAAS_DATA = os.path.join(BASE, "saas_data")
+os.makedirs(SAAS_DATA, exist_ok=True)
+
+def _load_saas():
+    path = os.path.join(SAAS_DATA, "users.json")
+    if os.path.exists(path):
+        with open(path) as f: return json.load(f)
+    return {"users": {}, "api_keys": {}, "usage": []}
+
+def _save_saas(data):
+    path = os.path.join(SAAS_DATA, "users.json")
+    with open(path, "w") as f: json.dump(data, f, ensure_ascii=False, indent=2)
+
+def _saas_user(api_key):
+    data = _load_saas()
+    uid = data["api_keys"].get(api_key)
+    if not uid: return None
+    return data["users"].get(uid)
+
+def _deduct(uid, cost_cny, model, input_tokens, output_tokens):
+    data = _load_saas()
+    user = data["users"].get(uid)
+    if not user: return False
+    if user["balance_cny"] < cost_cny: return False
+    user["balance_cny"] = round(user["balance_cny"] - cost_cny, 6)
+    user["total_spent_cny"] = round(user.get("total_spent_cny", 0) + cost_cny, 6)
+    user["total_calls"] = user.get("total_calls", 0) + 1
+    data["usage"].append({
+        "user_id": uid, "model": model,
+        "input_tokens": input_tokens, "output_tokens": output_tokens,
+        "cost_cny": cost_cny, "time": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
+    })
+    if len(data["usage"]) > 10000: data["usage"] = data["usage"][-5000:]
+    _save_saas(data)
+    return True
+
+# ── SaaS定价 ──
+SAAS_PRICING = {
+    "deepseek-chat": {"name":"DeepSeek Chat","input_per_1k":0.001,"output_per_1k":0.002,"backend":"deepseek","model":"deepseek-chat"},
+    "deepseek-reasoner": {"name":"DeepSeek Reasoner","input_per_1k":0.004,"output_per_1k":0.016,"backend":"deepseek","model":"deepseek-reasoner"},
+    "gpt-4o-mini": {"name":"GPT-4o Mini","input_per_1k":0.01,"output_per_1k":0.03,"backend":"openai","model":"gpt-4o-mini","status":"coming_soon"},
+    "gpt-4o": {"name":"GPT-4o","input_per_1k":0.05,"output_per_1k":0.15,"backend":"openai","model":"gpt-4o","status":"coming_soon"},
+    "claude-3-5-sonnet": {"name":"Claude 3.5 Sonnet","input_per_1k":0.03,"output_per_1k":0.15,"backend":"anthropic","model":"claude-3-5-sonnet-latest","status":"coming_soon"},
+    "claude-3-5-haiku": {"name":"Claude 3.5 Haiku","input_per_1k":0.008,"output_per_1k":0.04,"backend":"anthropic","model":"claude-3-5-haiku-latest","status":"coming_soon"},
+}
 
 class IPRateLimiter:
     def __init__(self, max_req=60, window=60):
@@ -46,7 +95,24 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
-        if p == '/api/v1/status': self._json(exchange.status())
+
+        # ── SaaS路由（OpenAI兼容）──
+        if p == '/v1/models':
+            models = []
+            for mid, info in SAAS_PRICING.items():
+                models.append({"id": mid, "name": info["name"], "status": info.get("status", "live"),
+                    "pricing": {"input_per_1k_cny": info["input_per_1k"], "output_per_1k_cny": info["output_per_1k"]}})
+            self._json({"object": "list", "data": models})
+        elif p == '/v1/balance':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
+            self._json({"user_id": user["user_id"], "name": user["name"],
+                "balance_cny": user["balance_cny"], "total_spent_cny": user.get("total_spent_cny", 0),
+                "total_calls": user.get("total_calls", 0)})
+
+        # ── 原ATEX路由 ──
+        elif p == '/api/v1/status': self._json(exchange.status())
         elif p == '/api/v1/orderbook': self._json(exchange.query_orderbook())
         elif p == '/api/v1/trades': self._json(exchange.trade_history())
         elif p.startswith('/api/v1/account/'):
@@ -67,8 +133,71 @@ class Handler(BaseHTTPRequestHandler):
         p = urlparse(self.path).path
         d = self._read()
         if not d: return self._json({"err":"invalid_body"}, 400)
-        # ── 账户 ──
-        if p == '/api/v1/account/create':
+
+        # ── SaaS路由（OpenAI兼容）──
+        if p == '/v1/chat/completions':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key", "message": "Invalid API key. Get one at http://150.158.119.19:8420"}, 401)
+            model = d.get("model", "deepseek-chat")
+            model_info = SAAS_PRICING.get(model)
+            if not model_info: return self._json({"err": f"unknown_model:{model}", "available": list(SAAS_PRICING.keys())}, 400)
+            if model_info.get("status") == "coming_soon":
+                return self._json({"err": f"model_coming_soon:{model}", "message": f"{model_info['name']} is coming soon. Register as a provider to offer it."}, 400)
+            # 调用底层API
+            messages = d.get("messages", [])
+            prompt = messages[-1].get("content", "") if messages else ""
+            result = execute_api_proxy(model_info.get("backend", "deepseek") + "_chat" if model_info.get("backend") == "deepseek" else model, {"prompt": prompt, "messages": messages})
+            if "err" in result:
+                return self._json({"err": "api_error", "message": result["err"]}, 500)
+            # 计费
+            content = result.get("content", "")
+            usage = result.get("usage", {})
+            input_tokens = usage.get("prompt_tokens", len(prompt) // 4)
+            output_tokens = usage.get("completion_tokens", len(content) // 4)
+            cost_cny = round(model_info["input_per_1k"] * input_tokens / 1000 + model_info["output_per_1k"] * output_tokens / 1000, 6)
+            cost_cny = max(cost_cny, 0.001)
+            if not _deduct(user["user_id"], cost_cny, model, input_tokens, output_tokens):
+                return self._json({"err": "insufficient_balance", "balance_cny": user["balance_cny"], "cost_cny": cost_cny}, 402)
+            # 返回OpenAI格式
+            self._json({
+                "ok": True, "object": "chat.completion",
+                "model": model, "created": int(time.time()),
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": input_tokens, "completion_tokens": output_tokens, "total_tokens": input_tokens + output_tokens},
+                "cost_cny": cost_cny, "remaining_balance_cny": round(user["balance_cny"] - cost_cny, 6)
+            })
+
+        elif p == '/v1/register':
+            # SaaS用户注册
+            name = d.get("name", "")
+            email = d.get("email", "")
+            if not name: return self._json({"err": "name_required"}, 400)
+            data = _load_saas()
+            uid = f"u_{secrets.token_hex(6)}"
+            api_key = f"atex_sk_{secrets.token_hex(24)}"
+            data["users"][uid] = {"user_id": uid, "name": name, "email": email,
+                "api_key": api_key, "balance_cny": 0.0, "total_spent_cny": 0.0, "total_calls": 0,
+                "created": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")}
+            data["api_keys"][api_key] = uid
+            _save_saas(data)
+            self._json({"ok": True, "user_id": uid, "api_key": api_key, "balance_cny": 0.0,
+                "note": "Top up at http://150.158.119.19:8420 to start using APIs"})
+
+        elif p == '/v1/topup':
+            # 充值（管理接口，后续接支付宝）
+            topup_uid = d.get("user_id", "")
+            amount = d.get("amount_cny", 0)
+            if not topup_uid or amount <= 0: return self._json({"err": "user_id and positive amount required"}, 400)
+            data = _load_saas()
+            user = data["users"].get(topup_uid)
+            if not user: return self._json({"err": "user_not_found"}, 404)
+            user["balance_cny"] = round(user["balance_cny"] + amount, 2)
+            _save_saas(data)
+            self._json({"ok": True, "user_id": topup_uid, "balance_cny": user["balance_cny"], "topup": amount})
+
+        # ── 原ATEX路由 ──
+        elif p == '/api/v1/account/create':
             r = exchange.create_account(d.get("account_id",""), d.get("role","trader"))
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/deposit':
@@ -157,5 +286,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
     server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"ATEX v5.1 on 0.0.0.0:{port}", flush=True)
+    print(f"ATEX v6.0 (SaaS+Marketplace) on 0.0.0.0:{port}", flush=True)
     server.serve_forever()

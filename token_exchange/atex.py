@@ -636,6 +636,9 @@ class ATEX:
         api_info = api_pricing.get(api_name)
         if not api_info:
             return {"ok": False, "err": f"unknown_api:{api_name}", "available": list(api_pricing.keys())}
+        # Check if API is live
+        if api_info.get("status") == "coming_soon":
+            return {"ok": False, "err": f"api_coming_soon:{api_name}", "note": api_info.get("note", "This API requires a provider with the corresponding API key. Register as a provider to offer this API.")}
         cost = api_info.get("cost", 0)
         available = acc["balance"] - acc["frozen"]
         if available < cost:
