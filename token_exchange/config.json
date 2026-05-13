@@ -174,5 +174,10 @@
       "status": "coming_soon",
       "note": "Requires provider with search API"
     }
+  },
+  "payment": {
+    "alipay": "lx688@sina.com",
+    "paypal": "https://paypal.me/xinglixingli",
+    "min_topup_cny": 10.0
   }
 }

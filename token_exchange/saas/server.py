@@ -85,6 +85,14 @@ PRICING = {
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-db4c943047934a6bbd1640a3efd98e6b")
 DEEPSEEK_BASE = "https://api.deepseek.com/v1"
 
+# ── 支付配置 ──
+PAYMENT = {
+    "alipay": "lx688@sina.com",
+    "paypal": "https://paypal.me/xinglixingli",
+    "min_topup_cny": 10.0,       # 最低充值10元
+    "topup_note": "支付宝转账请备注: ATEX_{user_id}，转账后联系管理员确认到账",
+}
+
 # ── 数据存储 ──
 
 DATA_DIR = f"{BASE}/saas_data"
@@ -392,6 +400,26 @@ class Handler(BaseHTTPRequestHandler):
             user_usage = [u for u in usage if u["user_id"] == user["id"]][-50:]
             self._json({"count": len(user_usage), "usage": user_usage})
         
+        elif p == "/v1/payment/info":
+            # 充值指引
+            api_key = self._get_api_key()
+            user = authenticate(api_key)
+            if not user:
+                return self._json({"err": "invalid_api_key"}, 401)
+            self._json({
+                "user_id": user["id"],
+                "alipay": PAYMENT["alipay"],
+                "paypal": PAYMENT["paypal"],
+                "min_topup_cny": PAYMENT["min_topup_cny"],
+                "note": PAYMENT["topup_note"].format(user_id=user["id"]),
+                "steps": [
+                    f"1. 支付宝转账至 {PAYMENT['alipay']}，金额≥{PAYMENT['min_topup_cny']}元",
+                    f"2. 转账备注: ATEX_{user['id']}",
+                    "3. 联系管理员确认到账",
+                    "4. 余额自动更新",
+                ],
+            })
+
         elif p == "/health":
             self._json({"status": "ok", "service": "ATEX SaaS", "version": "1.0"})
         
