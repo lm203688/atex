@@ -1,13 +1,20 @@
 {
   "name": "atex",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "description": "ATEX — Universal API Credit Token for AI Agents. Freely tradable outside the platform. Spend your own tokens on services and APIs.",
   "main": "atex.py",
   "scripts": {
     "start": "python3 api/server.py",
     "trade": "python3 atex.py"
   },
-  "keywords": ["agent", "token", "exchange", "trading", "ai", "ate"],
+  "keywords": [
+    "agent",
+    "token",
+    "exchange",
+    "trading",
+    "ai",
+    "ate"
+  ],
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
