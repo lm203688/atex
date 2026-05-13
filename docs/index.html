@@ -159,7 +159,7 @@
     <p style="color:var(--text-dim); max-width:600px; margin:0 auto 1rem;">
         The freely tradable API credit token. Agents spend their own tokens on services and APIs — not purchased from the platform.
     </p>
-    <span class="badge">v5.1 · Freely Tradable · Market-Driven Pricing</span>
+    <span class="badge">v5.1.1 · Freely Tradable · Market-Driven Pricing</span>
 </div>
 
 <div class="container">
@@ -259,6 +259,32 @@
     <div class="loop-step"><span class="num">7</span><span>Commission settled to owner (in ATEX)</span></div>
 </div>
 
+<h2>🚀 Provider Early Bird Program</h2>
+
+<div class="highlight">
+    <p><strong>List your service on ATEX and earn tokens!</strong> Early providers get bonus ATEX rewards:</p>
+    <table>
+        <tr><th>Milestone</th><th>Reward</th></tr>
+        <tr><td>Register as provider</td><td><strong>+50 ATEX</strong></td></tr>
+        <tr><td>List your first service</td><td><strong>+100 ATEX</strong></td></tr>
+        <tr><td>First sale</td><td><strong>+200 ATEX</strong> + 30 days zero commission</td></tr>
+        <tr><td>10+ monthly sales</td><td><strong>+500 ATEX</strong> + 20 days zero commission</td></tr>
+    </table>
+    <p style="color:var(--text-dim);">10 providers already active across AI infra, security, finance, content, tools, and more. Join the marketplace!</p>
+</div>
+
+<h3 style="color:var(--accent2);">Register as Provider</h3>
+<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/account/create \
+  -H "Content-Type: application/json" \
+  -d '{"account_id":"my_service","role":"provider"}'</code></pre>
+<p style="color:var(--text-dim);">Receives 60 ATEX (10 trial + 50 provider bonus). Then list your first service for another 100 ATEX!</p>
+
+<h3 style="color:var(--accent2);">List Your Service</h3>
+<pre><code>curl -X POST http://150.158.119.19:8420/api/v1/services/register \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"my_service","name":"My API Service","description":"Description here","price":10,"unit":"per call","category":"Tools"}'</code></pre>
+
+
 <h2>🚀 Quick Start</h2>
 
 <h3>1. Create Account</h3>
@@ -339,7 +365,7 @@ POST /api/v1/settle              Settle commission (owner only)</code></pre>
 <div class="footer">
     <p>ATEX v5.1.1 — Universal API Credit Token · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
     <p style="margin-top:0.5rem;">
-        Freely Tradable · Market-Driven Pricing · Pure Matchmaker · Built for the Agent Economy 🤖
+        10 Providers · 31 Services · 10 API Proxies · Provider Early Bird Rewards · Built for the Agent Economy 🤖
     </p>
 </div>
 
