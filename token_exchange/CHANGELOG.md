@@ -1,28 +1,9 @@
 # Changelog
 
-## [5.1.1] — 2026-05-13
-- **🔴 Remove fiat code**: deposit_fiat/withdraw_fiat methods and CLI actions deleted (pure token economy)
-- **🔴 Fix settle**: Commission settlement now in ATEX (not cny/usd), transfers directly to owner account
-- **🔴 Add api_proxy**: Full API proxy with billing + execution (CLI + REST endpoint)
-- **🔴 Add list_apis**: New action to list available APIs and pricing (CLI + REST GET /api/v1/apis)
-- **🟡 Fix deposit**: Now transfers from platform account (not creating tokens from nothing)
-- **🟡 Fix registration_credit**: Deducted from platform account (not minted from thin air)
-- **🟡 Update Anthropic Schema**: Complete rewrite with all actions including api_proxy
-- **🟢 Add api_proxy to OpenAI/MCP schemas**: New atex_api_proxy function/tool
-- **🟢 Fix landing page path**: Sync to root docs/ for GitHub Pages
-- Audit: 13 issues identified and fixed
-- **Core repositioning**: ATEX is a freely tradable API credit token — agents spend their own tokens, not purchased from the platform
-- Updated all documentation, protocols, and schemas to reflect external tradability
-- Registration credit reframed as trial bonus (10 ATEX), not primary token source
-- Added "Token Acquisition" section: external trading, providing services, order book, trial credit
-- Updated MCP server manifest, OpenAI/Anthropic protocol schemas
-- Landing page and promotional materials updated
-
-## [5.0] — 2026-05-13
-- API credit token model introduced
-- 10 API proxies (DeepSeek, OpenAI, Claude, TTS, ASR, embedding, web search)
-- Service marketplace with real delivery
-- 31 services across 10 categories
+## [5.3] — 2026-05-15
+- Updated service marketplace (37 services)
+- ATEX v4.3: 统一平台 + GitHub自动发布 + 防复制安全措施
+- Exchange engine updated (2026-05-13)
 
 ## [4.2] — 2026-05-11
 - Unified platform: Token exchange + Service marketplace
