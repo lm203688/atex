@@ -110,6 +110,24 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"user_id": user["user_id"], "name": user["name"],
                 "balance_cny": user["balance_cny"], "total_spent_cny": user.get("total_spent_cny", 0),
                 "total_calls": user.get("total_calls", 0)})
+        elif p == '/v1/payment/info':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            data = _load_saas()
+            uid = data["api_keys"].get(auth) if auth else None
+            if not uid: return self._json({"err": "invalid_api_key"}, 401)
+            self._json({
+                "user_id": uid,
+                "alipay": "lx688@sina.com",
+                "paypal": "https://paypal.me/xinglixingli",
+                "min_topup_cny": 10.0,
+                "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
+                "steps": [
+                    "1. 支付宝转账至 lx688@sina.com，金额≥10元",
+                    f"2. 转账备注: ATEX_{uid}",
+                    "3. 联系管理员确认到账",
+                    "4. 余额自动更新",
+                ],
+            })
 
         # ── 原ATEX路由 ──
         elif p == '/api/v1/status': self._json(exchange.status())
@@ -195,26 +213,6 @@ class Handler(BaseHTTPRequestHandler):
             user["balance_cny"] = round(user["balance_cny"] + amount, 2)
             _save_saas(data)
             self._json({"ok": True, "user_id": topup_uid, "balance_cny": user["balance_cny"], "topup": amount})
-
-        elif p == '/v1/payment/info':
-            # 充值指引
-            api_key = self.headers.get("Authorization", "").replace("Bearer ", "")
-            data = _load_saas()
-            uid = data["api_keys"].get(api_key)
-            if not uid: return self._json({"err": "invalid_api_key"}, 401)
-            self._json({
-                "user_id": uid,
-                "alipay": "lx688@sina.com",
-                "paypal": "https://paypal.me/xinglixingli",
-                "min_topup_cny": 10.0,
-                "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
-                "steps": [
-                    "1. 支付宝转账至 lx688@sina.com，金额≥10元",
-                    f"2. 转账备注: ATEX_{uid}",
-                    "3. 联系管理员确认到账",
-                    "4. 余额自动更新",
-                ],
-            })
 
         # ── 原ATEX路由 ──
         elif p == '/api/v1/account/create':
