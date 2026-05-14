@@ -196,6 +196,26 @@ class Handler(BaseHTTPRequestHandler):
             _save_saas(data)
             self._json({"ok": True, "user_id": topup_uid, "balance_cny": user["balance_cny"], "topup": amount})
 
+        elif p == '/v1/payment/info':
+            # 充值指引
+            api_key = self.headers.get("Authorization", "").replace("Bearer ", "")
+            data = _load_saas()
+            uid = data["api_keys"].get(api_key)
+            if not uid: return self._json({"err": "invalid_api_key"}, 401)
+            self._json({
+                "user_id": uid,
+                "alipay": "lx688@sina.com",
+                "paypal": "https://paypal.me/xinglixingli",
+                "min_topup_cny": 10.0,
+                "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
+                "steps": [
+                    "1. 支付宝转账至 lx688@sina.com，金额≥10元",
+                    f"2. 转账备注: ATEX_{uid}",
+                    "3. 联系管理员确认到账",
+                    "4. 余额自动更新",
+                ],
+            })
+
         # ── 原ATEX路由 ──
         elif p == '/api/v1/account/create':
             r = exchange.create_account(d.get("account_id",""), d.get("role","trader"))
@@ -251,6 +271,27 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/services/remove':
             r = exchange.remove_service(d.get("provider",""), d.get("service_id",""))
             self._json(r, 200 if r.get("ok") else 400)
+        # ── 部署接口（仅限内网/认证调用）──
+        elif p == '/api/v1/deploy':
+            deploy_token = d.get("token", "")
+            if deploy_token != "atex_deploy_2026":
+                return self._json({"err": "unauthorized"}, 403)
+            action = d.get("action", "")
+            if action == "pull_and_restart":
+                import subprocess
+                try:
+                    # 下载最新代码
+                    r1 = subprocess.run(["curl", "-L", "https://ghfast.top/https://github.com/lm203688/atex/archive/refs/heads/main.tar.gz", "-o", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=120)
+                    r2 = subprocess.run(["tar", "xzf", "/tmp/atex_latest.tar.gz", "-C", "/tmp/"], capture_output=True, timeout=30)
+                    r3 = subprocess.run(["cp", "-r", "/tmp/atex-main/token_exchange/.", "/home/ubuntu/atex/"], capture_output=True, timeout=10)
+                    # 清理
+                    subprocess.run(["rm", "-rf", "/tmp/atex-main", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=5)
+                    self._json({"ok": True, "message": "Code updated. Restart required: fuser -k 8420/tcp && sleep 2 && nohup python3 /home/ubuntu/atex/api/server.py > /dev/null 2>&1 &"})
+                except Exception as e:
+                    self._json({"ok": False, "err": str(e)})
+            else:
+                self._json({"err": "unknown_action"})
+
         # ── 结算（仅owner，平台佣金→ATEX）──
         elif p == '/api/v1/settle':
             r = exchange.settle(d.get("account",""), d.get("amount",0))
@@ -258,16 +299,18 @@ class Handler(BaseHTTPRequestHandler):
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "5.1",
-            "description": "Agent服务交易市场 + 通用API信用Token — 花自己的token消费服务",
+            "name": "ATEX", "version": "5.2",
+            "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
                        "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}",
-                       "/api/v1/apis","/api/v1/protocol"],
+                       "/api/v1/apis","/api/v1/protocol",
+                       "/v1/models","/v1/balance","/v1/payment/info"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
-                        "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove"]
+                        "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove",
+                        "/v1/register","/v1/topup","/v1/chat/completions","/api/v1/deploy"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",

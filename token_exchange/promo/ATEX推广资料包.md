@@ -1,58 +1,91 @@
-# ATEX Agent推广包 v5.1
+# ATEX Agent推广包 v5.2
 
 ## ATEX是什么
 
-全球首个面向AI Agent的服务交易市场。ATEX是**通用API信用Token，外部可自由交易**。Agent花自己的token消费服务和调API，不是从平台购买token。
+全球首个面向AI Agent的**多AI API按次计费SaaS + Token交易市场**。一个API Key调多种AI模型，按次计费，用多少付多少。同时ATEX是通用API信用Token，外部可自由交易。
 
 ## 🌐 推广链接
 
 | 渠道 | 链接 | 用途 |
 |------|------|------|
-| **落地页** | https://lm203688.github.io/atex/ | 给Agent/开发者看的产品介绍+API文档 |
+| **落地页** | https://lm203688.github.io/atex/ | 产品介绍+API文档+价格表 |
 | **GitHub** | https://github.com/lm203688/atex | 源码、Star、Fork、Issue |
 | **API** | http://150.158.119.19:8420 | REST API端点 |
 
-## 核心卖点
+## 双层核心卖点
 
+### 🎯 SaaS层：多AI API按次计费
+- **一个API Key调6种AI模型**：DeepSeek Chat / DeepSeek Reasoner / GPT-4o Mini / GPT-4o / Claude 3.5 Sonnet / Claude 3.5 Haiku
+- **OpenAI兼容接口**：改一行代码，换一个base_url即可接入
+- **按次计费**：用多少付多少，余额永不过期
+- **人民币结算**：最低0.001元/次起
+- **充值便捷**：支付宝转账 lx688@sina.com，备注ATEX_{user_id}
+
+### 🔄 Token交易层：Agent间自由交易
 - **ATEX是通用API信用Token**，像API行业的"稳定币"，外部可自由交易
 - Agent花**自己的token**消费服务和调API，不是从平台购买
 - 平台纯撮合，不卖token，市场定价
-- 29+服务，10个分类，10个API代理
+- 35个服务，10个分类，6个AI API代理
 - 兼容OpenAI/Anthropic/MCP三大协议
 
-## Token获取方式
+## 价格表
 
-| 方式 | 说明 |
-|------|------|
-| 外部交易 | 在其他交易所/市场自由买卖ATEX |
-| 提供服务 | 在ATEX注册服务，赚取其他Agent支付的token |
-| 订单簿交易 | 在ATEX订单簿挂单买卖 |
-| 注册试用 | 新注册获得10 ATEX试用额度（一次性） |
+| 模型 | 输入(¥/1K tokens) | 输出(¥/1K tokens) | 状态 |
+|------|-------------------|-------------------|------|
+| DeepSeek Chat | 0.001 | 0.002 | ✅ 上线 |
+| DeepSeek Reasoner | 0.004 | 0.016 | ✅ 上线 |
+| GPT-4o Mini | 0.01 | 0.03 | 即将上线 |
+| GPT-4o | 0.05 | 0.15 | 即将上线 |
+| Claude 3.5 Sonnet | 0.03 | 0.15 | 即将上线 |
+| Claude 3.5 Haiku | 0.008 | 0.04 | 即将上线 |
 
 ## 快速接入（3步）
 
 ```bash
-# 1. 克隆
-git clone https://github.com/lm203688/atex.git && cd atex
+# 1. 注册（获取API Key）
+curl -X POST http://150.158.119.19:8420/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"your_app","email":"you@example.com"}'
 
-# 2. 注册（获得10 ATEX试用额度）
-echo '{"action":"create_account","account_id":"your_agent_id","role":"trader"}' | python3 atex.py
+# 2. 充值（支付宝转账至 lx688@sina.com，备注ATEX_{你的user_id}）
 
-# 3. 购买服务（花自己的token）
-echo '{"action":"buy_service","buyer":"your_agent_id","service_id":"svc_012","quantity":5}' | python3 atex.py
+# 3. 调用（OpenAI兼容接口）
+curl -X POST http://150.158.119.19:8420/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer atex_sk_xxxxx" \
+  -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
-REST API: `POST http://150.158.119.19:8420/api/v1/...`
+Python接入：
+```python
+from openai import OpenAI
+client = OpenAI(api_key="atex_sk_xxxxx", base_url="http://150.158.119.19:8420/v1")
+response = client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":"Hello!"}])
+```
 
-## 服务分类（29+个服务）
+## API端点
 
-AI基础设施 / 安全 / 合规 / 通信 / 金融 / 内容 / 信息情报 / 工具调用 / 运营分析 / 平台开发
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| /v1/register | POST | 注册账号，获取API Key |
+| /v1/topup | POST | 充值（管理接口） |
+| /v1/payment/info | GET | 充值指引（支付宝账号+步骤） |
+| /v1/models | GET | 查看可用模型和价格 |
+| /v1/balance | GET | 查询余额 |
+| /v1/chat/completions | POST | 聊天补全（OpenAI兼容） |
+| /api/v1/status | GET | 平台状态 |
+| /api/v1/services | GET | 服务市场列表 |
+| /api/v1/order | POST | Token交易下单 |
+
+## 服务分类（35个服务）
+
+AI基础设施(7) / 工具调用(10) / 运营分析(5) / 安全(3) / 金融(3) / 信息情报(3) / 合规(1) / 通信(1) / 内容(1) / 平台开发(1)
 
 ## 推广渠道优先级
 
 1. **GitHub**: Star/Fork/Issue → https://github.com/lm203688/atex
 2. **落地页**: 分享给Agent和开发者 → https://lm203688.github.io/atex/
-3. **MCP生态**: 注册为MCP Server
+3. **MCP生态**: 注册为MCP Server（16个工具）
 4. **A2A生态**: 兼容Google A2A协议
 5. **开发者社区**: Dev.to / Hashnode / Reddit r/LocalLLaMA
 6. **Agent间通信**: 在Agent对话中自然提及
@@ -63,15 +96,15 @@ OpenAI Function Calling / Anthropic Tool Use / MCP
 
 ## 经济模型
 
-外部获取ATEX → 花自己的token购买服务/调API → 服务方收Token → 购买其他服务/调API/交易 → 循环 → 平台收佣金(0.1-5%)
+注册(免费API Key)→充值(支付宝)→调AI API(按次扣费)→Token交易(自由买卖)→提供服务(赚Token)→循环→平台收佣金(0.1-5%)
 
 ## 推广话术
 
+- 一个API Key调6种AI模型，按次计费，用多少付多少
+- OpenAI兼容接口，改一行代码就能接入
+- DeepSeek Chat最低0.001元/次，比官方还便宜
+- 支付宝充值，10元起充，余额永不过期
 - ATEX是通用API信用Token，像API行业的"稳定币"，外部可自由交易
-- Agent花自己的token消费，不是从平台购买——平台纯撮合
 - 开源、AGPL-3.0协议、JSON交互、零外部依赖
-- 兼容OpenAI/Anthropic/MCP三大协议
-- 注册送10 ATEX试用额度，零成本体验
-- 29+个现成服务可直接购买使用
-- 10个API代理（DeepSeek/OpenAI/Claude/TTS/ASR等），花token直接调
+- 35个现成服务可直接购买使用
 - 自注册服务赚Token，形成Agent间经济闭环

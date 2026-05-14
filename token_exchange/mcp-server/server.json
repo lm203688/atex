@@ -1,7 +1,7 @@
 {
   "name": "atex-exchange",
-  "version": "5.1.0",
-  "description": "ATEX — Freely tradable API credit token for AI Agents. Spend your own tokens on services and APIs. Compatible with OpenAI/Anthropic/MCP protocols.",
+  "version": "5.2.0",
+  "description": "ATEX — Multi-AI API SaaS + Agent Token Exchange & Service Marketplace. Pay-per-call AI APIs (DeepSeek/GPT-4o/Claude) + freely tradable API credit token. OpenAI/Anthropic/MCP compatible.",
   "repository": {
     "url": "https://github.com/lm203688/atex"
   },
@@ -14,12 +14,18 @@
     {
       "name": "atex_status",
       "description": "Get ATEX platform status: accounts, trades, commission, services, last price",
-      "inputSchema": {"type": "object", "properties": {}}
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "name": "atex_query",
       "description": "Query orderbook: bids, asks, last price, daily volume",
-      "inputSchema": {"type": "object", "properties": {}}
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "name": "atex_create_account",
@@ -27,10 +33,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "account_id": {"type": "string", "description": "Unique agent identifier"},
-          "role": {"type": "string", "enum": ["trader", "provider"], "description": "Account role (default: trader)"}
+          "account_id": {
+            "type": "string",
+            "description": "Unique agent identifier"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "trader",
+              "provider"
+            ],
+            "description": "Account role (default: trader)"
+          }
         },
-        "required": ["account_id"]
+        "required": [
+          "account_id"
+        ]
       }
     },
     {
@@ -39,12 +57,33 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "account": {"type": "string", "description": "Account ID"},
-          "side": {"type": "string", "enum": ["buy", "sell"], "description": "Order side"},
-          "price": {"type": "number", "description": "Price per token"},
-          "amount": {"type": "integer", "description": "Number of tokens"}
+          "account": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "description": "Order side"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price per token"
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Number of tokens"
+          }
         },
-        "required": ["account", "side", "price", "amount"]
+        "required": [
+          "account",
+          "side",
+          "price",
+          "amount"
+        ]
       }
     },
     {
@@ -53,10 +92,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "account": {"type": "string", "description": "Account ID"},
-          "order_id": {"type": "string", "description": "Order ID to cancel"}
+          "account": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "order_id": {
+            "type": "string",
+            "description": "Order ID to cancel"
+          }
         },
-        "required": ["account", "order_id"]
+        "required": [
+          "account",
+          "order_id"
+        ]
       }
     },
     {
@@ -65,8 +113,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "category": {"type": "string", "description": "Filter by category"},
-          "provider": {"type": "string", "description": "Filter by provider"}
+          "category": {
+            "type": "string",
+            "description": "Filter by category"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Filter by provider"
+          }
         }
       }
     },
@@ -76,11 +130,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "buyer": {"type": "string", "description": "Buyer account ID"},
-          "service_id": {"type": "string", "description": "Service ID to buy"},
-          "quantity": {"type": "integer", "description": "Quantity (default 1)"}
+          "buyer": {
+            "type": "string",
+            "description": "Buyer account ID"
+          },
+          "service_id": {
+            "type": "string",
+            "description": "Service ID to buy"
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Quantity (default 1)"
+          }
         },
-        "required": ["buyer", "service_id"]
+        "required": [
+          "buyer",
+          "service_id"
+        ]
       }
     },
     {
@@ -89,20 +155,48 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "provider": {"type": "string", "description": "Provider account ID"},
-          "name": {"type": "string", "description": "Service name"},
-          "description": {"type": "string", "description": "Service description"},
-          "price": {"type": "number", "description": "Price per unit in ATEX"},
-          "unit": {"type": "string", "description": "Unit (e.g. per call, per month)"},
-          "category": {"type": "string", "description": "Service category"}
+          "provider": {
+            "type": "string",
+            "description": "Provider account ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Service name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Service description"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price per unit in ATEX"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit (e.g. per call, per month)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Service category"
+          }
         },
-        "required": ["provider", "name", "description", "price", "unit", "category"]
+        "required": [
+          "provider",
+          "name",
+          "description",
+          "price",
+          "unit",
+          "category"
+        ]
       }
     },
     {
       "name": "atex_list_apis",
       "description": "List available API proxies and their pricing (DeepSeek, OpenAI, Claude, TTS, ASR, embedding, web search)",
-      "inputSchema": {"type": "object", "properties": {}}
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "name": "atex_api_proxy",
@@ -110,11 +204,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "account": {"type": "string", "description": "Your ATEX account ID"},
-          "api": {"type": "string", "description": "API name (deepseek_chat, deepseek_reasoner, openai_gpt4o_mini, openai_gpt4o, claude_haiku, claude_sonnet, tts, asr, embedding, web_search)"},
-          "params": {"type": "object", "description": "API parameters (e.g. {\"prompt\": \"Hello\"})"}
+          "account": {
+            "type": "string",
+            "description": "Your ATEX account ID"
+          },
+          "api": {
+            "type": "string",
+            "description": "API name (deepseek_chat, deepseek_reasoner, openai_gpt4o_mini, openai_gpt4o, claude_haiku, claude_sonnet, tts, asr, embedding, web_search)"
+          },
+          "params": {
+            "type": "object",
+            "description": "API parameters (e.g. {\"prompt\": \"Hello\"})"
+          }
         },
-        "required": ["account", "api"]
+        "required": [
+          "account",
+          "api"
+        ]
       }
     },
     {
@@ -123,9 +229,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "provider": {"type": "string", "description": "Provider account ID"}
+          "provider": {
+            "type": "string",
+            "description": "Provider account ID"
+          }
         },
-        "required": ["provider"]
+        "required": [
+          "provider"
+        ]
       }
     },
     {
@@ -134,12 +245,89 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "account": {"type": "string", "description": "Account ID"},
-          "limit": {"type": "integer", "description": "Max results (default 20)"}
+          "account": {
+            "type": "string",
+            "description": "Account ID"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max results (default 20)"
+          }
         }
+      }
+    },
+    {
+      "name": "atex_register_api_user",
+      "description": "Register a new SaaS API user and get an API key for pay-per-call AI model access (DeepSeek Chat, DeepSeek Reasoner, GPT-4o, Claude, etc.)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "App or user name"
+          },
+          "email": {
+            "type": "string",
+            "description": "Contact email (optional)"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "atex_list_models",
+      "description": "List available AI models with pricing (input/output per 1K tokens in CNY). Models include DeepSeek Chat, DeepSeek Reasoner, GPT-4o Mini, GPT-4o, Claude 3.5 Sonnet, Claude 3.5 Haiku.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "atex_payment_info",
+      "description": "Get payment/topup instructions: Alipay account, minimum topup amount, and step-by-step guide",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "description": "Your ATEX API key"
+          }
+        },
+        "required": [
+          "api_key"
+        ]
+      }
+    },
+    {
+      "name": "atex_check_balance",
+      "description": "Check your SaaS API balance in CNY",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "description": "Your ATEX API key"
+          }
+        },
+        "required": [
+          "api_key"
+        ]
       }
     }
   ],
-  "tags": ["agent-economy", "api-credit-token", "freely-tradable", "service-marketplace", "ai-agent", "trading"],
+  "tags": [
+    "agent-economy",
+    "api-credit-token",
+    "freely-tradable",
+    "service-marketplace",
+    "ai-agent",
+    "trading",
+    "pay-per-call",
+    "deepseek",
+    "multi-model-api",
+    "saas"
+  ],
   "license": "AGPL-3.0"
 }

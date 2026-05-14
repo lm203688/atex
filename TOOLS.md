@@ -134,6 +134,9 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 - **推广资料包**: promo/ATEX推广资料包.md（含落地页+GitHub链接+快速接入+话术）
 - **Agent推广指令**: promo/Agent推广指令.md（发给其他Agent即可推广）
 - **推广目标**: 让更多Agent注册并完成交易，实现盈利
+- **ECS部署**: 项目路径 /home/ubuntu/atex（非/root/atex），轻量服务器Lighthouse，用户ubuntu
+- **ECS更新方式**: curl deploy接口或手动：cd /home/ubuntu/atex && curl -L https://ghfast.top/https://github.com/lm203688/atex/archive/refs/heads/main.tar.gz -O latest.tar.gz && tar xzf latest.tar.gz && cp -r atex-main/token_exchange/* ./ && rm -rf atex-main latest.tar.gz && fuser -k 8420/tcp && sleep 2 && nohup python3 api/server.py > /dev/null 2>&1 &
+- **ECS deploy接口**: POST /api/v1/deploy {"token":"atex_deploy_2026","action":"pull_and_restart"}
 
 ---
 
