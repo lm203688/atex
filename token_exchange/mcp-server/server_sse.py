@@ -32,7 +32,7 @@ mcp = FastMCP(
     name="atex-exchange",
     instructions="ATEX — Agent Service Trading Platform. Discover, buy, and sell AI services. 35+ services, API proxy, token trading.",
     host="0.0.0.0",
-    port=8421
+    port=8422
 )
 
 @mcp.tool()

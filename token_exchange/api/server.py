@@ -282,13 +282,10 @@ class Handler(BaseHTTPRequestHandler):
                 import subprocess
                 try:
                     install_dir = os.environ.get("ATEX_HOME", "/home/ubuntu/atex")
-                    # 下载最新代码
                     r1 = subprocess.run(["curl", "-L", "https://ghfast.top/https://github.com/lm203688/atex/archive/refs/heads/main.tar.gz", "-o", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=120)
                     r2 = subprocess.run(["tar", "xzf", "/tmp/atex_latest.tar.gz", "-C", "/tmp/"], capture_output=True, timeout=30)
                     r3 = subprocess.run(["cp", "-r", "/tmp/atex-main/token_exchange/.", install_dir + "/"], capture_output=True, timeout=10)
-                    # 清理
                     subprocess.run(["rm", "-rf", "/tmp/atex-main", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=5)
-                    # 自动重启
                     subprocess.run(["bash", "-c", f"fuser -k 8420/tcp; sleep 2; nohup python3 {install_dir}/api/server.py > /dev/null 2>&1 &"], capture_output=True, timeout=15)
                     self._json({"ok": True, "message": "Code updated and service restarted."})
                 except Exception as e:
