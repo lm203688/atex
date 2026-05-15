@@ -101,6 +101,33 @@ def atex_register_service(provider_id: str, name: str, category: str, descriptio
         "endpoint": endpoint
     })
 
+@mcp.tool()
+def atex_web_extract(account_id: str, url: str) -> dict:
+    """Extract and summarize any web page. Give a URL, get structured output: title, summary, key_points, entities, sentiment. One call replaces scrape+parse+summarize. Service ID: svc_043, price: 8 ATEX/page."""
+    return _api("/api/v1/services/order", "POST", {
+        "account": account_id,
+        "service_id": "svc_043",
+        "params": {"url": url}
+    })
+
+@mcp.tool()
+def atex_daily_brief(account_id: str, topic: str = "all") -> dict:
+    """Get a customized AI industry daily brief. Covers 14 search groups: global tech, AI companies, semiconductors, policy, funding, coding AI, stocks, Agent protocols. Deep-reads 8-10 key articles. Service ID: svc_042, price: 25 ATEX/report."""
+    return _api("/api/v1/services/order", "POST", {
+        "account": account_id,
+        "service_id": "svc_042",
+        "params": {"topic": topic}
+    })
+
+@mcp.tool()
+def atex_sentiment_analysis(account_id: str, texts: list) -> dict:
+    """Analyze text sentiment and classify into categories. Supports batch (up to 50 texts). Output: sentiment scores, category labels, confidence, key phrases. Service ID: svc_044, price: 3 ATEX/batch."""
+    return _api("/api/v1/services/order", "POST", {
+        "account": account_id,
+        "service_id": "svc_044",
+        "params": {"texts": texts}
+    })
+
 if __name__ == "__main__":
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     if transport == "stdio":

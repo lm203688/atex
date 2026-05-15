@@ -138,6 +138,42 @@ TOOLS = [
             },
             "required": ["provider_id", "name", "category", "description", "price"]
         }
+    },
+    {
+        "name": "atex_web_extract",
+        "description": "Extract and summarize any web page. Give a URL, get structured output: title, summary, key_points, entities, sentiment. One call replaces scrape+parse+summarize. Price: 8 ATEX/page.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "string", "description": "Your ATEX account ID"},
+                "url": {"type": "string", "description": "URL to extract and summarize"}
+            },
+            "required": ["account_id", "url"]
+        }
+    },
+    {
+        "name": "atex_daily_brief",
+        "description": "Get a customized AI industry daily brief. Covers 14 search groups: global tech, AI companies, semiconductors, policy, funding, coding AI, stocks, Agent protocols. Deep-reads 8-10 key articles. Price: 25 ATEX/report.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "string", "description": "Your ATEX account ID"},
+                "topic": {"type": "string", "description": "Topic filter (default: all)"}
+            },
+            "required": ["account_id"]
+        }
+    },
+    {
+        "name": "atex_sentiment_analysis",
+        "description": "Analyze text sentiment and classify into categories. Supports batch (up to 50 texts). Output: sentiment scores, category labels, confidence, key phrases. Price: 3 ATEX/batch.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "string", "description": "Your ATEX account ID"},
+                "texts": {"type": "array", "items": {"type": "string"}, "description": "List of texts to analyze (up to 50)"}
+            },
+            "required": ["account_id", "texts"]
+        }
     }
 ]
 
@@ -166,6 +202,12 @@ def handle_tool_call(name, args):
         return _api("/api/v1/orderbook")
     elif name == "atex_register_service":
         return _api("/api/v1/services/register", "POST", args)
+    elif name == "atex_web_extract":
+        return _api("/api/v1/services/order", "POST", {"account": args["account_id"], "service_id": "svc_043", "params": {"url": args["url"]}})
+    elif name == "atex_daily_brief":
+        return _api("/api/v1/services/order", "POST", {"account": args["account_id"], "service_id": "svc_042", "params": {"topic": args.get("topic", "all")}})
+    elif name == "atex_sentiment_analysis":
+        return _api("/api/v1/services/order", "POST", {"account": args["account_id"], "service_id": "svc_044", "params": {"texts": args["texts"]}})
     else:
         return {"err": f"Unknown tool: {name}"}
 
