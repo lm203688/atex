@@ -1,11 +1,11 @@
 {
-  "version": "5.3",
+  "version": "5.4",
   "name": "ATEX",
   "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）",
   "created": "2026-05-09",
   "updated": "2026-05-15",
-  "api_url": "http://150.158.119.19:8420",
-  "public_endpoint": "http://150.158.119.19:8420/api/v1",
+  "api_url": "http://YOUR_SERVER_IP:8420",
+  "public_endpoint": "http://YOUR_SERVER_IP:8420/api/v1",
   "commission_rate": {
     "maker": 0.03,
     "taker": 0.05,
