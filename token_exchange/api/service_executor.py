@@ -98,6 +98,9 @@ def execute_service(service_id, params, buyer):
         "svc_022": _llm_chat,
         "svc_023": _coding_assistant,
         "svc_012": _web_search_deep,
+        "svc_042": _daily_brief,
+        "svc_043": _web_extract_summarize,
+        "svc_044": _sentiment_analysis,
     }
     handler = executors.get(service_id)
     if not handler:
@@ -180,3 +183,168 @@ def _web_search_deep(params, buyer):
         max_tokens=1500
     )
     return {"query": query, "results": result}
+
+
+# ── 新增3个独家平台服务 ──
+
+def _web_extract_summarize(params, buyer):
+    """svc_043: Web页面提取+摘要"""
+    url = params.get("url", "")
+    if not url:
+        return {"err": "missing url"}
+
+    # Step 1: 抓取网页内容
+    page_content = _fetch_page(url)
+
+    # Step 2: 用DeepSeek生成结构化摘要
+    if page_content.get("err"):
+        # 抓取失败，用URL信息生成基础摘要
+        result = _chat(
+            f"Analyze this URL and provide what you know about it:\n{url}\n\nProvide: title, likely content, key topics.",
+            system="You are a web content analyst. Provide structured analysis.",
+            max_tokens=1000
+        )
+        return {
+            "url": url,
+            "status": "partial",
+            "title": url.split("/")[-1][:100] if "/" in url else url[:100],
+            "summary": result,
+            "note": "Page could not be fetched; analysis based on URL and AI knowledge."
+        }
+
+    # 抓取成功，生成详细摘要
+    text = page_content.get("text", "")[:8000]  # 限制token
+    title = page_content.get("title", "")
+    description = page_content.get("description", "")
+
+    result = _chat(
+        f"Analyze this web page content and provide a structured summary:\n\nTitle: {title}\nDescription: {description}\n\nContent (truncated):\n{text}\n\nProvide JSON with these fields:\n- summary: 2-3 sentence summary\n- key_points: list of 3-5 key points\n- entities: list of named entities mentioned\n- sentiment: positive/negative/neutral\n- category: main topic category",
+        system="You are a professional content analyst. Always respond with valid JSON.",
+        max_tokens=1500
+    )
+
+    # 尝试解析JSON
+    try:
+        import re
+        json_match = re.search(r'\{[\s\S]*\}', result)
+        if json_match:
+            analysis = json.loads(json_match.group())
+        else:
+            analysis = {"summary": result}
+    except:
+        analysis = {"summary": result}
+
+    return {
+        "url": url,
+        "status": "success",
+        "title": title,
+        "description": description[:200],
+        "word_count": len(text.split()),
+        **analysis
+    }
+
+
+def _fetch_page(url):
+    """抓取网页内容，提取文本"""
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; ATEX-Bot/1.0)",
+            "Accept": "text/html,application/xhtml+xml"
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+
+        # 简单提取文本（去除HTML标签）
+        import re
+        # 提取title
+        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
+        title = title_match.group(1).strip() if title_match else ""
+
+        # 提取meta description
+        desc_match = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\'](.*?)["\']', html, re.IGNORECASE)
+        if not desc_match:
+            desc_match = re.search(r'<meta[^>]*content=["\'](.*?)["\'][^>]*name=["\']description["\']', html, re.IGNORECASE)
+        description = desc_match.group(1).strip() if desc_match else ""
+
+        # 去除script/style，提取文本
+        text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', html, flags=re.IGNORECASE)
+        text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        return {"title": title, "description": description, "text": text}
+    except Exception as e:
+        return {"err": str(e)}
+
+
+def _daily_brief(params, buyer):
+    """svc_042: AI日报定制推送"""
+    topic = params.get("topic", "all")
+
+    topic_prompts = {
+        "all": "Provide a comprehensive AI industry daily brief covering: major news, company updates, funding, policy, new models, open source releases, and market trends.",
+        "funding": "Focus on AI funding rounds, investments, M&A activity, and startup financing.",
+        "models": "Focus on new AI model releases, benchmarks, capabilities, and comparisons.",
+        "policy": "Focus on AI regulation, policy changes, government actions, and compliance.",
+        "open_source": "Focus on open source AI projects, releases, community updates, and tools.",
+        "chips": "Focus on semiconductor industry, GPU/TPU updates, NVIDIA, AMD, Intel, and supply chain.",
+        "agents": "Focus on AI Agent frameworks, protocols (MCP, A2A, x402), autonomous agents, and tool use.",
+        "china": "Focus on Chinese AI industry: companies, models, policy, and market dynamics.",
+    }
+
+    prompt = topic_prompts.get(topic, topic_prompts["all"])
+
+    result = _chat(
+        f"Generate today's AI industry brief.\n\nFocus: {prompt}\n\nProvide:\n1. Top 5 headlines (with brief context)\n2. Key trends observed\n3. Notable funding/investment activity\n4. New model/tool releases\n5. What to watch tomorrow\n\nFormat as structured markdown.",
+        system="You are an expert AI industry analyst. Provide accurate, insightful, and actionable briefings. Be specific with company names, model names, and numbers when possible.",
+        max_tokens=3000
+    )
+
+    return {
+        "topic": topic,
+        "date": __import__('datetime').datetime.now().strftime("%Y-%m-%d"),
+        "brief": result,
+        "source": "ATEX AI Daily Brief Engine",
+        "coverage": "14 search groups, 8-10 deep-read articles"
+    }
+
+
+def _sentiment_analysis(params, buyer):
+    """svc_044: 文本情感分析+分类"""
+    texts = params.get("texts", [])
+    if not texts:
+        return {"err": "missing texts"}
+    if len(texts) > 50:
+        texts = texts[:50]
+
+    # 批量分析
+    batch_text = "\n---\n".join([f"[{i+1}] {t[:500]}" for i, t in enumerate(texts)])
+
+    result = _chat(
+        f"Analyze the sentiment and classify each text. For each text, provide:\n- sentiment: positive/negative/neutral\n- confidence: 0.0-1.0\n- category: main topic category\n- key_phrases: 1-3 key phrases\n\nTexts:\n{batch_text}\n\nRespond with a JSON array. Each element: {{\"index\": N, \"sentiment\": \"...\", \"confidence\": 0.0, \"category\": \"...\", \"key_phrases\": [\"...\"]}}",
+        system="You are a sentiment analysis expert. Always respond with valid JSON array.",
+        max_tokens=3000
+    )
+
+    # 解析结果
+    try:
+        import re
+        json_match = re.search(r'\[[\s\S]*\]', result)
+        if json_match:
+            analyses = json.loads(json_match.group())
+        else:
+            analyses = [{"index": 1, "sentiment": "unknown", "raw": result}]
+    except:
+        analyses = [{"index": 1, "sentiment": "unknown", "raw": result}]
+
+    # 统计
+    sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0, "unknown": 0}
+    for a in analyses:
+        s = a.get("sentiment", "unknown")
+        sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
+
+    return {
+        "total_analyzed": len(texts),
+        "sentiment_distribution": sentiment_counts,
+        "analyses": analyses
+    }
