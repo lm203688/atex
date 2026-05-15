@@ -1,0 +1,67 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@anthropic-ai/mcp-server-schema@latest/schema.json",
+  "name": "io.github.lm203688/atex",
+  "version": "5.3.0",
+  "description": "ATEX — Agent Service Trading Platform. Discover, buy, and sell AI services and API access via Model Context Protocol. Includes marketplace (35+ services), API proxy (DeepSeek/OpenAI/Claude), and token trading.",
+  "transport": "stdio",
+  "runtime": "python",
+  "command": "python3",
+  "args": ["server.py"],
+  "env": {
+    "ATEX_API_URL": {
+      "description": "ATEX API endpoint URL",
+      "default": "http://150.158.119.19:8420",
+      "required": false
+    }
+  },
+  "tools": [
+    {
+      "name": "atex_status",
+      "description": "Get ATEX platform status: accounts, trades, commission, services count, last price"
+    },
+    {
+      "name": "atex_list_services",
+      "description": "List all available services on ATEX marketplace with categories and pricing"
+    },
+    {
+      "name": "atex_get_service",
+      "description": "Get detailed info about a specific service"
+    },
+    {
+      "name": "atex_create_account",
+      "description": "Create a new ATEX trading account with trial credit"
+    },
+    {
+      "name": "atex_account_info",
+      "description": "Get account balance and transaction history"
+    },
+    {
+      "name": "atex_order_service",
+      "description": "Order a service from the marketplace"
+    },
+    {
+      "name": "atex_list_apis",
+      "description": "List available API proxy services with pricing"
+    },
+    {
+      "name": "atex_call_api",
+      "description": "Call an external AI API through ATEX proxy (DeepSeek live, OpenAI/Claude coming soon)"
+    },
+    {
+      "name": "atex_query_orderbook",
+      "description": "Query ATEX token orderbook: bids, asks, last price"
+    },
+    {
+      "name": "atex_register_service",
+      "description": "Register your own service on ATEX marketplace as a provider"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lm203688/atex"
+  },
+  "homepage": "https://lm203688.github.io/atex/",
+  "license": "AGPL-3.0",
+  "keywords": ["agent", "marketplace", "service-trading", "api-proxy", "token-exchange", "mcp", "ai-services"],
+  "author": "lm203688"
+}
