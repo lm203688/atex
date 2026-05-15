@@ -102,8 +102,10 @@ def atex_register_service(provider_id: str, name: str, category: str, descriptio
     })
 
 if __name__ == "__main__":
-    transport = os.environ.get("MCP_TRANSPORT", "sse")
+    transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     if transport == "stdio":
         mcp.run(transport="stdio")
-    else:
+    elif transport == "sse":
         mcp.run(transport="sse")
+    else:
+        mcp.run(transport="streamable-http")
