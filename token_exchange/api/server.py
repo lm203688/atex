@@ -263,11 +263,13 @@ class Handler(BaseHTTPRequestHandler):
  if action == "pull_and_restart":
  import subprocess
  try:
+ install_dir = os.environ.get("ATEX_HOME", "/home/ubuntu/atex")
  r1 = subprocess.run(["curl", "-L", "https://ghfast.top/https://github.com/lm203688/atex/archive/refs/heads/main.tar.gz", "-o", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=120)
  r2 = subprocess.run(["tar", "xzf", "/tmp/atex_latest.tar.gz", "-C", "/tmp/"], capture_output=True, timeout=30)
- r3 = subprocess.run(["cp", "-r", "/tmp/atex-main/token_exchange/.", "<INSTALL_DIR>/"], capture_output=True, timeout=10)
+ r3 = subprocess.run(["cp", "-r", "/tmp/atex-main/token_exchange/.", install_dir + "/"], capture_output=True, timeout=10)
  subprocess.run(["rm", "-rf", "/tmp/atex-main", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=5)
- self._json({"ok": True, "message": "Code updated. Restart required: fuser -k 8420/tcp && sleep 2 && nohup python3 <INSTALL_DIR>/api/server.py > /dev/null 2>&1 &"})
+ subprocess.run(["bash", "-c", f"fuser -k 8420/tcp; sleep 2; nohup python3 {install_dir}/api/server.py > /dev/null 2>&1 &"], capture_output=True, timeout=15)
+ self._json({"ok": True, "message": "Code updated and service restarted."})
  except Exception as e:
  self._json({"ok": False, "err": str(e)})
  else:
@@ -279,7 +281,7 @@ class Handler(BaseHTTPRequestHandler):
  else: self._json({"err":"not_found"}, 404)
  def _proto(self):
  return self._json({
- "name": "ATEX", "version": "5.2",
+ "name": "ATEX", "version": "5.3",
  "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
  "endpoints": {
  "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
