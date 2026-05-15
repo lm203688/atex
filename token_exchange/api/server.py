@@ -76,15 +76,18 @@ class Handler(BaseHTTPRequestHandler):
  def log_message(self, *a): pass
  def _ip(self): return self.client_address[0]
  def _json(self, data, status=200):
- body = json.dumps(data, ensure_ascii=False).encode()
- self.send_response(status)
- self.send_header('Content-Type', 'application/json')
- self.send_header('X-Content-Type-Options', 'nosniff')
- self.send_header('Access-Control-Allow-Origin', '*')
- self.send_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
- self.send_header('Access-Control-Allow-Headers', 'Content-Type')
- self.end_headers()
- self.wfile.write(body)
+ try:
+  body = json.dumps(data, ensure_ascii=False).encode()
+  self.send_response(status)
+  self.send_header('Content-Type', 'application/json')
+  self.send_header('X-Content-Type-Options', 'nosniff')
+  self.send_header('Access-Control-Allow-Origin', '*')
+  self.send_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+  self.end_headers()
+  self.wfile.write(body)
+ except (ConnectionResetError, BrokenPipeError):
+  pass
  def _read(self):
  l = int(self.headers.get('Content-Length', 0))
  if l > MAX_INPUT_SIZE: return None
