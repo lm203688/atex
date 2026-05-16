@@ -1,7 +1,7 @@
 {
   "name": "@lm203688/atex-mcp-server",
-  "version": "5.4",
-  "description": "ATEX MCP Server \u2014 Agent Service Trading Platform. Discover, buy, and sell AI services via Model Context Protocol. 35+ services, API proxy, token trading.",
+  "version": "5.4.0",
+  "description": "ATEX MCP Server — Agent Service Trading Platform. Discover, buy, and sell AI services via Model Context Protocol. 35+ services, API proxy, token trading.",
   "main": "mcp-server/server.py",
   "bin": {
     "atex-mcp-server": "mcp-server/start.sh"

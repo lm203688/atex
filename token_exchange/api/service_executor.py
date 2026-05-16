@@ -101,6 +101,15 @@ def execute_service(service_id, params, buyer):
         "svc_042": _daily_brief,
         "svc_043": _web_extract_summarize,
         "svc_044": _sentiment_analysis,
+        # ── GitHub生态复制服务 ──
+        "svc_045": _finance_data,
+        "svc_046": _github_analysis,
+        "svc_047": _weather_query,
+        "svc_048": _news_aggregation,
+        "svc_049": _translation_service,
+        "svc_050": _exchange_rate,
+        "svc_051": _qr_code_generate,
+        "svc_052": _ip_geolocation,
     }
     handler = executors.get(service_id)
     if not handler:
@@ -347,4 +356,304 @@ def _sentiment_analysis(params, buyer):
         "total_analyzed": len(texts),
         "sentiment_distribution": sentiment_counts,
         "analyses": analyses
+    }
+
+
+# ── GitHub生态复制服务 (svc_045 - svc_052) ──
+
+def _http_get(url, headers=None, timeout=15):
+    """通用HTTP GET请求"""
+    req = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        return {"err": f"http_{e.code}", "detail": e.read().decode()[:300]}
+    except Exception as e:
+        return {"err": str(e)}
+
+
+def _finance_data(params, buyer):
+    """svc_045: 金融数据查询 (Alpha Vantage + AI增强)"""
+    symbol = params.get("symbol", "")
+    function = params.get("function", "quote")  # quote, history, crypto, forex
+    if not symbol:
+        return {"err": "missing symbol (e.g. AAPL, BTC, EUR/USD)"}
+
+    # Alpha Vantage free API key (demo key, 5 calls/min)
+    AV_KEY = os.environ.get("ALPHAVANTAGE_API_KEY", "demo")
+
+    if function == "quote":
+        url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={AV_KEY}"
+        data = _http_get(url)
+        if data.get("err"):
+            # Fallback: use AI knowledge
+            result = _chat(
+                f"Provide current financial data for {symbol}: current price, market cap, P/E ratio, 52-week range, recent performance. Note this is AI-estimated data.",
+                system="You are a financial data analyst. Provide accurate estimates with clear disclaimers.",
+                max_tokens=1000
+            )
+            return {"symbol": symbol, "source": "ai_estimate", "data": result}
+        quote = data.get("Global Quote", {})
+        return {
+            "symbol": symbol,
+            "source": "alpha_vantage",
+            "price": quote.get("05. price", "N/A"),
+            "change": quote.get("09. change", "N/A"),
+            "change_percent": quote.get("10. change percent", "N/A"),
+            "volume": quote.get("06. volume", "N/A"),
+            "high": quote.get("03. high", "N/A"),
+            "low": quote.get("04. low", "N/A"),
+            "previous_close": quote.get("08. previous close", "N/A"),
+        }
+
+    elif function == "crypto":
+        url = f"https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency={symbol}&to_currency=USD&apikey={AV_KEY}"
+        data = _http_get(url)
+        if data.get("err"):
+            result = _chat(f"Provide current price for {symbol}/USD cryptocurrency.", system="Financial analyst.", max_tokens=500)
+            return {"symbol": symbol, "source": "ai_estimate", "data": result}
+        rate = data.get("Realtime Currency Exchange Rate", {})
+        return {
+            "symbol": symbol + "/USD",
+            "source": "alpha_vantage",
+            "price": rate.get("5. Exchange Rate", "N/A"),
+            "last_refreshed": rate.get("6. Last Refreshed", "N/A"),
+        }
+
+    else:
+        # Generic: use AI
+        result = _chat(
+            f"Provide financial analysis for {symbol}: current status, key metrics, recent news impact, outlook.",
+            system="Financial analyst with market expertise.",
+            max_tokens=1500
+        )
+        return {"symbol": symbol, "source": "ai_analysis", "data": result}
+
+
+def _github_analysis(params, buyer):
+    """svc_046: GitHub仓库分析 (GitHub API + AI增强)"""
+    repo = params.get("repo", "")  # format: owner/repo
+    if not repo:
+        return {"err": "missing repo (format: owner/repo)"}
+
+    # GitHub API (no auth needed for public repos, 60 req/hr)
+    url = f"https://api.github.com/repos/{repo}"
+    headers = {"Accept": "application/vnd.github.v3+json", "User-Agent": "ATEX-Bot/1.0"}
+    data = _http_get(url, headers=headers)
+
+    if data.get("err"):
+        result = _chat(
+            f"Analyze the GitHub repository {repo}: what it does, tech stack, community size, activity level.",
+            system="You are a GitHub repository analyst.",
+            max_tokens=1000
+        )
+        return {"repo": repo, "source": "ai_estimate", "analysis": result}
+
+    # Extract key metrics
+    analysis = {
+        "repo": repo,
+        "source": "github_api",
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "stars": data.get("stargazers_count", 0),
+        "forks": data.get("forks_count", 0),
+        "open_issues": data.get("open_issues_count", 0),
+        "language": data.get("language", ""),
+        "license": data.get("license", {}).get("spdx_id", "N/A") if data.get("license") else "N/A",
+        "topics": data.get("topics", []),
+        "created_at": data.get("created_at", ""),
+        "updated_at": data.get("pushed_at", ""),
+        "default_branch": data.get("default_branch", ""),
+        "archived": data.get("archived", False),
+    }
+
+    # AI-enhanced insight
+    insight = _chat(
+        f"Analyze this GitHub repo briefly:\nName: {analysis['name']}\nStars: {analysis['stars']}\nForks: {analysis['forks']}\nLanguage: {analysis['language']}\nDescription: {analysis['description']}\n\nProvide: 1) What it does 2) Maturity assessment 3) Community health 4) Use case for AI agents",
+        system="GitHub repository analyst. Be concise.",
+        max_tokens=800
+    )
+    analysis["ai_insight"] = insight
+    return analysis
+
+
+def _weather_query(params, buyer):
+    """svc_047: 天气查询 (OpenWeatherMap + AI增强)"""
+    city = params.get("city", "")
+    lat = params.get("lat")
+    lon = params.get("lon")
+    if not city and (lat is None or lon is None):
+        return {"err": "missing city or lat/lon"}
+
+    OWM_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
+
+    if OWM_KEY:
+        # Use real API
+        if lat and lon:
+            url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={OWM_KEY}&units=metric"
+        else:
+            url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OWM_KEY}&units=metric"
+        data = _http_get(url)
+        if not data.get("err"):
+            main = data.get("main", {})
+            weather = data.get("weather", [{}])[0]
+            return {
+                "city": data.get("name", city),
+                "source": "openweathermap",
+                "temperature": main.get("temp"),
+                "feels_like": main.get("feels_like"),
+                "humidity": main.get("humidity"),
+                "pressure": main.get("pressure"),
+                "description": weather.get("description", ""),
+                "wind_speed": data.get("wind", {}).get("speed"),
+                "clouds": data.get("clouds", {}).get("all"),
+                "visibility": data.get("visibility"),
+            }
+
+    # Fallback: AI knowledge
+    result = _chat(
+        f"Provide typical current weather information for {city}: temperature range, conditions, humidity, seasonal notes. Clearly state this is AI-estimated.",
+        system="Weather information assistant. Provide realistic estimates with disclaimers.",
+        max_tokens=800
+    )
+    return {"city": city, "source": "ai_estimate", "weather": result}
+
+
+def _news_aggregation(params, buyer):
+    """svc_048: 新闻聚合 (AI知识+多源)"""
+    topic = params.get("topic", "technology")
+    country = params.get("country", "global")
+    count = min(params.get("count", 5), 10)
+
+    NEWSAPI_KEY = os.environ.get("NEWSAPI_API_KEY", "")
+
+    if NEWSAPI_KEY:
+        url = f"https://newsapi.org/v2/top-headlines?category={topic}&language=en&pageSize={count}&apiKey={NEWSAPI_KEY}"
+        if country != "global":
+            url += f"&country={country}"
+        data = _http_get(url)
+        if not data.get("err") and data.get("articles"):
+            articles = []
+            for a in data["articles"][:count]:
+                articles.append({
+                    "title": a.get("title", ""),
+                    "source": a.get("source", {}).get("name", ""),
+                    "url": a.get("url", ""),
+                    "published_at": a.get("publishedAt", ""),
+                    "description": a.get("description", ""),
+                })
+            return {"topic": topic, "source": "newsapi", "articles": articles}
+
+    # Fallback: AI-generated news summary
+    result = _chat(
+        f"Provide the top {count} recent news headlines and brief summaries about '{topic}' ({country}). For each: title, source, 1-2 sentence summary. Clearly note these are AI-estimated based on training data.",
+        system="News analyst. Provide realistic, well-structured news summaries.",
+        max_tokens=2000
+    )
+    return {"topic": topic, "source": "ai_estimate", "news": result}
+
+
+def _translation_service(params, buyer):
+    """svc_049: 翻译服务 (DeepSeek多语言)"""
+    text = params.get("text", "")
+    source_lang = params.get("source_lang", "auto")
+    target_lang = params.get("target_lang", "en")
+    if not text:
+        return {"err": "missing text"}
+
+    result = _chat(
+        f"Translate the following text to {target_lang}. {'Source language: ' + source_lang if source_lang != 'auto' else 'Auto-detect source language.'}\n\nText:\n{text}\n\nProvide only the translation, no explanations.",
+        system=f"You are a professional translator. Translate accurately and naturally to {target_lang}.",
+        max_tokens=min(len(text) * 3, 4000)
+    )
+
+    return {
+        "source_text": text[:200] + ("..." if len(text) > 200 else ""),
+        "source_lang": source_lang,
+        "target_lang": target_lang,
+        "translation": result,
+        "char_count": len(text),
+    }
+
+
+def _exchange_rate(params, buyer):
+    """svc_050: 汇率查询 (ExchangeRate-API + AI)"""
+    base = params.get("base", "USD")
+    target = params.get("target", "CNY")
+    amount = params.get("amount", 1)
+
+    # Free API: no key needed
+    url = f"https://open.er-api.com/v6/latest/{base}"
+    data = _http_get(url)
+
+    if not data.get("err") and data.get("rates"):
+        rates = data["rates"]
+        rate = rates.get(target)
+        if rate:
+            return {
+                "base": base,
+                "target": target,
+                "rate": rate,
+                "amount": amount,
+                "converted": round(amount * rate, 4),
+                "last_updated": data.get("time_last_update_utc", ""),
+                "source": "exchange_rate_api",
+            }
+        return {"err": f"target currency {target} not found", "available": list(rates.keys())[:20]}
+
+    # Fallback
+    result = _chat(
+        f"What is the current exchange rate from {base} to {target}? Provide the rate and converted amount for {amount} {base}.",
+        system="Currency analyst. Provide estimates with disclaimers.",
+        max_tokens=500
+    )
+    return {"base": base, "target": target, "source": "ai_estimate", "data": result}
+
+
+def _qr_code_generate(params, buyer):
+    """svc_051: 二维码生成 (Google Charts API, 免费)"""
+    content = params.get("content", "")
+    size = params.get("size", 300)
+    if not content:
+        return {"err": "missing content (URL or text to encode)"}
+
+    # Google Charts QR Code API (free, no key)
+    qr_url = f"https://chart.googleapis.com/chart?cht=qr&chs={size}x{size}&chl={urllib.parse.quote(content)}&choe=UTF-8"
+
+    return {
+        "content": content[:200],
+        "size": size,
+        "qr_code_url": qr_url,
+        "format": "PNG image via URL",
+        "source": "google_charts_api",
+        "usage": "Use qr_code_url to display or download the QR code image",
+    }
+
+
+def _ip_geolocation(params, buyer):
+    """svc_052: IP地理定位 (ip-api.com, 免费)"""
+    ip = params.get("ip", "")
+    if not ip:
+        return {"err": "missing ip address"}
+
+    # ip-api.com free (45 req/min)
+    url = f"http://ip-api.com/json/{ip}"
+    data = _http_get(url)
+
+    if data.get("err") or data.get("status") == "fail":
+        return {"err": data.get("message", "geolocation failed"), "ip": ip}
+
+    return {
+        "ip": data.get("query", ip),
+        "source": "ip_api",
+        "country": data.get("country", ""),
+        "country_code": data.get("countryCode", ""),
+        "region": data.get("regionName", ""),
+        "city": data.get("city", ""),
+        "lat": data.get("lat"),
+        "lon": data.get("lon"),
+        "isp": data.get("isp", ""),
+        "org": data.get("org", ""),
+        "timezone": data.get("timezone", ""),
     }
