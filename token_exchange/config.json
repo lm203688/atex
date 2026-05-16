@@ -178,6 +178,22 @@
   "payment": {
     "alipay": "CONFIGURE_ALIPAY",
     "paypal": "CONFIGURE_PAYPAL",
-    "min_topup_cny": 10.0
+    "min_topup_cny": 10.0,
+    "topup_bonus": {
+      "description": "充值送积分活动 — 充得多送得多",
+      "tiers": [
+        {"min_cny": 10, "bonus_pct": 10, "note": "充10元送1元"},
+        {"min_cny": 50, "bonus_pct": 15, "note": "充50元送7.5元"},
+        {"min_cny": 100, "bonus_pct": 20, "note": "充100元送20元"},
+        {"min_cny": 500, "bonus_pct": 30, "note": "充500元送150元"},
+        {"min_cny": 1000, "bonus_pct": 40, "note": "充1000元送400元"}
+      ],
+      "first_topup_bonus_atex": 50,
+      "first_topup_note": "首次充值额外送50 ATEX",
+      "topup_atex_rate": 0.5,
+      "topup_atex_note": "每充1元送0.5 ATEX（充10元送5 ATEX）",
+      "active": true,
+      "expires": "2026-06-30"
+    }
   }
 }

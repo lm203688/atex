@@ -118,7 +118,11 @@ class Handler(BaseHTTPRequestHandler):
             data = _load_saas()
             uid = data["api_keys"].get(auth) if auth else None
             if not uid: return self._json({"err": "invalid_api_key"}, 401)
-            self._json({
+            user = data["users"].get(uid, {})
+            bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
+            bonus_active = bonus_cfg.get("active", False)
+            is_first = user.get("total_topup_count", 0) == 0
+            result = {
                 "user_id": uid,
                 "alipay": "lx688@sina.com",
                 "paypal": "https://paypal.me/xinglixingli",
@@ -128,9 +132,21 @@ class Handler(BaseHTTPRequestHandler):
                     "1. 支付宝转账至 lx688@sina.com，金额≥10元",
                     f"2. 转账备注: ATEX_{uid}",
                     "3. 联系管理员确认到账",
-                    "4. 余额自动更新",
+                    "4. 余额自动更新（含赠送积分）",
                 ],
-            })
+            }
+            if bonus_active:
+                tiers = bonus_cfg.get("tiers", [])
+                result["bonus_promotion"] = {
+                    "active": True,
+                    "expires": bonus_cfg.get("expires", ""),
+                    "description": bonus_cfg.get("description", ""),
+                    "tiers": tiers,
+                    "first_topup_bonus_atex": bonus_cfg.get("first_topup_bonus_atex", 0) if is_first else 0,
+                    "topup_atex_rate": bonus_cfg.get("topup_atex_rate", 0),
+                    "is_first_topup": is_first,
+                }
+            self._json(result)
 
         # ── 原ATEX路由 ──
         elif p == '/api/v1/status': self._json(exchange.status())
@@ -190,32 +206,111 @@ class Handler(BaseHTTPRequestHandler):
             })
 
         elif p == '/v1/register':
-            # SaaS用户注册
+            # SaaS用户注册 — 含注册赠送
             name = d.get("name", "")
             email = d.get("email", "")
             if not name: return self._json({"err": "name_required"}, 400)
             data = _load_saas()
             uid = f"u_{secrets.token_hex(6)}"
             api_key = f"atex_sk_{secrets.token_hex(24)}"
+            # 注册赠送：5元体验金
+            welcome_cny = 5.0
             data["users"][uid] = {"user_id": uid, "name": name, "email": email,
-                "api_key": api_key, "balance_cny": 0.0, "total_spent_cny": 0.0, "total_calls": 0,
+                "api_key": api_key, "balance_cny": welcome_cny, "total_spent_cny": 0.0, "total_calls": 0,
+                "total_topup_count": 0, "total_topup_cny": 0.0,
                 "created": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")}
             data["api_keys"][api_key] = uid
             _save_saas(data)
-            self._json({"ok": True, "user_id": uid, "api_key": api_key, "balance_cny": 0.0,
-                "note": "Top up at http://150.158.119.19:8420 to start using APIs"})
+            self._json({"ok": True, "user_id": uid, "api_key": api_key, "balance_cny": welcome_cny,
+                "welcome_bonus": f"注册即送{welcome_cny}元体验金",
+                "note": "Top up at http://150.158.119.19:8420 to get more credits + bonus ATEX tokens!"})
 
         elif p == '/v1/topup':
-            # 充值（管理接口，后续接支付宝）
+            # 充值（管理接口，后续接支付宝）— 含充值送积分
             topup_uid = d.get("user_id", "")
             amount = d.get("amount_cny", 0)
             if not topup_uid or amount <= 0: return self._json({"err": "user_id and positive amount required"}, 400)
             data = _load_saas()
             user = data["users"].get(topup_uid)
             if not user: return self._json({"err": "user_not_found"}, 404)
-            user["balance_cny"] = round(user["balance_cny"] + amount, 2)
+            # 计算赠送比例
+            bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
+            bonus_active = bonus_cfg.get("active", False)
+            bonus_pct = 0
+            bonus_note = ""
+            if bonus_active:
+                tiers = bonus_cfg.get("tiers", [])
+                # 找到最高匹配的tier
+                for t in sorted(tiers, key=lambda x: x.get("min_cny", 0)):
+                    if amount >= t.get("min_cny", 0):
+                        bonus_pct = t.get("bonus_pct", 0)
+                        bonus_note = t.get("note", "")
+            bonus_cny = round(amount * bonus_pct / 100, 2) if bonus_pct > 0 else 0
+            total_cny = round(amount + bonus_cny, 2)
+            # 更新SaaS余额
+            user["balance_cny"] = round(user.get("balance_cny", 0) + total_cny, 2)
+            user["total_topup_count"] = user.get("total_topup_count", 0) + 1
+            user["total_topup_cny"] = round(user.get("total_topup_cny", 0) + amount, 2)
+            # 计算ATEX赠送
+            atex_bonus = 0
+            atex_details = []
+            if bonus_active:
+                atex_rate = bonus_cfg.get("topup_atex_rate", 0)
+                atex_from_topup = round(amount * atex_rate, 2)
+                if atex_from_topup > 0:
+                    atex_bonus += atex_from_topup
+                    atex_details.append(f"充值送ATEX: {atex_from_topup}")
+                # 首次充值额外送ATEX
+                is_first = user.get("total_topup_count", 1) == 1
+                first_bonus = bonus_cfg.get("first_topup_bonus_atex", 0) if is_first else 0
+                if first_bonus > 0:
+                    atex_bonus += first_bonus
+                    atex_details.append(f"首次充值奖励: {first_bonus} ATEX")
+            # 发放ATEX到Token账户
+            atex_result = None
+            if atex_bonus > 0:
+                # 如果用户有对应的ATEX账户，直接充值
+                if topup_uid in exchange.accounts.get("accounts", {}):
+                    exchange.accounts["accounts"][topup_uid]["balance"] = round(
+                        exchange.accounts["accounts"][topup_uid].get("balance", 0) + atex_bonus, 2)
+                    exchange._save()
+                    atex_result = {"deposited": atex_bonus, "details": atex_details}
+                else:
+                    atex_result = {"pending": atex_bonus, "details": atex_details,
+                                   "note": f"ATEX账户未创建，请先注册ATEX账户领取{atex_bonus} ATEX"}
             _save_saas(data)
-            self._json({"ok": True, "user_id": topup_uid, "balance_cny": user["balance_cny"], "topup": amount})
+            result = {
+                "ok": True, "user_id": topup_uid,
+                "topup_cny": amount, "bonus_cny": bonus_cny, "total_credited_cny": total_cny,
+                "balance_cny": user["balance_cny"],
+            }
+            if bonus_note:
+                result["bonus_note"] = bonus_note
+            if atex_result:
+                result["atex_bonus"] = atex_result
+            self._json(result)
+
+        elif p == '/v1/bonus/info':
+            # 查询充值送积分活动详情
+            bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            is_first = True
+            if auth:
+                saas_data = _load_saas()
+                uid = saas_data["api_keys"].get(auth)
+                if uid:
+                    is_first = saas_data["users"].get(uid, {}).get("total_topup_count", 0) == 0
+            self._json({
+                "promotion": bonus_cfg if bonus_cfg.get("active") else {"active": False},
+                "your_first_topup_bonus_atex": bonus_cfg.get("first_topup_bonus_atex", 0) if (bonus_cfg.get("active") and is_first) else 0,
+                "is_first_topup": is_first,
+                "examples": [
+                    {"topup_cny": 10, "bonus_cny": 1, "bonus_atex": 5, "note": "充10送1元+5ATEX"},
+                    {"topup_cny": 100, "bonus_cny": 20, "bonus_atex": 50, "note": "充100送20元+50ATEX"},
+                    {"topup_cny": 500, "bonus_cny": 150, "bonus_atex": 250, "note": "充500送150元+250ATEX"},
+                    {"topup_cny": 1000, "bonus_cny": 400, "bonus_atex": 500, "note": "充1000送400元+500ATEX"},
+                ] if bonus_cfg.get("active") else [],
+            })
 
         # ── 原ATEX路由 ──
         elif p == '/api/v1/account/create':
@@ -300,13 +395,13 @@ class Handler(BaseHTTPRequestHandler):
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "5.3",
+            "name": "ATEX", "version": "5.4",
             "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
                        "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}",
                        "/api/v1/apis","/api/v1/protocol",
-                       "/v1/models","/v1/balance","/v1/payment/info"],
+                       "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
