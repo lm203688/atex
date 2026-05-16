@@ -1,0 +1,41 @@
+{
+  "name": "@lm203688/atex-mcp-server",
+  "version": "5.4.0",
+  "description": "ATEX MCP Server — Agent Service Trading Platform. Discover, buy, and sell AI services via Model Context Protocol. 35+ services, API proxy, token trading.",
+  "main": "mcp-server/server.py",
+  "bin": {
+    "atex-mcp-server": "mcp-server/start.sh"
+  },
+  "scripts": {
+    "start": "python3 mcp-server/server.py",
+    "inspect": "npx @modelcontextprotocol/inspector python3 mcp-server/server.py"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "agent",
+    "marketplace",
+    "service-trading",
+    "api-proxy",
+    "token-exchange",
+    "ai-services",
+    "deepseek",
+    "ate"
+  ],
+  "author": "lm203688",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lm203688/atex"
+  },
+  "homepage": "https://lm203688.github.io/atex/",
+  "files": [
+    "mcp-server/",
+    "protocol/",
+    "README.md",
+    "LICENSE"
+  ],
+  "mcp": {
+    "server": "mcp-server/server.json"
+  }
+}

@@ -1,0 +1,58 @@
+# ATEX - Git Ignore
+
+# Operational data (NEVER commit)
+accounts/
+orders/
+logs/
+data/
+settlements/
+releases/
+
+# Internal tools
+scripts/
+promo/
+promote.py
+promotion_log.json
+promotion_plan.json
+strategy.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Environment
+.env
+.env.local
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Internal archives
+ATEX_v*_完整存档_*.md
+
+# Agent workspace files
+HEARTBEAT.md
+AGENTS.md
+SOUL.md
+USER.md
+IDENTITY.md
+TOOLS.md
+BOOTSTRAP.md
