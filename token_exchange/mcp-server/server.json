@@ -1,8 +1,8 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@anthropic-ai/mcp-server-schema@latest/schema.json",
   "name": "io.github.lm203688/atex",
-  "version": "5.3.0",
-  "description": "ATEX — Agent Service Trading Platform. Discover, buy, and sell AI services and API access via Model Context Protocol. Includes marketplace (35+ services), API proxy (DeepSeek/OpenAI/Claude), and token trading.",
+  "version": "5.4.0",
+  "description": "ATEX — Agent Service Trading Platform. Discover, buy, and sell AI services and API access via Model Context Protocol. Includes marketplace (48+ services), API proxy (DeepSeek/OpenAI/Claude), token trading, and topup bonus promotion (charge ¥100 get ¥120 + 50 ATEX).",
   "transport": "stdio",
   "runtime": "python",
   "command": "python3",
