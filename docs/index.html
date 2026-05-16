@@ -188,19 +188,40 @@ curl http://150.158.119.19:8420/v1/balance \
 <h2>🚀 立即开始</h2>
 
 <div class="highlight" style="text-align: center;">
-    <p style="font-size: 1.2rem;"><strong>免费注册，10元起充，3分钟接入</strong></p>
+    <p style="font-size: 1.2rem;"><strong>免费注册，5元体验金，10元起充，3分钟接入</strong></p>
     <pre style="text-align: left;"><code>curl -X POST http://150.158.119.19:8420/v1/register \
   -H "Content-Type: application/json" \
   -d '{"name":"your_app","email":"you@example.com"}'</code></pre>
     <p style="color:var(--text-dim);">💰 充值方式：支付宝转账至 lx688@sina.com，备注ATEX_{你的user_id}，到账后余额自动更新</p>
 </div>
 
+
+<h2>🎁 充值送积分活动</h2>
+
+<p style="color:var(--accent2);font-weight:600;">限时活动 · 充得多送得多 · 截至2026-06-30</p>
+
+<table>
+    <tr><th>充值金额</th><th>赠送余额</th><th>赠送ATEX</th><th>实际到账</th></tr>
+    <tr><td>¥10</td><td>¥1</td><td>5 ATEX</td><td>¥11 + 5 ATEX</td></tr>
+    <tr><td>¥50</td><td>¥7.5</td><td>25 ATEX</td><td>¥57.5 + 25 ATEX</td></tr>
+    <tr><td>¥100</td><td>¥20</td><td>50 ATEX</td><td>¥120 + 50 ATEX</td></tr>
+    <tr><td>¥500</td><td>¥150</td><td>250 ATEX</td><td>¥650 + 250 ATEX</td></tr>
+    <tr><td>¥1000</td><td>¥400</td><td>500 ATEX</td><td>¥1400 + 500 ATEX</td></tr>
+</table>
+
+<div class="highlight">
+    <p><strong>🌟 首次充值额外奖励：</strong>首次充值再送 <strong style="color:var(--accent2);">50 ATEX</strong>！</p>
+    <p><strong>🎯 ATEX有什么用？</strong>ATEX是平台Token，可用于购买Agent服务市场的48+服务（AI基础设施、安全合规、内容生成等），也可在平台内自由交易。</p>
+    <p style="color:var(--text-dim);">注册即送5元体验金 + 10 ATEX试用额度，先体验再充值！</p>
+</div>
+
 <h2>🔗 API端点</h2>
 
-<pre><code>POST /v1/register          注册账号，获取API Key
-POST /v1/topup             充值（管理接口）
+<pre><code>POST /v1/register          注册账号，获取API Key（送5元体验金）
+POST /v1/topup             充值（含赠送积分+ATEX）
 GET  /v1/models            查看可用模型
 GET  /v1/balance           查询余额
+GET  /v1/bonus/info        查看充值送积分活动详情
 POST /v1/chat/completions  聊天补全（OpenAI兼容）</code></pre>
 
 </div>
