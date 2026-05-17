@@ -512,7 +512,6 @@
       "name": "金融数据查询",
       "category": "金融",
       "description": "实时股票/加密货币/外汇行情查询，支持全球主要市场。Alpha Vantage数据源+AI增强分析。输入symbol返回价格、涨跌幅、成交量等关键指标。",
-      "price_atex": 3,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -526,7 +525,6 @@
         "volume": "int",
         "source": "string"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "finance",
@@ -534,14 +532,16 @@
         "crypto",
         "forex",
         "alpha-vantage"
-      ]
+      ],
+      "price": 3,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
       "id": "svc_046",
       "name": "GitHub仓库分析",
       "category": "信息情报",
       "description": "深度分析GitHub仓库：star/fork/issue趋势、技术栈、社区健康度、AI Agent适用场景。GitHub API实时数据+AI洞察。",
-      "price_atex": 2,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -554,7 +554,6 @@
         "license": "string",
         "ai_insight": "string"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "github",
@@ -562,14 +561,16 @@
         "analysis",
         "open-source",
         "developer-tools"
-      ]
+      ],
+      "price": 2,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
-      "id": "svc_047",
+      "id": "svc_053",
       "name": "天气查询",
       "category": "信息情报",
       "description": "全球城市实时天气数据：温度、湿度、风速、气压、能见度。OpenWeatherMap数据源，无API Key时AI估算。",
-      "price_atex": 1,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -583,21 +584,22 @@
         "description": "string",
         "wind_speed": "float"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "weather",
         "climate",
         "forecast",
         "openweathermap"
-      ]
+      ],
+      "price": 1,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
-      "id": "svc_048",
+      "id": "svc_054",
       "name": "新闻聚合",
       "category": "信息情报",
       "description": "多源新闻聚合：按主题和国家筛选最新新闻。NewsAPI数据源+AI摘要。覆盖科技、商业、健康等分类。",
-      "price_atex": 2,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -609,21 +611,22 @@
         "articles": "array of {title, source, url, description}",
         "source": "string"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "news",
         "media",
         "aggregation",
         "current-events"
-      ]
+      ],
+      "price": 2,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
       "id": "svc_049",
       "name": "翻译服务",
       "category": "内容",
       "description": "专业多语言翻译：支持100+语言互译，自动检测源语言。DeepSeek多语言模型驱动，比传统翻译API更自然流畅。",
-      "price_atex": 2,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -637,7 +640,6 @@
         "target_lang": "string",
         "char_count": "int"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "translation",
@@ -645,14 +647,16 @@
         "multilingual",
         "language",
         "nlp"
-      ]
+      ],
+      "price": 2,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
       "id": "svc_050",
       "name": "汇率查询",
       "category": "金融",
       "description": "实时汇率查询与换算：支持150+货币，免费API无需Key。输入基础货币和目标货币，返回实时汇率和换算结果。",
-      "price_atex": 1,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -666,21 +670,22 @@
         "last_updated": "string",
         "source": "string"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "exchange-rate",
         "currency",
         "forex",
         "conversion"
-      ]
+      ],
+      "price": 1,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
       "id": "svc_051",
       "name": "二维码生成",
       "category": "工具调用",
       "description": "即时生成二维码：输入任意URL或文本，返回QR Code图片URL。Google Charts API驱动，免费无限制。支持自定义尺寸。",
-      "price_atex": 1,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -692,21 +697,22 @@
         "size": "int",
         "content": "string"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "qr-code",
         "barcode",
         "encoding",
         "image-generation"
-      ]
+      ],
+      "price": 1,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
       "id": "svc_052",
       "name": "IP地理定位",
       "category": "信息情报",
       "description": "IP地址地理定位：返回国家、城市、经纬度、ISP、时区等信息。ip-api.com免费数据源，45次/分钟。",
-      "price_atex": 1,
       "status": "active",
       "provider": "atex_platform",
       "input_schema": {
@@ -720,7 +726,6 @@
         "isp": "string",
         "timezone": "string"
       },
-      "total_sales": 0,
       "total_revenue": 0,
       "tags": [
         "ip",
@@ -728,10 +733,13 @@
         "geoip",
         "location",
         "network"
-      ]
+      ],
+      "price": 1,
+      "total_sold": 0,
+      "unit": "次"
     },
     {
-      "id": "svc_049",
+      "id": "svc_055",
       "name": "AI Agent Token交易分析",
       "provider": "finance_provider",
       "description": "AI Agent Token市场深度分析与交易策略服务。2026年Q2 AI Agent+Token叙事成为结构性驱动力：Fetch.ai(FET)自主交易Agent、SingularityNET(AGIX)去中心化AI市场、Virtuals Protocol代理经济、OpenClaw自然语言交易。AI Trading Agent Marketplace正在崛起，将改变加密货币交易格局。Binance/KuCoin/WEEX等交易所纷纷关注AI Agent Token赛道。本服务提供：AI Agent Token项目评估、链上数据分析、交易策略制定、风险评级、市场情绪监控。覆盖Solana/Ethereum/Base等主流链上AI Agent项目。结合ATEX平台Token交易数据，提供跨平台套利和流动性分析。",
@@ -740,6 +748,32 @@
       "category": "金融",
       "status": "active",
       "created": "2026-05-17 03:01:01",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_056",
+      "name": "Test Bonus Svc",
+      "provider": "test_provider_bonus",
+      "description": "Testing first sale bonus",
+      "price": 10.0,
+      "unit": "次",
+      "category": "测试",
+      "status": "active",
+      "created": "2026-05-18 07:34:30",
+      "total_sold": 1,
+      "total_revenue": 10.0
+    },
+    {
+      "id": "svc_057",
+      "name": "Test Bonus Svc",
+      "provider": "test_provider_bonus",
+      "description": "Testing first sale bonus",
+      "price": 10.0,
+      "unit": "次",
+      "category": "测试",
+      "status": "active",
+      "created": "2026-05-18 07:35:22",
       "total_sold": 0,
       "total_revenue": 0
     }
@@ -926,7 +960,20 @@
       "commission_taker": 1.5,
       "commission_maker": 0.9,
       "time": "2026-05-16 23:00:12"
+    },
+    {
+      "id": "63d96ed5fde6",
+      "service_id": "svc_056",
+      "service_name": "Test Bonus Svc",
+      "buyer": "test_buyer_bonus",
+      "provider": "test_provider_bonus",
+      "quantity": 1,
+      "price_per_unit": 10.0,
+      "total_cost": 10.0,
+      "commission_taker": 0.5,
+      "commission_maker": 0.3,
+      "time": "2026-05-18 07:35:22"
     }
   ],
-  "next_service_id": 50
+  "next_service_id": 58
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ATEX v5.1 — Agent服务交易市场 + 通用API信用Token
+ATEX v5.6 — Agent服务交易市场 + 通用API信用Token
 Agent间Token结算 + 服务市场，统一平台。
 
 两层功能:
@@ -465,9 +465,9 @@ class ATEX:
                 continue
             result.append({
                 "id": s["id"], "name": s["name"], "provider": s["provider"],
-                "description": s["description"], "price": s["price"],
-                "unit": s["unit"], "category": s.get("category"),
-                "total_sold": s["total_sold"]
+                "description": s.get("description", ""), "price": s.get("price", 0),
+                "unit": s.get("unit", "次"), "category": s.get("category"),
+                "total_sold": s.get("total_sold", 0)
             })
         return {"ok": True, "count": len(result), "services": result}
 
@@ -499,7 +499,10 @@ class ATEX:
             return {"ok": False, "err": "cannot_buy_own_service"}
 
         # 计算费用
-        total_cost = service["price"] * quantity
+        price = service.get("price", 0)
+        if price <= 0:
+            return {"ok": False, "err": "invalid_service_price"}
+        total_cost = price * quantity
         available = buyer["balance"] - buyer["frozen"]
         if available < total_cost:
             return {"ok": False, "err": f"insufficient_balance:need={total_cost},available={available}"}
@@ -516,23 +519,23 @@ class ATEX:
         seller["balance"] -= maker_comm
         self.ob["total_commission_earned"] += taker_comm + maker_comm
 
-        # 更新服务统计
-        service["total_sold"] += quantity
-        service["total_revenue"] += total_cost
+        # 更新服务统计（在first_sale_bonus检查之后）
+        service["total_sold"] = service.get("total_sold", 0) + quantity
+        service["total_revenue"] = service.get("total_revenue", 0) + total_cost
 
         # 记录订单
         order = {
             "id": gen_id(), "service_id": service_id,
             "service_name": service["name"],
             "buyer": buyer_id, "provider": service["provider"],
-            "quantity": quantity, "price_per_unit": service["price"],
+            "quantity": quantity, "price_per_unit": price,
             "total_cost": total_cost,
             "commission_taker": taker_comm, "commission_maker": maker_comm,
             "time": now_str()
         }
         self.svc["orders"].append(order)
 
-        # Provider Early Bird: 首笔成交奖励
+        # Provider Early Bird: 首笔成交奖励（必须在total_sold递增之前检查）
         first_sale_bonus = 0
         if service["total_sold"] == 0:  # 这是第一笔成交
             first_sale_bonus = self.config.get("provider_incentive", {}).get("first_sale_bonus", 200)

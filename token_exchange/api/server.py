@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.5 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制"""
+"""ATEX HTTP API v5.6 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -239,6 +239,10 @@ class Handler(BaseHTTPRequestHandler):
             if not model_info: return self._json({"err": f"unknown_model:{model}", "available": list(SAAS_PRICING.keys())}, 400)
             if model_info.get("status") == "coming_soon":
                 return self._json({"err": f"model_coming_soon:{model}", "message": f"{model_info['name']} is coming soon. Register as a provider to offer it."}, 400)
+            # 先检查余额是否足够（最低估算，防止API白调）
+            min_cost = 0.001
+            if user["balance_cny"] < min_cost:
+                return self._json({"err": "insufficient_balance", "balance_cny": user["balance_cny"]}, 402)
             # 调用底层API
             messages = d.get("messages", [])
             prompt = messages[-1].get("content", "") if messages else ""
@@ -253,6 +257,11 @@ class Handler(BaseHTTPRequestHandler):
             cost_cny = round(model_info["input_per_1k"] * input_tokens / 1000 + model_info["output_per_1k"] * output_tokens / 1000, 6)
             cost_cny = max(cost_cny, 0.001)
             if not _deduct(user["user_id"], cost_cny, model, input_tokens, output_tokens):
+                # 余额不足但API已调用 — 记录坏账
+                data = _load_saas()
+                data.setdefault("bad_debt", 0)
+                data["bad_debt"] = round(data["bad_debt"] + cost_cny, 6)
+                _save_saas(data)
                 return self._json({"err": "insufficient_balance", "balance_cny": user["balance_cny"], "cost_cny": cost_cny}, 402)
             # 返回OpenAI格式
             self._json({
@@ -260,7 +269,7 @@ class Handler(BaseHTTPRequestHandler):
                 "model": model, "created": int(time.time()),
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
                 "usage": {"prompt_tokens": input_tokens, "completion_tokens": output_tokens, "total_tokens": input_tokens + output_tokens},
-                "cost_cny": cost_cny, "remaining_balance_cny": round(user["balance_cny"] - cost_cny, 6)
+                "cost_cny": cost_cny, "remaining_balance_cny": round(user["balance_cny"], 6)
             })
 
         elif p == '/v1/register':
@@ -661,7 +670,7 @@ class Handler(BaseHTTPRequestHandler):
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "5.5",
+            "name": "ATEX", "version": "5.6",
             "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
@@ -691,5 +700,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
     server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"ATEX v6.0 (SaaS+Marketplace) on 0.0.0.0:{port}", flush=True)
+    print(f"ATEX v5.6 (SaaS+Marketplace) on 0.0.0.0:{port}", flush=True)
     server.serve_forever()
