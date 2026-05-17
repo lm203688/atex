@@ -22,10 +22,20 @@ def _load_saas():
     path = os.path.join(SAAS_DATA, "users.json")
     if os.path.exists(path):
         with open(path) as f: return json.load(f)
-    return {"users": {}, "api_keys": {}, "usage": []}
+    return {"users": {}, "api_keys": {}, "usage": [], "topup_requests": []}
 
 def _save_saas(data):
     path = os.path.join(SAAS_DATA, "users.json")
+    with open(path, "w") as f: json.dump(data, f, ensure_ascii=False, indent=2)
+
+def _load_topup_requests():
+    path = os.path.join(SAAS_DATA, "topup_requests.json")
+    if os.path.exists(path):
+        with open(path) as f: return json.load(f)
+    return {"pending": [], "completed": []}
+
+def _save_topup_requests(data):
+    path = os.path.join(SAAS_DATA, "topup_requests.json")
     with open(path, "w") as f: json.dump(data, f, ensure_ascii=False, indent=2)
 
 def _saas_user(api_key):
@@ -289,70 +299,173 @@ class Handler(BaseHTTPRequestHandler):
                 "trial_expires": trial_expires,
                 "note": "Top up at http://150.158.119.19:8420 to get more credits + bonus ATEX tokens!"})
 
-        elif p == '/v1/topup':
-            # 充值（管理接口，后续接支付宝）— 含充值送积分
-            topup_uid = d.get("user_id", "")
+        elif p == '/v1/topup/apply':
+            # 第一步：用户提交充值申请 → 生成参考码 + 支付指引
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
             amount = d.get("amount_cny", 0)
-            if not topup_uid or amount <= 0: return self._json({"err": "user_id and positive amount required"}, 400)
-            data = _load_saas()
-            user = data["users"].get(topup_uid)
-            if not user: return self._json({"err": "user_not_found"}, 404)
-            # 计算赠送比例
+            if amount < 10: return self._json({"err": "min_topup_10_cny"}, 400)
+            # 生成6位参考码
+            ref_code = f"ATX{secrets.token_hex(3).upper()}"
+            # 计算赠送预览
             bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
             bonus_active = bonus_cfg.get("active", False)
             bonus_pct = 0
             bonus_note = ""
             if bonus_active:
-                tiers = bonus_cfg.get("tiers", [])
-                # 找到最高匹配的tier
-                for t in sorted(tiers, key=lambda x: x.get("min_cny", 0)):
+                for t in sorted(bonus_cfg.get("tiers", []), key=lambda x: x.get("min_cny", 0)):
                     if amount >= t.get("min_cny", 0):
                         bonus_pct = t.get("bonus_pct", 0)
                         bonus_note = t.get("note", "")
             bonus_cny = round(amount * bonus_pct / 100, 2) if bonus_pct > 0 else 0
-            total_cny = round(amount + bonus_cny, 2)
+            atex_rate = bonus_cfg.get("topup_atex_rate", 0) if bonus_active else 0
+            atex_from_topup = round(amount * atex_rate, 2)
+            is_first = user.get("total_topup_count", 0) == 0
+            first_bonus = bonus_cfg.get("first_topup_bonus_atex", 0) if (bonus_active and is_first) else 0
+            total_atex = atex_from_topup + first_bonus
+            # 保存申请记录
+            req_data = _load_topup_requests()
+            request_record = {
+                "ref_code": ref_code,
+                "user_id": user["user_id"],
+                "user_name": user.get("name", ""),
+                "amount_cny": amount,
+                "bonus_cny": bonus_cny,
+                "bonus_atex": total_atex,
+                "status": "pending",
+                "created": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            req_data["pending"].append(request_record)
+            _save_topup_requests(req_data)
+            self._json({
+                "ok": True,
+                "ref_code": ref_code,
+                "amount_cny": amount,
+                "bonus_cny": bonus_cny,
+                "bonus_atex": total_atex,
+                "total_credited_cny": round(amount + bonus_cny, 2),
+                "is_first_topup": is_first,
+                "payment": {
+                    "alipay": "lx688@sina.com",
+                    "paypal": "https://paypal.me/xinglixingli",
+                    "note": f"请转账{amount}元，备注填写参考码：{ref_code}",
+                    "steps": [
+                        f"1. 支付宝转账至 lx688@sina.com",
+                        f"2. 转账金额：{amount}元",
+                        f"3. 转账备注：{ref_code}",
+                        "4. 管理员确认后余额自动到账（含赠送）",
+                    ],
+                },
+            })
+
+        elif p == '/v1/topup/status':
+            # 第二步：用户查询自己的充值记录
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
+            req_data = _load_topup_requests()
+            my_pending = [r for r in req_data["pending"] if r["user_id"] == user["user_id"]]
+            my_completed = [r for r in req_data["completed"] if r["user_id"] == user["user_id"]][-10:]
+            self._json({
+                "pending": my_pending,
+                "completed": my_completed,
+                "balance_cny": user.get("balance_cny", 0),
+            })
+
+        elif p == '/v1/topup':
+            # 第三步：管理员确认到账（需admin token）
+            admin_token = d.get("admin_token", "")
+            if admin_token != "atex_admin_2026":
+                return self._json({"err": "unauthorized", "note": "需要管理员token"}, 403)
+            ref_code = d.get("ref_code", "")
+            confirmed_amount = d.get("amount_cny", 0)  # 实际到账金额（可调整）
+            if not ref_code: return self._json({"err": "ref_code_required"}, 400)
+            req_data = _load_topup_requests()
+            # 查找pending记录
+            target = None
+            for r in req_data["pending"]:
+                if r["ref_code"] == ref_code:
+                    target = r
+                    break
+            if not target:
+                return self._json({"err": "ref_code_not_found", "pending_count": len(req_data["pending"])}, 404)
+            # 用实际到账金额或申请金额
+            actual_amount = confirmed_amount if confirmed_amount > 0 else target["amount_cny"]
+            # 重新计算赠送
+            bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
+            bonus_active = bonus_cfg.get("active", False)
+            bonus_pct = 0
+            bonus_note = ""
+            if bonus_active:
+                for t in sorted(bonus_cfg.get("tiers", []), key=lambda x: x.get("min_cny", 0)):
+                    if actual_amount >= t.get("min_cny", 0):
+                        bonus_pct = t.get("bonus_pct", 0)
+                        bonus_note = t.get("note", "")
+            bonus_cny = round(actual_amount * bonus_pct / 100, 2) if bonus_pct > 0 else 0
+            total_cny = round(actual_amount + bonus_cny, 2)
             # 更新SaaS余额
+            saas_data = _load_saas()
+            user = saas_data["users"].get(target["user_id"])
+            if not user:
+                return self._json({"err": "user_not_found"}, 404)
             user["balance_cny"] = round(user.get("balance_cny", 0) + total_cny, 2)
             user["total_topup_count"] = user.get("total_topup_count", 0) + 1
-            user["total_topup_cny"] = round(user.get("total_topup_cny", 0) + amount, 2)
-            # 计算ATEX赠送
+            user["total_topup_cny"] = round(user.get("total_topup_cny", 0) + actual_amount, 2)
+            # ATEX赠送
             atex_bonus = 0
             atex_details = []
             if bonus_active:
                 atex_rate = bonus_cfg.get("topup_atex_rate", 0)
-                atex_from_topup = round(amount * atex_rate, 2)
+                atex_from_topup = round(actual_amount * atex_rate, 2)
                 if atex_from_topup > 0:
                     atex_bonus += atex_from_topup
                     atex_details.append(f"充值送ATEX: {atex_from_topup}")
-                # 首次充值额外送ATEX
                 is_first = user.get("total_topup_count", 1) == 1
                 first_bonus = bonus_cfg.get("first_topup_bonus_atex", 0) if is_first else 0
                 if first_bonus > 0:
                     atex_bonus += first_bonus
                     atex_details.append(f"首次充值奖励: {first_bonus} ATEX")
-            # 发放ATEX到Token账户
             atex_result = None
             if atex_bonus > 0:
-                # 如果用户有对应的ATEX账户，直接充值
-                if topup_uid in exchange.accounts.get("accounts", {}):
-                    exchange.accounts["accounts"][topup_uid]["balance"] = round(
-                        exchange.accounts["accounts"][topup_uid].get("balance", 0) + atex_bonus, 2)
+                if target["user_id"] in exchange.accounts.get("accounts", {}):
+                    exchange.accounts["accounts"][target["user_id"]]["balance"] = round(
+                        exchange.accounts["accounts"][target["user_id"]].get("balance", 0) + atex_bonus, 2)
                     exchange._save()
                     atex_result = {"deposited": atex_bonus, "details": atex_details}
                 else:
-                    atex_result = {"pending": atex_bonus, "details": atex_details,
-                                   "note": f"ATEX账户未创建，请先注册ATEX账户领取{atex_bonus} ATEX"}
-            _save_saas(data)
+                    atex_result = {"pending": atex_bonus, "details": atex_details}
+            _save_saas(saas_data)
+            # 移动到completed
+            target["status"] = "completed"
+            target["confirmed_at"] = datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
+            target["actual_amount_cny"] = actual_amount
+            target["bonus_cny"] = bonus_cny
+            target["bonus_atex"] = atex_bonus
+            req_data["pending"].remove(target)
+            req_data["completed"].append(target)
+            _save_topup_requests(req_data)
             result = {
-                "ok": True, "user_id": topup_uid,
-                "topup_cny": amount, "bonus_cny": bonus_cny, "total_credited_cny": total_cny,
+                "ok": True, "ref_code": ref_code,
+                "user_id": target["user_id"], "user_name": target.get("user_name", ""),
+                "topup_cny": actual_amount, "bonus_cny": bonus_cny, "total_credited_cny": total_cny,
                 "balance_cny": user["balance_cny"],
             }
-            if bonus_note:
-                result["bonus_note"] = bonus_note
-            if atex_result:
-                result["atex_bonus"] = atex_result
+            if bonus_note: result["bonus_note"] = bonus_note
+            if atex_result: result["atex_bonus"] = atex_result
             self._json(result)
+
+        elif p == '/v1/topup/admin/list':
+            # 管理员查看所有待确认充值
+            admin_token = d.get("admin_token", "")
+            if admin_token != "atex_admin_2026":
+                return self._json({"err": "unauthorized"}, 403)
+            req_data = _load_topup_requests()
+            self._json({
+                "pending": req_data["pending"],
+                "completed_count": len(req_data["completed"]),
+                "recent_completed": req_data["completed"][-10:],
+            })
 
         elif p == '/v1/bonus/info':
             # 查询充值送积分活动详情
@@ -559,7 +672,7 @@ class Handler(BaseHTTPRequestHandler):
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
                         "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove",
-                        "/v1/register","/v1/topup","/v1/chat/completions","/v1/subscription/subscribe","/api/v1/deploy"]
+                        "/v1/register","/v1/topup","/v1/topup/apply","/v1/topup/status","/v1/topup/admin/list","/v1/chat/completions","/v1/subscription/subscribe","/api/v1/deploy"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",
