@@ -1,7 +1,7 @@
 {
-  "version": "5.4",
+  "version": "5.5",
   "name": "ATEX",
-  "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）",
+  "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
   "created": "2026-05-09",
   "updated": "2026-05-17",
   "api_url": "http://150.158.119.19:8420",
@@ -195,5 +195,68 @@
       "active": true,
       "expires": "2026-06-30"
     }
+  },
+  "subscription_plans": {
+    "description": "ATEX订阅制 — 按月付费，API随便用",
+    "plans": [
+      {
+        "id": "free",
+        "name": "免费版",
+        "price_cny": 0,
+        "period": "monthly",
+        "features": ["按次计费", "DeepSeek Chat/Reasoner", "5元注册体验金"],
+        "limits": {"models": ["deepseek-chat", "deepseek-reasoner"], "type": "pay_per_use"},
+        "bonus_atex": 0
+      },
+      {
+        "id": "basic",
+        "name": "基础版",
+        "price_cny": 49,
+        "period": "monthly",
+        "features": ["DeepSeek Chat无限量", "DeepSeek Reasoner 1000次/月", "50 ATEX/月", "服务市场9折"],
+        "limits": {
+          "models": ["deepseek-chat", "deepseek-reasoner"],
+          "deepseek-chat": "unlimited",
+          "deepseek-reasoner": 1000,
+          "service_discount": 0.9
+        },
+        "bonus_atex": 50,
+        "highlight": "最受欢迎"
+      },
+      {
+        "id": "pro",
+        "name": "专业版",
+        "price_cny": 199,
+        "period": "monthly",
+        "features": ["全部模型无限量", "200 ATEX/月", "服务市场8折", "优先队列", "MCP Server高级工具"],
+        "limits": {
+          "models": ["deepseek-chat", "deepseek-reasoner", "gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet", "claude-3-5-haiku"],
+          "all_models": "unlimited",
+          "service_discount": 0.8,
+          "priority_queue": true
+        },
+        "bonus_atex": 200,
+        "highlight": "性价比最高"
+      },
+      {
+        "id": "enterprise",
+        "name": "企业版",
+        "price_cny": 999,
+        "period": "monthly",
+        "features": ["全部模型无限量", "1000 ATEX/月", "服务市场7折", "专属支持", "自定义模型接入", "SLA保障"],
+        "limits": {
+          "models": ["deepseek-chat", "deepseek-reasoner", "gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet", "claude-3-5-haiku", "custom"],
+          "all_models": "unlimited",
+          "service_discount": 0.7,
+          "priority_queue": true,
+          "custom_models": true,
+          "dedicated_support": true
+        },
+        "bonus_atex": 1000
+      }
+    ],
+    "active": true,
+    "trial_days": 3,
+    "trial_plan": "basic"
   }
 }

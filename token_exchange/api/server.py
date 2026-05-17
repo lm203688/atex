@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v6.0 — 多AI API按次收费SaaS + Agent服务交易市场"""
+"""ATEX HTTP API v5.5 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -38,6 +38,47 @@ def _deduct(uid, cost_cny, model, input_tokens, output_tokens):
     data = _load_saas()
     user = data["users"].get(uid)
     if not user: return False
+    # 订阅用户：检查免费额度
+    sub = user.get("subscription", {})
+    plan_id = sub.get("plan", "free")
+    if plan_id != "free" and sub.get("expires", "") > datetime.now(TZ).strftime("%Y-%m-%d"):
+        # 订阅有效，检查模型限额
+        plan_cfg = _get_plan(plan_id)
+        if plan_cfg:
+            model_limit = plan_cfg.get("limits", {}).get(model, plan_cfg.get("limits", {}).get("all_models", 0))
+            if model_limit == "unlimited":
+                # 无限量，不扣费，只记录
+                user["total_calls"] = user.get("total_calls", 0) + 1
+                data["usage"].append({
+                    "user_id": uid, "model": model,
+                    "input_tokens": input_tokens, "output_tokens": output_tokens,
+                    "cost_cny": 0, "subscription": plan_id,
+                    "time": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
+                })
+                if len(data["usage"]) > 10000: data["usage"] = data["usage"][-5000:]
+                _save_saas(data)
+                return True
+            elif isinstance(model_limit, int) and model_limit > 0:
+                # 有月限额，检查已用次数
+                month_key = datetime.now(TZ).strftime("%Y-%m")
+                usage_key = f"sub_usage_{month_key}"
+                used = sub.get(usage_key, {}).get(model, 0)
+                if used < model_limit:
+                    # 还在限额内，不扣费
+                    if usage_key not in sub: sub[usage_key] = {}
+                    sub[usage_key][model] = used + 1
+                    user["total_calls"] = user.get("total_calls", 0) + 1
+                    data["usage"].append({
+                        "user_id": uid, "model": model,
+                        "input_tokens": input_tokens, "output_tokens": output_tokens,
+                        "cost_cny": 0, "subscription": plan_id,
+                        "time": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    if len(data["usage"]) > 10000: data["usage"] = data["usage"][-5000:]
+                    _save_saas(data)
+                    return True
+                # 超出限额，按次扣费
+    # 非订阅或超出限额：按次扣费
     if user["balance_cny"] < cost_cny: return False
     user["balance_cny"] = round(user["balance_cny"] - cost_cny, 6)
     user["total_spent_cny"] = round(user.get("total_spent_cny", 0) + cost_cny, 6)
@@ -50,6 +91,13 @@ def _deduct(uid, cost_cny, model, input_tokens, output_tokens):
     if len(data["usage"]) > 10000: data["usage"] = data["usage"][-5000:]
     _save_saas(data)
     return True
+
+def _get_plan(plan_id):
+    plans = exchange.config.get("subscription_plans", {}).get("plans", [])
+    for p in plans:
+        if p.get("id") == plan_id:
+            return p
+    return None
 
 # ── SaaS定价 ──
 SAAS_PRICING = {
@@ -215,14 +263,30 @@ class Handler(BaseHTTPRequestHandler):
             api_key = f"atex_sk_{secrets.token_hex(24)}"
             # 注册赠送：5元体验金
             welcome_cny = 5.0
+            # 3天基础版试用
+            sub_cfg = exchange.config.get("subscription_plans", {})
+            trial_days = sub_cfg.get("trial_days", 3)
+            trial_plan = sub_cfg.get("trial_plan", "basic")
+            trial_plan_cfg = _get_plan(trial_plan) or {}
+            trial_expires = (datetime.now(TZ) + timedelta(days=trial_days)).strftime("%Y-%m-%d")
             data["users"][uid] = {"user_id": uid, "name": name, "email": email,
                 "api_key": api_key, "balance_cny": welcome_cny, "total_spent_cny": 0.0, "total_calls": 0,
                 "total_topup_count": 0, "total_topup_cny": 0.0,
+                "subscription": {
+                    "plan": trial_plan,
+                    "plan_name": trial_plan_cfg.get("name", "基础版试用"),
+                    "started": datetime.now(TZ).strftime("%Y-%m-%d"),
+                    "expires": trial_expires,
+                    "auto_renew": False,
+                    "is_trial": True,
+                },
                 "created": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")}
             data["api_keys"][api_key] = uid
             _save_saas(data)
             self._json({"ok": True, "user_id": uid, "api_key": api_key, "balance_cny": welcome_cny,
                 "welcome_bonus": f"注册即送{welcome_cny}元体验金",
+                "subscription_trial": f"{trial_days}天{trial_plan_cfg.get('name','基础版')}免费试用",
+                "trial_expires": trial_expires,
                 "note": "Top up at http://150.158.119.19:8420 to get more credits + bonus ATEX tokens!"})
 
         elif p == '/v1/topup':
@@ -312,6 +376,95 @@ class Handler(BaseHTTPRequestHandler):
                 ] if bonus_cfg.get("active") else [],
             })
 
+        elif p == '/v1/subscription/plans':
+            # 查看订阅方案
+            sub_cfg = exchange.config.get("subscription_plans", {})
+            plans = sub_cfg.get("plans", [])
+            result = {
+                "active": sub_cfg.get("active", False),
+                "trial_days": sub_cfg.get("trial_days", 0),
+                "trial_plan": sub_cfg.get("trial_plan", ""),
+                "plans": []
+            }
+            for plan in plans:
+                result["plans"].append({
+                    "id": plan["id"],
+                    "name": plan["name"],
+                    "price_cny": plan["price_cny"],
+                    "period": plan["period"],
+                    "features": plan["features"],
+                    "bonus_atex": plan.get("bonus_atex", 0),
+                    "highlight": plan.get("highlight", ""),
+                })
+            self._json(result)
+
+        elif p == '/v1/subscription/subscribe':
+            # 订阅（管理接口，后续接支付宝自动扣款）
+            uid = d.get("user_id", "")
+            plan_id = d.get("plan_id", "")
+            if not uid or not plan_id: return self._json({"err": "user_id and plan_id required"}, 400)
+            plan = _get_plan(plan_id)
+            if not plan: return self._json({"err": "invalid_plan_id", "available": ["free","basic","pro","enterprise"]}, 400)
+            if plan["price_cny"] == 0: return self._json({"err": "free_plan_no_subscription_needed"}, 400)
+            data = _load_saas()
+            user = data["users"].get(uid)
+            if not user: return self._json({"err": "user_not_found"}, 404)
+            # 设置订阅（实际扣费需接支付宝自动扣款，当前为管理接口）
+            from datetime import timedelta
+            expires = (datetime.now(TZ) + timedelta(days=30)).strftime("%Y-%m-%d")
+            user["subscription"] = {
+                "plan": plan_id,
+                "plan_name": plan["name"],
+                "started": datetime.now(TZ).strftime("%Y-%m-%d"),
+                "expires": expires,
+                "auto_renew": True,
+            }
+            # 发放月度ATEX奖励
+            bonus = plan.get("bonus_atex", 0)
+            if bonus > 0 and uid in exchange.accounts.get("accounts", {}):
+                exchange.accounts["accounts"][uid]["balance"] = round(
+                    exchange.accounts["accounts"][uid].get("balance", 0) + bonus, 2)
+                exchange._save()
+            _save_saas(data)
+            self._json({
+                "ok": True, "user_id": uid,
+                "plan": plan_id, "plan_name": plan["name"],
+                "price_cny": plan["price_cny"], "period": plan["period"],
+                "expires": expires,
+                "bonus_atex": bonus,
+                "features": plan["features"],
+                "note": "订阅已激活。自动扣费功能开发中，当前需管理员确认付款。"
+            })
+
+        elif p == '/v1/subscription/status':
+            # 查询订阅状态
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            if not auth: return self._json({"err": "authorization_required"}, 401)
+            data = _load_saas()
+            uid = data["api_keys"].get(auth)
+            if not uid: return self._json({"err": "invalid_api_key"}, 401)
+            user = data["users"].get(uid, {})
+            sub = user.get("subscription", {})
+            plan_id = sub.get("plan", "free")
+            # 检查是否过期
+            if plan_id != "free" and sub.get("expires", "") < datetime.now(TZ).strftime("%Y-%m-%d"):
+                sub["plan"] = "free"
+                sub["plan_name"] = "免费版"
+                sub["expired"] = True
+                _save_saas(data)
+                plan_id = "free"
+            plan = _get_plan(plan_id) or _get_plan("free")
+            self._json({
+                "user_id": uid,
+                "plan": plan_id,
+                "plan_name": sub.get("plan_name", plan.get("name", "免费版")),
+                "started": sub.get("started", ""),
+                "expires": sub.get("expires", ""),
+                "auto_renew": sub.get("auto_renew", False),
+                "features": plan.get("features", []),
+                "bonus_atex_monthly": plan.get("bonus_atex", 0),
+            })
+
         # ── 原ATEX路由 ──
         elif p == '/api/v1/account/create':
             r = exchange.create_account(d.get("account_id",""), d.get("role","trader"))
@@ -395,18 +548,18 @@ class Handler(BaseHTTPRequestHandler):
         else: self._json({"err":"not_found"}, 404)
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "5.4",
+            "name": "ATEX", "version": "5.5",
             "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
                        "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}",
                        "/api/v1/apis","/api/v1/protocol",
-                       "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info"],
+                       "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info","/v1/subscription/plans","/v1/subscription/status"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
                         "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove",
-                        "/v1/register","/v1/topup","/v1/chat/completions","/api/v1/deploy"]
+                        "/v1/register","/v1/topup","/v1/chat/completions","/v1/subscription/subscribe","/api/v1/deploy"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",
