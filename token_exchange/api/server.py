@@ -540,7 +540,6 @@ class Handler(BaseHTTPRequestHandler):
             user = data["users"].get(uid)
             if not user: return self._json({"err": "user_not_found"}, 404)
             # 设置订阅（实际扣费需接支付宝自动扣款，当前为管理接口）
-            from datetime import timedelta
             expires = (datetime.now(TZ) + timedelta(days=30)).strftime("%Y-%m-%d")
             user["subscription"] = {
                 "plan": plan_id,
