@@ -1,9 +1,9 @@
 {
-  "version": "5.5",
+  "version": "5.6",
   "name": "ATEX",
   "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
   "created": "2026-05-09",
-  "updated": "2026-05-17",
+  "updated": "2026-05-18",
   "api_url": "http://150.158.119.19:8420",
   "public_endpoint": "http://150.158.119.19:8420/api/v1",
   "commission_rate": {
@@ -182,11 +182,31 @@
     "topup_bonus": {
       "description": "充值送积分活动 — 充得多送得多",
       "tiers": [
-        {"min_cny": 10, "bonus_pct": 10, "note": "充10元送1元"},
-        {"min_cny": 50, "bonus_pct": 15, "note": "充50元送7.5元"},
-        {"min_cny": 100, "bonus_pct": 20, "note": "充100元送20元"},
-        {"min_cny": 500, "bonus_pct": 30, "note": "充500元送150元"},
-        {"min_cny": 1000, "bonus_pct": 40, "note": "充1000元送400元"}
+        {
+          "min_cny": 10,
+          "bonus_pct": 10,
+          "note": "充10元送1元"
+        },
+        {
+          "min_cny": 50,
+          "bonus_pct": 15,
+          "note": "充50元送7.5元"
+        },
+        {
+          "min_cny": 100,
+          "bonus_pct": 20,
+          "note": "充100元送20元"
+        },
+        {
+          "min_cny": 500,
+          "bonus_pct": 30,
+          "note": "充500元送150元"
+        },
+        {
+          "min_cny": 1000,
+          "bonus_pct": 40,
+          "note": "充1000元送400元"
+        }
       ],
       "first_topup_bonus_atex": 50,
       "first_topup_note": "首次充值额外送50 ATEX",
@@ -204,8 +224,18 @@
         "name": "免费版",
         "price_cny": 0,
         "period": "monthly",
-        "features": ["按次计费", "DeepSeek Chat/Reasoner", "5元注册体验金"],
-        "limits": {"models": ["deepseek-chat", "deepseek-reasoner"], "type": "pay_per_use"},
+        "features": [
+          "按次计费",
+          "DeepSeek Chat/Reasoner",
+          "5元注册体验金"
+        ],
+        "limits": {
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner"
+          ],
+          "type": "pay_per_use"
+        },
         "bonus_atex": 0
       },
       {
@@ -213,9 +243,17 @@
         "name": "基础版",
         "price_cny": 49,
         "period": "monthly",
-        "features": ["DeepSeek Chat无限量", "DeepSeek Reasoner 1000次/月", "50 ATEX/月", "服务市场9折"],
+        "features": [
+          "DeepSeek Chat无限量",
+          "DeepSeek Reasoner 1000次/月",
+          "50 ATEX/月",
+          "服务市场9折"
+        ],
         "limits": {
-          "models": ["deepseek-chat", "deepseek-reasoner"],
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner"
+          ],
           "deepseek-chat": "unlimited",
           "deepseek-reasoner": 1000,
           "service_discount": 0.9
@@ -228,9 +266,22 @@
         "name": "专业版",
         "price_cny": 199,
         "period": "monthly",
-        "features": ["全部模型无限量", "200 ATEX/月", "服务市场8折", "优先队列", "MCP Server高级工具"],
+        "features": [
+          "全部模型无限量",
+          "200 ATEX/月",
+          "服务市场8折",
+          "优先队列",
+          "MCP Server高级工具"
+        ],
         "limits": {
-          "models": ["deepseek-chat", "deepseek-reasoner", "gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet", "claude-3-5-haiku"],
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner",
+            "gpt-4o-mini",
+            "gpt-4o",
+            "claude-3-5-sonnet",
+            "claude-3-5-haiku"
+          ],
           "all_models": "unlimited",
           "service_discount": 0.8,
           "priority_queue": true
@@ -243,9 +294,24 @@
         "name": "企业版",
         "price_cny": 999,
         "period": "monthly",
-        "features": ["全部模型无限量", "1000 ATEX/月", "服务市场7折", "专属支持", "自定义模型接入", "SLA保障"],
+        "features": [
+          "全部模型无限量",
+          "1000 ATEX/月",
+          "服务市场7折",
+          "专属支持",
+          "自定义模型接入",
+          "SLA保障"
+        ],
         "limits": {
-          "models": ["deepseek-chat", "deepseek-reasoner", "gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet", "claude-3-5-haiku", "custom"],
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner",
+            "gpt-4o-mini",
+            "gpt-4o",
+            "claude-3-5-sonnet",
+            "claude-3-5-haiku",
+            "custom"
+          ],
           "all_models": "unlimited",
           "service_discount": 0.7,
           "priority_queue": true,
