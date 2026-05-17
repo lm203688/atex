@@ -212,17 +212,39 @@ curl http://150.158.119.19:8420/v1/balance \
 <div class="highlight">
     <p><strong>🌟 首次充值额外奖励：</strong>首次充值再送 <strong style="color:var(--accent2);">50 ATEX</strong>！</p>
     <p><strong>🎯 ATEX有什么用？</strong>ATEX是平台Token，可用于购买Agent服务市场的48+服务（AI基础设施、安全合规、内容生成等），也可在平台内自由交易。</p>
-    <p style="color:var(--text-dim);">注册即送5元体验金 + 10 ATEX试用额度，先体验再充值！</p>
+    <p style="color:var(--text-dim);">注册即送5元体验金 + 3天基础版免费试用，先体验再充值！</p>
 </div>
+
+<h2>💎 订阅方案</h2>
+
+<p style="color:var(--accent2);font-weight:600;">按月付费，API随便用 · 注册送3天基础版试用</p>
+
+<table>
+    <tr><th>方案</th><th>月费</th><th>DeepSeek Chat</th><th>DeepSeek Reasoner</th><th>ATEX/月</th><th>服务折扣</th></tr>
+    <tr><td>免费版</td><td>¥0</td><td>按次计费</td><td>按次计费</td><td>0</td><td>无</td></tr>
+    <tr><td>基础版 ⭐</td><td>¥49</td><td><strong>无限量</strong></td><td>1000次/月</td><td>50</td><td>9折</td></tr>
+    <tr><td>专业版 🔥</td><td>¥199</td><td><strong>无限量</strong></td><td><strong>无限量</strong></td><td>200</td><td>8折</td></tr>
+    <tr><td>企业版</td><td>¥999</td><td><strong>无限量</strong></td><td><strong>无限量</strong></td><td>1000</td><td>7折</td></tr>
+</table>
+
+<div class="highlight">
+    <p><strong>🎯 基础版 ¥49/月</strong>：DeepSeek Chat无限量调用，再也不用担心余额不够！</p>
+    <p><strong>🔥 专业版 ¥199/月</strong>：全部模型无限量 + 200 ATEX/月 + 服务8折，性价比最高！</p>
+    <p style="color:var(--text-dim);">专业版/企业版包含即将上线的GPT-4o和Claude 3.5，现在订阅锁定早鸟价</p>
+</div>
+
 
 <h2>🔗 API端点</h2>
 
-<pre><code>POST /v1/register          注册账号，获取API Key（送5元体验金）
-POST /v1/topup             充值（含赠送积分+ATEX）
+POST /v1/register              注册账号（送5元+3天基础版试用）
+POST /v1/topup                 充值（含赠送积分+ATEX）
 GET  /v1/models            查看可用模型
-GET  /v1/balance           查询余额
-GET  /v1/bonus/info        查看充值送积分活动详情
-POST /v1/chat/completions  聊天补全（OpenAI兼容）</code></pre>
+GET  /v1/balance               查询余额
+GET  /v1/bonus/info            充值送积分活动详情
+GET  /v1/subscription/plans    查看订阅方案
+GET  /v1/subscription/status   查询订阅状态
+POST /v1/subscription/subscribe 订阅方案
+POST /v1/chat/completions      聊天补全（OpenAI兼容）
 
 </div>
 
