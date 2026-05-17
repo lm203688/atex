@@ -3,7 +3,7 @@
 ATEX Service Executor v5 — 真实API聚合执行层 + z-ai SDK服务
 自有服务生态：DeepSeek + Web搜索 + 网页阅读 + 图片生成/理解 + TTS/ASR
 """
-import json, os, sys, urllib.request, urllib.error, subprocess
+import json, os, sys, urllib.request, urllib.error, urllib.parse, subprocess
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-db4c943047934a6bbd1640a3efd98e6b")
 DEEPSEEK_BASE = "https://api.deepseek.com/v1"

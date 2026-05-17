@@ -134,6 +134,14 @@ ip_limiter = IPRateLimiter()
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except Exception as e:
+            try:
+                self._json({"err":"internal_error","message":str(e)}, 500)
+            except:
+                pass
     def _ip(self): return self.client_address[0]
     def _json(self, data, status=200):
         try:
