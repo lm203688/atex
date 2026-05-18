@@ -1,0 +1,328 @@
+{
+  "version": "5.6",
+  "name": "ATEX",
+  "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
+  "created": "2026-05-09",
+  "updated": "2026-05-18",
+  "api_url": "http://150.158.119.19:8420",
+  "public_endpoint": "http://150.158.119.19:8420/api/v1",
+  "commission_rate": {
+    "maker": 0.03,
+    "taker": 0.05,
+    "tiers": [
+      {
+        "min_volume": 0,
+        "taker_rate": 0.05,
+        "maker_rate": 0.03
+      },
+      {
+        "min_volume": 1000,
+        "taker_rate": 0.03,
+        "maker_rate": 0.01
+      },
+      {
+        "min_volume": 10000,
+        "taker_rate": 0.02,
+        "maker_rate": 0.005
+      },
+      {
+        "min_volume": 100000,
+        "taker_rate": 0.01,
+        "maker_rate": 0.001
+      }
+    ]
+  },
+  "risk_control": {
+    "daily_trade_limit": 1000000,
+    "max_single_order": 100000,
+    "max_price_deviation": 5.0,
+    "rate_limit_per_minute": 60,
+    "self_trade_prevention": true,
+    "new_account_daily_limit": 10000
+  },
+  "trading_rules": {
+    "price_tick": 0.01,
+    "min_order_size": 1,
+    "max_order_size": 1000000,
+    "order_ttl_hours": 168,
+    "matching": "price_time_priority",
+    "partial_fill": true,
+    "self_trade": "blocked"
+  },
+  "token": {
+    "symbol": "ATEX",
+    "initial_supply": 1000000,
+    "distribution": "PoS",
+    "registration_credit": 10,
+    "registration_credit_note": "10 ATEX trial credit. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."
+  },
+  "provider_incentive": {
+    "register_bonus": 50,
+    "register_bonus_note": "50 ATEX for registering as a provider",
+    "first_listing_bonus": 100,
+    "first_listing_bonus_note": "100 ATEX for listing your first service",
+    "first_sale_bonus": 200,
+    "first_sale_bonus_note": "200 ATEX for your first sale + 30 days zero commission",
+    "monthly_volume_bonus": 500,
+    "monthly_volume_threshold": 10,
+    "monthly_volume_bonus_note": "500 ATEX for 10+ monthly sales + 20 days zero commission"
+  },
+  "api_pricing": {
+    "deepseek_chat": {
+      "cost": 1,
+      "unit": "1K tokens",
+      "description": "DeepSeek Chat — 通用对话，高性价比",
+      "models": [
+        "deepseek-chat"
+      ],
+      "backend": "deepseek",
+      "status": "live"
+    },
+    "deepseek_reasoner": {
+      "cost": 3,
+      "unit": "1K tokens",
+      "description": "DeepSeek Reasoner — 深度推理，复杂任务",
+      "models": [
+        "deepseek-reasoner"
+      ],
+      "backend": "deepseek",
+      "status": "live"
+    },
+    "openai_gpt4o_mini": {
+      "cost": 5,
+      "unit": "1K tokens",
+      "description": "OpenAI GPT-4o Mini — 快速高效",
+      "models": [
+        "gpt-4o-mini"
+      ],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires OpenAI API key from provider"
+    },
+    "openai_gpt4o": {
+      "cost": 20,
+      "unit": "1K tokens",
+      "description": "OpenAI GPT-4o — 旗舰模型",
+      "models": [
+        "gpt-4o"
+      ],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires OpenAI API key from provider"
+    },
+    "claude_haiku": {
+      "cost": 5,
+      "unit": "1K tokens",
+      "description": "Anthropic Claude 3.5 Haiku — 快速轻量",
+      "models": [
+        "claude-3-5-haiku-latest"
+      ],
+      "backend": "anthropic",
+      "status": "coming_soon",
+      "note": "Requires Anthropic API key from provider"
+    },
+    "claude_sonnet": {
+      "cost": 15,
+      "unit": "1K tokens",
+      "description": "Anthropic Claude 3.5 Sonnet — 平衡性能",
+      "models": [
+        "claude-3-5-sonnet-latest"
+      ],
+      "backend": "anthropic",
+      "status": "coming_soon",
+      "note": "Requires Anthropic API key from provider"
+    },
+    "tts": {
+      "cost": 5,
+      "unit": "1K chars",
+      "description": "文本转语音 — 多语言多音色",
+      "models": [
+        "tts-1"
+      ],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires provider with TTS API"
+    },
+    "asr": {
+      "cost": 3,
+      "unit": "minute",
+      "description": "语音转文字 — 多语言识别",
+      "models": [
+        "whisper-1"
+      ],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires provider with ASR API"
+    },
+    "embedding": {
+      "cost": 0.5,
+      "unit": "1K tokens",
+      "description": "文本向量化 — 语义搜索/RAG",
+      "models": [
+        "text-embedding-3-small"
+      ],
+      "backend": "openai",
+      "status": "coming_soon",
+      "note": "Requires provider with Embedding API"
+    },
+    "web_search": {
+      "cost": 2,
+      "unit": "query",
+      "description": "Web搜索 — 实时信息检索",
+      "models": [],
+      "backend": "internal",
+      "status": "coming_soon",
+      "note": "Requires provider with search API"
+    }
+  },
+  "payment": {
+    "alipay": "CONFIGURE_ALIPAY",
+    "paypal": "CONFIGURE_PAYPAL",
+    "min_topup_cny": 10.0,
+    "topup_bonus": {
+      "description": "充值送积分活动 — 充得多送得多",
+      "tiers": [
+        {
+          "min_cny": 10,
+          "bonus_pct": 10,
+          "note": "充10元送1元"
+        },
+        {
+          "min_cny": 50,
+          "bonus_pct": 15,
+          "note": "充50元送7.5元"
+        },
+        {
+          "min_cny": 100,
+          "bonus_pct": 20,
+          "note": "充100元送20元"
+        },
+        {
+          "min_cny": 500,
+          "bonus_pct": 30,
+          "note": "充500元送150元"
+        },
+        {
+          "min_cny": 1000,
+          "bonus_pct": 40,
+          "note": "充1000元送400元"
+        }
+      ],
+      "first_topup_bonus_atex": 50,
+      "first_topup_note": "首次充值额外送50 ATEX",
+      "topup_atex_rate": 0.5,
+      "topup_atex_note": "每充1元送0.5 ATEX（充10元送5 ATEX）",
+      "active": true,
+      "expires": "2026-06-30"
+    }
+  },
+  "subscription_plans": {
+    "description": "ATEX订阅制 — 按月付费，API随便用",
+    "plans": [
+      {
+        "id": "free",
+        "name": "免费版",
+        "price_cny": 0,
+        "period": "monthly",
+        "features": [
+          "按次计费",
+          "DeepSeek Chat/Reasoner",
+          "5元注册体验金"
+        ],
+        "limits": {
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner"
+          ],
+          "type": "pay_per_use"
+        },
+        "bonus_atex": 0
+      },
+      {
+        "id": "basic",
+        "name": "基础版",
+        "price_cny": 49,
+        "period": "monthly",
+        "features": [
+          "DeepSeek Chat无限量",
+          "DeepSeek Reasoner 1000次/月",
+          "50 ATEX/月",
+          "服务市场9折"
+        ],
+        "limits": {
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner"
+          ],
+          "deepseek-chat": "unlimited",
+          "deepseek-reasoner": 1000,
+          "service_discount": 0.9
+        },
+        "bonus_atex": 50,
+        "highlight": "最受欢迎"
+      },
+      {
+        "id": "pro",
+        "name": "专业版",
+        "price_cny": 199,
+        "period": "monthly",
+        "features": [
+          "全部模型无限量",
+          "200 ATEX/月",
+          "服务市场8折",
+          "优先队列",
+          "MCP Server高级工具"
+        ],
+        "limits": {
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner",
+            "gpt-4o-mini",
+            "gpt-4o",
+            "claude-3-5-sonnet",
+            "claude-3-5-haiku"
+          ],
+          "all_models": "unlimited",
+          "service_discount": 0.8,
+          "priority_queue": true
+        },
+        "bonus_atex": 200,
+        "highlight": "性价比最高"
+      },
+      {
+        "id": "enterprise",
+        "name": "企业版",
+        "price_cny": 999,
+        "period": "monthly",
+        "features": [
+          "全部模型无限量",
+          "1000 ATEX/月",
+          "服务市场7折",
+          "专属支持",
+          "自定义模型接入",
+          "SLA保障"
+        ],
+        "limits": {
+          "models": [
+            "deepseek-chat",
+            "deepseek-reasoner",
+            "gpt-4o-mini",
+            "gpt-4o",
+            "claude-3-5-sonnet",
+            "claude-3-5-haiku",
+            "custom"
+          ],
+          "all_models": "unlimited",
+          "service_discount": 0.7,
+          "priority_queue": true,
+          "custom_models": true,
+          "dedicated_support": true
+        },
+        "bonus_atex": 1000
+      }
+    ],
+    "active": true,
+    "trial_days": 3,
+    "trial_plan": "basic"
+  }
+}
