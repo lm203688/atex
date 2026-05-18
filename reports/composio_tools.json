@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://composio.dev/toolkits",
+    "name": "Composio toolkits | MCP and API Integrations for AI Agents",
+    "snippet": "Connect your agent to leading SaaS apps in minutes. Secure access to 20000+ tools via MCP or direct APIs to automate real work.",
+    "host_name": "composio.dev",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://composio.dev/product/composio-for-everyday-ai-users",
+    "name": "Composio for Everyday AI Users",
+    "snippet": "Working with AI iseasierwith Composio. Connect Claude or ChatGPT to the apps you already use — Gmail, Slack, Notion, Calendar, and 1,000+ more.",
+    "host_name": "composio.dev",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://composio.dev/use-cases",
+    "name": "Use Cases - Composio",
+    "snippet": "One prompt pulls today's calendar, unread Gmail, open GitHub PRs, and overdue Notion tasks into a one-screen brief. Google Calendar logo. Gmail logo. GitHub ...\nSend a Quick Email From Any Client. Dictate a recipient + intent in one sentence; your agent drafts and sends in 3–5 tool calls. The canonical Gmail primitive.",
+    "host_name": "composio.dev",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://agentspec.ai/integrations",
+    "name": "200+ Native Integrations Powered by Composio - AgentSpec",
+    "snippet": "AgentSpec leverages Composio's well-tested integration platform so your agents can securely connect to the tools your team already uses — Slack, Gmail, GitHub, ...",
+    "host_name": "agentspec.ai",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/composio-community/general-purpose-agent-quickstart",
+    "name": "composio-community/general-purpose-agent-quickstart · GitHub",
+    "snippet": "Composio provides tools for external apps (Gmail, Slack, etc.) that merge into the agent's tool loop at runtime. Vercel AI Gateway routes to any model provider ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://composio.dev",
+    "name": "Composio",
+    "snippet": "One product, every workflow ; Support Agent. notion github ; Email Agent. gmail googlecalendar ; Slack Agent. slack googledocs ; SQL Agent. supabase googlesheets.",
+    "host_name": "composio.dev",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://work.sista.ai/en/features/connections/integrations_900",
+    "name": "900+ App Integrations - Integrations - Sista AI - AI Employee Platform",
+    "snippet": "Connect Gmail, Slack, Notion, Salesforce, and 900+ other apps through Composio. Start Free Trial Read the full guide. 900+ App Integrations.",
+    "host_name": "work.sista.ai",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://medium.com/@pankaj_pandey/supercharge-your-ai-development-with-composio-the-ultimate-multi-framework-ai-agent-platform-d35c1768a63d",
+    "name": "Supercharge Your AI Development with Composio - Medium",
+    "snippet": "Extensive Toolset: Access over 250 pre-built AI tools for GitHub, Slack, Notion, Jira, Salesforce, HubSpot, Gmail and Google Calendar.",
+    "host_name": "medium.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

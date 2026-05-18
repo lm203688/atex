@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://github.com/punkpeye/awesome-mcp-servers",
+    "name": "punkpeye/awesome-mcp-servers - GitHub",
+    "snippet": "This list focuses on production-ready and experimental MCP servers that extend AI capabilities through file access, database connections, API integrations, and ...",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/caramaschiHG/awesome-ai-agents-2026",
+    "name": "caramaschiHG/awesome-ai-agents-2026: The most comprehensive",
+    "snippet": "The most comprehensive list of AI agents, frameworks & tools in 2026. 300+ resources · 20+ categories · Updated monthly.",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/ARUNAGIRINATHAN-K/awesome-ai-agents-2026",
+    "name": "ARUNAGIRINATHAN-K/awesome-ai-agents-2026 - GitHub",
+    "snippet": "Zapier MCP Server - Connect agents to 7,000+ app integrations via MCP, powered by Zapier's automation platform (🏷️ Cloud Zapier API ).",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "May 15, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.firecrawl.dev/blog/best-mcp-servers-for-developers",
+    "name": "10 Best MCP Servers for Developers in 2026 - Firecrawl",
+    "snippet": "The best MCP servers for developers in 2026 — covering web scraping, design, browser automation, code execution, deployment, and more.",
+    "host_name": "www.firecrawl.dev",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/github/github-mcp-server",
+    "name": "GitHub MCP Server",
+    "snippet": "The GitHub MCP Server connects AI tools directly to GitHub's platform. This gives AI agents, assistants, and chatbots the ability to read repositories and code ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.blog/developer-skills/agentic-ai-mcp-and-spec-driven-development-top-blog-posts-of-2025",
+    "name": "Agentic AI, MCP, and spec-driven development: Top blog posts of",
+    "snippet": "Model Context Protocol (MCP) makes it simple for AI agents and tools to talk to each other. ... GitHub's own MCP server with over a hundred tools.",
+    "host_name": "github.blog",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/WolframResearch/AgentTools",
+    "name": "Wolfram/AgentTools - GitHub",
+    "snippet": "A Wolfram Language toolkit for integrating with AI agents and LLMs — providing MCP servers, agent skills, and other standard interfaces that ...",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "May 8, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://composio.dev/content/mcp-servers-for-agent-builder",
+    "name": "8 best MCP servers to build production-ready agents in OpenAI",
+    "snippet": "At DevDay 2025, they released AgentKit, a new end-to-end platform with a complete set of tools for developers and enterprises that lets anyone ...",
+    "host_name": "composio.dev",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://mcpmarket.com",
+    "name": "MCP Market: Discover Top MCP Servers",
+    "snippet": "Discover MCP servers that connect Claude and Cursor to tools like Figma, Databricks, Storybook, and Ghidra. Browse the MCP Market to get started.",
+    "host_name": "mcpmarket.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/wong2/awesome-mcp-servers",
+    "name": "wong2/awesome-mcp-servers: A curated list of Model  - GitHub",
+    "snippet": "These servers aim to demonstrate MCP features and the TypeScript and Python SDKs. Everything - Reference / test server with prompts, resources, and tools ...",
+    "host_name": "github.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

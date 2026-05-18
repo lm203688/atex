@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://github.com/public-apis/public-apis",
+    "name": "GitHub - public-apis/public-apis: A collective list of free APIs",
+    "snippet": "The Public APIs repository is manually curated by community members like you and folks working at APILayer. It includes an extensive list of public APIs ...",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/techfedd/qrcode-generator-api",
+    "name": "techfedd/qrcode-generator-api: Self-hosted your QR Code  - GitHub",
+    "snippet": "Self-hosted your QR Code generator API. Contribute to techfedd/qrcode-generator-api development by creating an account on GitHub.",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/rishikanthc/qrding",
+    "name": "rishikanthc/qrding: Self-hosted QR code generator - GitHub",
+    "snippet": "QRding is a simple self-hosted QR code generator. It includes templates for creating QR codes for sharing WiFi credentials, contact cards ...",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/typpo/textbelt",
+    "name": "typpo/textbelt: Free API for outgoing SMS - GitHub",
+    "snippet": "TextBelt Open Source is a REST API that sends outgoing SMS. It uses a free mechanism for sending texts, different from the more reliable paid version.",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/selfhosted/comments/1ldlepv/what_are_your_musthave_selfhosted_tools_on_your",
+    "name": "What are your must-have self-hosted tools on your home server that",
+    "snippet": "I'm looking to expand my home server setup and want to hear from real users—what self-hosted apps or tools have actually made your life easier ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/mikeroyal/Self-Hosting-Guide",
+    "name": "mikeroyal/Self-Hosting-Guide - GitHub",
+    "snippet": "Self-Hosting Guide. Learn all about locally hosting (on premises & private web servers) and managing software applications by yourself or your organization.",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/topics/pdf-api",
+    "name": "pdf-api · GitHub Topics",
+    "snippet": "Agent-friendly API for generating commercial document PDFs from structured JSON — quotes, proformas, invoices, receipts, credit notes, and purchase orders.\nGenerate beautiful, business-grade PDF invoices in seconds. Add your logo, customer info, line items, discounts, taxes, and more — all through a simple API.",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/scalar/scalar",
+    "name": "Scalar is an open-source API platform: Modern REST API  - GitHub",
+    "snippet": "We're offering a free and paid managed hosting on the edge, too: Write your API documentation and publish API references (free); YOUR_NAME_HERE.apidocumentation ...",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://formulae.brew.sh/formula",
+    "name": "homebrew-core - Homebrew Formulae",
+    "snippet": "This is a listing of all packages available from the core tap via the Homebrew package manager for macOS and Linux. /api/formula.json (JSON API) · a2ps, 4.15.8 ...",
+    "host_name": "formulae.brew.sh",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://moodle.org",
+    "name": "Moodle.org: Home",
+    "snippet": "Moodle is a Learning Platform or Learning Management System (LMS) - a free Open Source software package designed to help educators create effective online ...",
+    "host_name": "moodle.org",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

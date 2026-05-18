@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://github.com/punkpeye/awesome-mcp-servers/blob/main/README.md",
+    "name": "awesome-mcp-servers/README.md at main - GitHub",
+    "snippet": "☁️ - API intelligence for AI coding agents. 387 APIs scored on agent-friendliness with tools to recommend, compare, check scores, and discover APIs.",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://mcpservers.org",
+    "name": "Awesome MCP Servers",
+    "snippet": "A Model Context Protocol (MCP) server and CLI that provides tools for agent use when working on iOS and macOS projects. Latest MCPs. View all.",
+    "host_name": "mcpservers.org",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://awesome-copilot.github.com/tools",
+    "name": "Tools - Awesome GitHub Copilot",
+    "snippet": "Tools · APM - Agent Package Manager · Awesome Copilot MCP Server · Awesome GitHub Copilot Browser · Context7 · VS Code Agent Manager · ChatCrystal · Copilot Cockpit.",
+    "host_name": "awesome-copilot.github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/openai/codex/discussions/16329",
+    "name": "Awesome Codex CLI — curated list of 150+ ecosystem tools",
+    "snippet": "Awesome Codex CLI — curated list of 150+ ecosystem tools (subagents, skills, plugins, MCP servers, and more)",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://mcp.directory/awesome-mcp-servers",
+    "name": "Awesome MCP Servers — Curated List",
+    "snippet": "MCP.Directory is the largest curated directory of MCP (Model Context Protocol) servers and agent skills. Discover, compare, and one-click install servers for ...",
+    "host_name": "mcp.directory",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/patriksimek/awesome-mcp-servers-2",
+    "name": "patriksimek/awesome-mcp-servers-2 - GitHub",
+    "snippet": "A curated list of awesome Model Context Protocol (MCP) servers. MCP is an open protocol that enables AI models to securely interact with local and remote ...",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/MCPservers/comments/1lu019w/best_mcp_servers_for_ai_agents_opensourced_60k",
+    "name": "Best MCP servers for AI Agents (open-sourced) - 60K Github Repo",
+    "snippet": "A curated list of best MCP servers for AI Agents - its opensource (Folk the repo). 300+ prod ready and experimental MCP servers, integration of ...",
+    "host_name": "www.reddit.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dev.to/techgirl1908/my-favorite-mcp-directories-573n",
+    "name": "My Favorite MCP Directories - DEV Community",
+    "snippet": "For those looking to save time, I've found the best MCP Directory to be incredibly helpful for discovering quality servers with detailed ...",
+    "host_name": "dev.to",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/1147",
+    "name": "`.well-known/mcp` directory · modelcontextprotocol  - GitHub",
+    "snippet": "As we think more about supporting remote MCP servers, there's been some discussion around using a Well-known URI (RFC 8615) for server discovery.",
+    "host_name": "github.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://aiagentslist.com/mcp-servers",
+    "name": "MCP Servers Directory | 593+ Model Context Protocol Servers 2026",
+    "snippet": "Discover 593+ MCP servers for Claude and AI assistants. Browse by category, language, and scope. Find file system, database, API, and cloud integration ...",
+    "host_name": "aiagentslist.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

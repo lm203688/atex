@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://github.com/kiliman/agent-tts",
+    "name": "Agent TTS - Real-time text-to-speech for AI coding assistants - GitHub",
+    "snippet": "Extracts messages, timestamps, and metadata · Extracts and saves images from chat history (Claude Code only) ... Missing: web scraping\nReal-time TTS: Hear your AI agents speak as they respond; Multi-agent support: Works with Claude Code, OpenCode, and custom agents; ⏯️ Playback controls: ...",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.aisdkagents.com/explore/ai-agent-github",
+    "name": "AI Agent GitHub - Open Source AI Agent Patterns & Free Examples",
+    "snippet": "Open source AI agent patterns you can copy and paste into your project. Free TypeScript examples with full source code for the Vercel AI SDK.\nConvert text to speech using OpenAI's API. Includes multiple voices, speed ... Generate images from text prompts using Google Gemini's image model.",
+    "host_name": "www.aisdkagents.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/jim-schwoebel/awesome_ai_agents",
+    "name": "Awesome AI Agents: Tools, Resources, and Projects - GitHub",
+    "snippet": "This repository is a comprehensive hub for resources related to AI agents, providing a curated collection of tools, frameworks, datasets, and projects.",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/Harsha0431/News-Scraper-Summarizer-Text-to-Speech",
+    "name": "AI News Scraper & Summarizer with Text-to-Speech - GitHub",
+    "snippet": "This project scrapes news articles, summarizes content using BERT or Gemini API, and provides sentiment analysis, key insights, and comparative analysis. Missing: agent | Show results with: agent",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/Agenty/scrapingai",
+    "name": "GitHub - Agenty/scrapingai: Build web scraping agents using AI to",
+    "snippet": "Build web scraping agents using AI to auto-extract the data from websites, capture screenshot, generate pdf from URL and web crawling with Agenty ... Missing: text- speech image",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/firecrawl/firecrawl",
+    "name": "firecrawl/firecrawl: Search, scrape, and clean the web for AI agents.",
+    "snippet": "Search, scrape, and clean the web for AI agents. The web context API to find sources, extract content, and turn it into clean Markdown or structured data ... Missing: speech | Show results with: speech",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.blog/ai-and-ml/github-copilot/the-era-of-ai-as-text-is-over-execution-is-the-new-interface",
+    "name": "The era of “AI as text” is over. Execution is the new interface.",
+    "snippet": "AI is shifting from prompt-response interactions to programmable execution. See how the GitHub Copilot SDK enables agentic workflows ... Missing: speech scraping\nAI is shifting from prompt-response interactions to programmable execution. See how the GitHub Copilot SDK enables agentic workflows ...",
+    "host_name": "github.blog",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/isekos/awesome-a2a-agents",
+    "name": "isekOS/awesome-a2a-agents - GitHub",
+    "snippet": "Awesome A2A Agents is a curated list of tools, frameworks, and projects built on the Agent-to-Agent (A2A) communication protocol.",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/exemplaryai/ai-engine",
+    "name": "GitHub - exemplaryai/ai-engine: Easy to use Multi-Provider ASR",
+    "snippet": "Access all Speech-To-Text and NLP providers using this vendor-agnostic open API. Apply ASR, NLP and NLU tasks from a large catalog of providers. Missing: agent web scraping",
+    "host_name": "github.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/agentscope-ai/agentscope",
+    "name": "GitHub - agentscope-ai/agentscope: Build and run agents you can",
+    "snippet": "AgentScope is a production-ready, easy-to-use agent framework with essential abstractions that work with rising model capability and built-in support for ... Missing: execution scraping",
+    "host_name": "github.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

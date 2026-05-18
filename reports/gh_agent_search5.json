@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://github.com/iOfficeAI/AionUi",
+    "name": "iOfficeAI/AionUi: Free, local, open-source 24/7 Cowork app  - GitHub",
+    "snippet": "It's a Cowork platform where AI agents work alongside you on your computer — reading files, writing code, browsing the web, and automating tasks. You see ...",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/cporter202/ai-agent-tools",
+    "name": "cporter202/ai-agent-tools - GitHub",
+    "snippet": "An AI-powered platform designed to transform how you create, schedule, and manage social media content across multiple platforms. ViralWave Studio Website.",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/strands-agents/tools",
+    "name": "strands-agents/tools: A set of tools that gives agents  - GitHub",
+    "snippet": "Strands Agents Tools is a community-driven project that provides a powerful set of tools for your agents to use. It bridges the gap between ...",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/heilcheng/awesome-agent-skills",
+    "name": "heilcheng/awesome-agent-skills: Tutorials, Guides and  - GitHub",
+    "snippet": "This is a community-curated list of simple text files that teach AI assistants (like Claude, Copilot, or Codex) how to do new things on demand, without ...",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/AI_Agents/comments/1l1eca5/curated_list_of_opensource_packages_and_tools_for",
+    "name": "Curated list of open-source packages and tools for AI agents builders",
+    "snippet": "I've documented 40+ open-source packages spanning agent orchestration frameworks like CrewAI and AutoGPT, computer control tools like Browser Use and Open ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/jim-schwoebel/awesome_ai_agents",
+    "name": "Awesome AI Agents: Tools, Resources, and Projects - GitHub",
+    "snippet": "Cal.ai - Cal.ai is an open-source AI scheduling assistant that manages email communications for booking, rearranging, and inquiring about meetings, leveraging a ...",
+    "host_name": "github.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/VoltAgent/awesome-openclaw-skills",
+    "name": "VoltAgent/awesome-openclaw-skills - GitHub",
+    "snippet": "OpenClaw is a locally-running AI assistant that operates directly on your machine. Skills extend its capabilities, allowing it to interact with external ...",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dev.to/nocobase/top-12-open-source-ai-workflows-projects-with-the-most-github-stars-2243",
+    "name": "Top 12 Open-source AI Workflows Projects with the Most GitHub Stars",
+    "snippet": "Build composable Agent execution workflows By combining multiple Agent tools, developers can create structured execution workflows, ensuring ...",
+    "host_name": "dev.to",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.blog/open-source/maintainers/from-mcp-to-multi-agents-the-top-10-open-source-ai-projects-on-github-right-now-and-why-they-matter",
+    "name": "From MCP to multi-agents: The top 10 new open source AI projects",
+    "snippet": "From MCP to multi-agents: The top 10 new open source AI projects on GitHub right now and why they matter. Get insights on the latest trends from ...",
+    "host_name": "github.blog",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.taskade.com/blog/open-source-ai-agents",
+    "name": "20 Best Open-Source AI Agents & Frameworks (2026) - Taskade",
+    "snippet": "Compare 20 open-source AI agent frameworks for 2026. AutoGPT, LangGraph, CrewAI, OpenClaw, Dify, Claude Agent SDK, and more.",
+    "host_name": "www.taskade.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

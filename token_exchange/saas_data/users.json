@@ -1,0 +1,30 @@
+{
+  "users": {
+    "u_7861746968bd": {
+      "user_id": "u_7861746968bd",
+      "name": "test_debug",
+      "email": "",
+      "api_key": "atex_sk_df19c8bebb93aa356aaf3ea2462d56fd37359686079de6d2",
+      "balance_cny": 5.0,
+      "total_spent_cny": 0.0,
+      "total_calls": 0,
+      "total_topup_count": 0,
+      "total_topup_cny": 0.0,
+      "subscription": {
+        "plan": "basic",
+        "plan_name": "基础版",
+        "started": "2026-05-18",
+        "expires": "2026-05-21",
+        "status": "trial"
+      },
+      "referral_code": "ATX8830AC",
+      "referred_by": null,
+      "created_at": "2026-05-18 07:44:05"
+    }
+  },
+  "api_keys": {
+    "atex_sk_df19c8bebb93aa356aaf3ea2462d56fd37359686079de6d2": "u_7861746968bd"
+  },
+  "usage": [],
+  "topup_requests": []
+}

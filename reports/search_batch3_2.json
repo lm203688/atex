@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://openai.com/index/introducing-gpt-5-5",
+    "name": "Introducing GPT-5.5 - OpenAI",
+    "snippet": "Update on April 24, 2026: GPT‑5.5 and GPT‑5.5 Pro are now available in the API. The system card has also been updated to describe the additional ...",
+    "host_name": "openai.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://openai.com/index/introducing-gpt-5",
+    "name": "Introducing GPT-5 - OpenAI",
+    "snippet": "GPT‑5 is the new default in ChatGPT, replacing GPT‑4o, OpenAI o3 ... Product May 15, 2026. 1x1 Art Card. Work with Codex from anywhere.",
+    "host_name": "openai.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://techcrunch.com/2026/05/05/openai-releases-gpt-5-5-instant-a-new-default-model-for-chatgpt",
+    "name": "OpenAI releases GPT-5.5 Instant, a new default model for ChatGPT",
+    "snippet": "On Tuesday, OpenAI released a new foundation model called GPT-5.5 Instant, which will replace GPT-5.3 Instant as the default ChatGPT model.",
+    "host_name": "techcrunch.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://releasebot.io/updates/openai/chatgpt",
+    "name": "ChatGPT Updates by OpenAI - May 2026 - Releasebot",
+    "snippet": "May 5, 2026 ... ChatGPT launches GPT-5.5 Instant as its new default model, replacing GPT-5.3 Instant for all users. It brings sharper accuracy, clearer and more ...",
+    "host_name": "releasebot.io",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://openai.com/gpt-5",
+    "name": "GPT-5 is here - OpenAI",
+    "snippet": "GPT‑5 is smarter across the board, providing more useful responses across math, science, finance, law, and more. It's like having a team of experts on call ...",
+    "host_name": "openai.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://mwm.ai/articles/openai-upgrades-chatgpt-default-model-to-gpt-5-5-instant-in-may-2026",
+    "name": "OpenAI Upgrades ChatGPT Default Model to GPT-5.5 Instant  - MWM",
+    "snippet": "OpenAI has updated ChatGPT's default model to GPT-5.5 Instant for all users as of May 2026. The new model is designed to deliver more ...",
+    "host_name": "mwm.ai",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://en.wikipedia.org/wiki/GPT-5",
+    "name": "GPT-5 - Wikipedia",
+    "snippet": "GPT-5 is a multimodal large language model developed by OpenAI and the fifth in its series of generative pre-trained transformer (GPT) foundation models.",
+    "host_name": "en.wikipedia.org",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.openai.com/en/articles/9624314-model-release-notes",
+    "name": "Model Release Notes | OpenAI Help Center",
+    "snippet": "GPT-5.2 Instant Update (February 10, 2026). We're making an update to GPT-5.2 Instant in ChatGPT and the API that improves response style and ...",
+    "host_name": "help.openai.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

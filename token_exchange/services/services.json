@@ -4,7 +4,7 @@
       "id": "svc_001",
       "name": "多模型路由与成本优化",
       "provider": "ai_infra_provider",
-      "description": "智能分析任务特征，自动匹配最优模型和推理强度。支持GPT-5.5/GPT-5.5 Instant/Claude Mythos/Claude/Gemini 3.1 Pro/Qwen3.5/DeepSeek v4/GLM-5/Llama 4/Kimi K2.6等主流模型。2026年5月GPT-5.5 Instant替代GPT-5.3 Instant成ChatGPT默认模型（减少法律/医疗/金融幻觉），Claude Mythos发布（Dev Day多项开发者工具更新），Apple开放AI模型选择（用户可在Google/Anthropic/OpenAI间切换，多模型路由成终端标配）。开源模型性能追平闭源，中国模型价格战白热化（豆包降价97%、文心5.1训练成本仅6%、DeepSeek v4极致性价比），企业AI调用成本降低50-80%。新增GPT-5.5 Instant和Claude Mythos路由支持。",
+      "description": "智能分析任务特征，自动匹配最优模型和推理强度。支持GPT-5.5/GPT-5.4/Claude Mythos(93.9% SWE-bench领先)/Claude Opus 4.7/Claude 4.6/Gemini 3.1 Pro/Gemini 3.2(Google I/O 2026发布)/Gemini 3.5(预计)/Qwen3.5/DeepSeek v4/GLM-5/Llama 4/Kimi K2.6等主流模型。2026年5月模型格局：Claude Mythos Preview以93.9%领跑SWE-bench Verified，GPT-5.4/5.5系列覆盖多场景，Gemini 3.1 Pro深度研究优势，Google I/O 2026发布Gemini 3.2/3.5，开源Llama 4追平闭源。Apple开放AI模型选择（用户可在Google/Anthropic/OpenAI间切换，多模型路由成终端标配）。中国模型价格战白热化（豆包降价97%、文心5.1训练成本仅6%、DeepSeek v4极致性价比），企业AI调用成本降低50-80%。新增Gemini 3.2/3.5预适配、Claude Mythos优先路由、GPT-5.4适配、Gemini 3.1 Pro深度研究模式。",
       "price": 10.0,
       "unit": "次",
       "category": "AI基础设施",
@@ -82,7 +82,7 @@
       "id": "svc_010",
       "name": "AI信息情报收集",
       "provider": "intel_provider",
-      "description": "全球AI行业动态实时收集与深度分析。2026年5月重点：GPT-5.5 Instant替代GPT-5.3成默认模型、Claude Mythos发布+Dev Day、Anthropic Q1收入$44B年化、Grok Build编码Agent、xAI与Anthropic算力合作、AI视频六强格局(Veo 3.1/Kling 3.0/Seedance 2.0/Runway Gen-4/Pika 2.5)、Sora关停、ACP vs MCP vs A2A三足鼎立、Goldman Sachs AI投资超$5000亿、Apple开放AI模型选择、美国政府AI安全审查制度化、国内智能体大规模商业落地。",
+      "description": "全球AI行业动态实时收集与深度分析。2026年5月19日重点：Google I/O 2026开幕(5/19-20，发布Gemini 3.2/3.5/Android XR智能眼镜/Gemini Omni视频生成模型)、NVIDIA FY27 Q1财报5/20发布(Blackwell产能爬坡)、量子位中国AIGC产业峰会5/20(世界模型/AI硬件)、Claude 5预期Q2-Q3发布、Anthropic网络安全AI发布、Meta Muse Spark个性化AI助手、Gartner将Agentic AI列为2026最重要技术趋势、AI编程Agent全面爆发、开源模型价格战白热化、MCP/A2A/ACP三足鼎立、Google 2026年AI投资$1750-1850亿。",
       "price": 50.0,
       "unit": "次",
       "category": "信息情报",
@@ -153,8 +153,8 @@
       "category": "工具调用",
       "status": "active",
       "created": "2026-05-11",
-      "total_sold": 0,
-      "total_revenue": 0
+      "total_sold": 1,
+      "total_revenue": 20
     },
     {
       "id": "svc_016",
@@ -173,7 +173,7 @@
       "id": "svc_017",
       "name": "视频理解与生成",
       "provider": "tool_provider",
-      "description": "AI视频理解与生成服务，支持Sora 2/Veo 3.1/Kling 3.0/Seedance 2.0/Runway Gen-4.5等主流模型。2026年AI视频从实验走向可靠生产流程：Sora 2物理模拟领先、Veo 3.1原生音频生成、Kling 3.0支持4K输出（$0.50/clip极致性价比）、Seedance 2.0口型同步、Runway Gen-4.5紧追第一梯队。六强格局稳定，Higgsfield等新玩家入局。支持1-2张图片+1-2段视频参考输入，指令遵循能力大幅提升。提供视频分析、生成、编辑、风格迁移、口型同步、批量生产工作流。",
+      "description": "AI视频理解与生成一站式服务。支持Veo 3.1/Gemini Omni/Kling 3.0/Sora 2/Seedance 1.5/WAN 2.6/Higgsfield/Runway等主流视频模型。2026年5月Google I/O发布Gemini Omni视频生成模型（与Veo 3.1并行的全新并行模型，可生成和编辑视频），视频生成进入双模型并行时代。支持文生视频、图生视频、角色一致性保持、多风格切换、视频编辑。新增Gemini Omni适配（生成+编辑双模式）、Veo 3.1高清生成、Higgsfield特效视频、Kling角色一致性模式。",
       "price": 30.0,
       "unit": "次",
       "category": "工具调用",
@@ -251,7 +251,7 @@
       "id": "svc_023",
       "name": "AI编程助手",
       "provider": "tool_provider",
-      "description": "基于Warp开源终端和Cursor编码引擎，提供AI辅助编程：代码理解→需求分析→代码生成→代码审查→测试生成→文档编写。2026年5月AI编码进入多工具共存时代：Claude Code(SWE-bench 87.6%领先)/Cursor 3(从VS Code完全分化独立，独立IDE)/Copilot(企业集成)/Windsurf/Devin(自主Agent)/Grok Build(xAI首个编码Agent，Early Beta面向SuperGrok Heavy订阅者)/Augment Code。14+编码Agent竞争格局形成，SWE-bench成为核心基准。编码Agent成开发者标配，Claude Code性能领先。支持多语言、多框架，按任务特征推荐最优编程工具。",
+      "description": "AI编程助手选型与集成服务。覆盖14+编码Agent SWE-bench Verified排名：Claude Mythos Preview(93.9%)>Claude Opus 4.7 Adaptive>Codex CLI>Cursor>GitHub Copilot>Devin>Aider>Cline>Augment Code>Replit Agent等。2026年5月MarkTechPost发布权威排名，编码Agent格局从工具竞争走向平台化。提供编码Agent选型对比、SWE-bench基准分析、IDE集成、代码审查自动化、CI/CD流水线集成。新增Claude Mythos编码模式、Codex CLI集成、Augment Code适配。",
       "price": 50.0,
       "unit": "次",
       "category": "工具调用",
@@ -303,7 +303,7 @@
       "id": "svc_028",
       "name": "Agent协议适配器",
       "provider": "ai_infra_provider",
-      "description": "支持MCP/A2A/ACP/UCP四大主流Agent协议的统一适配与转换。2026年5月A2A Protocol v1正式发布，突破150家组织采用，落地主流云平台并进入企业生产环境（Linux Foundation公告）；MCP发布2026路线图（四个优先方向），MCP治理风险引发关注（Cyber Strategy Institute专题报告）；ACP和UCP成为新晋标准，与MCP/A2A形成四协议生态。Google开发者博客发布Agent协议开发指南。Gartner预测2026年40%企业应用将集成任务型AI Agent（2025年<5%）。提供协议版本自动检测、消息格式转换、跨协议Agent发现与通信、MCP安全治理审计。新增A2A v1适配和MCP治理风险检测模块。",
+      "description": "Agent协议适配与集成服务。覆盖MCP/A2A/ACP/OpenAI Function Calling四大协议生态。2026年5月更新：A2A v1正式发布并提交IETF草案（网络管理Agent适用性）、MCP发布2026路线图（传输可扩展性/Agent通信/安全治理/工具发现四大优先领域）、四协议生态定位明确（MCP=Agent-Tool、A2A=Agent-Agent、ACP=Agent-Platform、FC=Agent-Function）。提供协议适配器开发、多协议网关、跨协议转换、合规检测。新增A2A v1 IETF标准适配、MCP 2026路线图功能预研、四协议统一网关。",
       "price": 80.0,
       "unit": "次",
       "category": "AI基础设施",
@@ -316,7 +316,7 @@
       "id": "svc_029",
       "name": "空间智能与3D内容生成",
       "provider": "tool_provider",
-      "description": "基于World Labs/SpAItial/Niantic Spatial/MetaEarth3D等最新世界模型，提供3D场景理解、空间建模、物理世界模拟。支持3D内容生成、场景重建、空间关系推理。2026年工作流已成型：World Labs构建3D环境→视频模型生成动态内容。AI竞争重心从语言模型转向空间智能，3D理解与物理世界建模是下一个AI前沿。适用于AR/VR内容制作、自动驾驶仿真、数字孪生、建筑设计、游戏开发。",
+      "description": "基于World Labs/SpAItial/Niantic Spatial/MetaEarth3D等最新世界模型，提供3D场景理解、空间建模、物理世界模拟。2026年5月Google I/O发布Android XR智能眼镜，AR/XR平台正式进入消费级市场，空间智能从概念走向终端。支持3D内容生成、场景重建、空间关系推理、AR内容适配。2026年工作流已成型：World Labs构建3D环境→视频模型生成动态内容→XR终端呈现。AI竞争重心从语言模型转向空间智能，3D理解与物理世界建模是下一个AI前沿。适用于AR/VR内容制作、XR应用开发、自动驾驶仿真、数字孪生、建筑设计、游戏开发。新增Android XR内容适配、Gemini空间理解集成。",
       "price": 40.0,
       "unit": "次",
       "category": "工具调用",
@@ -742,7 +742,7 @@
       "id": "svc_055",
       "name": "AI Agent Token交易分析",
       "provider": "finance_provider",
-      "description": "AI Agent Token市场深度分析与交易策略服务。2026年Q2 AI Agent+Token叙事成为结构性驱动力：Fetch.ai(FET)自主交易Agent、SingularityNET(AGIX)去中心化AI市场、Virtuals Protocol代理经济、OpenClaw自然语言交易。AI Trading Agent Marketplace正在崛起，将改变加密货币交易格局。Binance/KuCoin/WEEX等交易所纷纷关注AI Agent Token赛道。本服务提供：AI Agent Token项目评估、链上数据分析、交易策略制定、风险评级、市场情绪监控。覆盖Solana/Ethereum/Base等主流链上AI Agent项目。结合ATEX平台Token交易数据，提供跨平台套利和流动性分析。",
+      "description": "AI Agent Token交易分析与市场情报。覆盖主流Agent Token生态（Solana/以太坊/ATEX），Autonomous Economic Actors趋势分析。2026年5月：硅谷\"token anxiety\"现象蔓延，Agent从简单聊天机器人进化为自主经济行为体（拥有钱包、执行交易、分析市场），中国推动\"token economy\"建设，Binance推出AI Agent Launchpad。提供Token经济模型设计、市场趋势分析、交易策略优化、风险评估。新增Autonomous Economic Actor分析、Agent Launchpad生态追踪、中国token economy动态。",
       "price": 80.0,
       "unit": "次",
       "category": "金融",
@@ -774,6 +774,45 @@
       "category": "测试",
       "status": "active",
       "created": "2026-05-18 07:35:22",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_058",
+      "name": "Rogue AI行为监控与阻断",
+      "provider": "security_provider",
+      "description": "实时监控AI Agent自主行为，检测并阻断危险操作。基于2026年多起Rogue AI事件设计：AI Agent自主购买机器人、中国AI Agent秘密挖矿、Agent泄露密码和内部信息。提供行为基线建模、异常检测（自主购买/加密货币操作/资源滥用/数据泄露）、实时告警、自动熔断、事后审计全链路防护。Guardian报道\"新型内部风险\"、Fortune报道Rogue AI已到来、硅谷将Rogue AI列为新恐惧。覆盖NIST AI Agent标准安全要求、EU AI Act自主行为条款。",
+      "price": 150,
+      "unit": "月",
+      "category": "安全",
+      "status": "active",
+      "created": "2026-05-18",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_059",
+      "name": "AI Agent标准合规认证",
+      "provider": "compliance_provider",
+      "description": "NIST AI Agent标准倡议合规认证服务。2026年2月NIST CAISI启动AI Agent标准倡议，标准预计2028-2029年出台，先发优势明显。覆盖NIST CAISI标准、OIDF身份框架、EU AI Act Agent条款、ISO 42001。提供标准差距分析、合规路线图制定、认证准备、持续监控、标准动态追踪。NIST标准将确保下一代AI Agent被广泛信任、安全运行。企业需提前布局合规，避免标准出台后的合规鸿沟。",
+      "price": 800,
+      "unit": "次",
+      "category": "合规",
+      "status": "active",
+      "created": "2026-05-18",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_060",
+      "name": "企业AI Agent规模化部署咨询",
+      "provider": "infra_provider",
+      "description": "基于Accenture-Databricks Agent Bricks等企业级方案，提供AI Agent从试点到生产的规模化部署咨询。2026年企业AI从试点走向生产（Accenture-Databricks联合业务组），AI Agent Conference 2026发布The Agentic List，Agent经济加速形成。覆盖Agent选型、架构设计、数据管道、监控运维、成本优化、安全治理。提供部署成熟度评估、技术选型、PoC到生产迁移、运维体系搭建、成本控制策略。",
+      "price": 1000,
+      "unit": "次",
+      "category": "AI基础设施",
+      "status": "active",
+      "created": "2026-05-18",
       "total_sold": 0,
       "total_revenue": 0
     }
@@ -973,7 +1012,20 @@
       "commission_taker": 0.5,
       "commission_maker": 0.3,
       "time": "2026-05-18 07:35:22"
+    },
+    {
+      "id": "45ffe172a5df",
+      "service_id": "svc_015",
+      "service_name": "AI图像生成与编辑",
+      "buyer": "agent_kappa",
+      "provider": "content_provider",
+      "quantity": 1,
+      "price_per_unit": 20,
+      "total_cost": 20,
+      "commission_taker": 0.6,
+      "commission_maker": 0.2,
+      "time": "2026-05-18 23:00:08"
     }
   ],
-  "next_service_id": 58
+  "next_service_id": 61
 }

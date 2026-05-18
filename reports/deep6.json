@@ -1,0 +1,24 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "external": {},
+    "html": "<html lang=\"en\"><head><title>nytimes.com</title><style>#cmsg{animation: A 1.5s;}@keyframes A{0%{opacity:0;}99%{opacity:0;}100%{opacity:1;}}</style><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"margin:0\"><script data-cfasync=\"false\">var dd={'rt':'i','cid':'AHrlqAAAAAMAgSCeHpcp0C8AIiL9Vw==','hsh':'499AE34129FA4E4FABC31582C3075D','b':1476960,'s':17439,'e':'bffaae72d00335352f15f2cfd5adcba726b68f93a7dfc4599dcb863bfaa01831c596cabc27cd8998c265cf3e58a1bc32','qp':'','host':'geo.captcha-delivery.com','cookie':'pl0qynPAcxvsbdPKbNjxn4sFxZmAvOdeI86qVsClx3gClHSZeSsAmwgw2s~4fVwYhowk0vWEesHs9cQFPD2whW54pbXcCXGQ6thhXGGNbp7zF7Ml4jsdLxqWMS8O5cYc'}</script><script data-cfasync=\"false\" src=\"https://ct.captcha-delivery.com/i.js\"></script><iframe src=\"https://geo.captcha-delivery.com/interstitial/?initialCid=AHrlqAAAAAMAgSCeHpcp0C8AIiL9Vw%3D%3D&amp;hash=499AE34129FA4E4FABC31582C3075D&amp;cid=pl0qynPAcxvsbdPKbNjxn4sFxZmAvOdeI86qVsClx3gClHSZeSsAmwgw2s~4fVwYhowk0vWEesHs9cQFPD2whW54pbXcCXGQ6thhXGGNbp7zF7Ml4jsdLxqWMS8O5cYc&amp;referer=https%3A%2F%2Fwww.nytimes.com%2F2026%2F05%2F12%2Ftechnology%2Fanthropic-funding-valuation.html&amp;s=17439&amp;e=bffaae72d00335352f15f2cfd5adcba726b68f93a7dfc4599dcb863bfaa01831c596cabc27cd8998c265cf3e58a1bc32&amp;b=1476960&amp;dm=cd\" sandbox=\"allow-scripts allow-same-origin allow-forms\" allow=\"accelerometer; gyroscope; magnetometer\" title=\"DataDome Device Check\" width=\"100%\" height=\"100%\" style=\"height:100vh;\" frameborder=\"0\" border=\"0\" scrolling=\"yes\"></iframe></body></html>",
+    "metadata": {
+      "lang": "en",
+      "viewport": "width=device-width, initial-scale=1.0"
+    },
+    "title": "nytimes.com",
+    "url": "https://www.nytimes.com/2026/05/12/technology/anthropic-funding-valuation.html",
+    "usage": {
+      "tokens": 696
+    },
+    "warning": "Target URL returned error 403: Forbidden"
+  },
+  "meta": {
+    "usage": {
+      "tokens": 696
+    }
+  },
+  "status": 20000
+}

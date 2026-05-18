@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://github.com/resend/resend-mcp",
+    "name": "Resend MCP server - GitHub",
+    "snippet": "An MCP server for the Resend platform. Send and receive emails, manage contacts, broadcasts, domains, and more — directly from any MCP client like Claude ...",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/punkpeye/awesome-mcp-servers",
+    "name": "punkpeye/awesome-mcp-servers - GitHub",
+    "snippet": "☁️ - API intelligence for AI coding agents. 387 APIs scored on agent-friendliness with tools to recommend, compare, check scores, and discover APIs.",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/punkpeye/awesome-mcp-servers/blob/main/README.md",
+    "name": "awesome-mcp-servers/README.md at main - GitHub",
+    "snippet": "MCP is an open protocol that enables AI models to securely interact with local and remote resources through standardized server implementations.",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/Rodert/awesome-mcp",
+    "name": "Rodert/awesome-mcp: A curated list of MCP servers and  - GitHub",
+    "snippet": "Quick Start: How to Use MCP in AI Tools. The Model Context Protocol (MCP) allows AI assistants to connect to external data sources and tools.",
+    "host_name": "github.com",
+    "rank": 3,
+    "date": "May 13, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/firecrawl/firecrawl",
+    "name": "firecrawl/firecrawl: Search, scrape, and clean the web for AI agents.",
+    "snippet": "Search, scrape, and clean the web for AI agents. The web context API to find sources, extract content, and turn it into clean Markdown or structured data ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.facebook.com/thanhhm/posts/10-mcp-servers-worth-installing-right-now1-filesystem-readwrite-local-files2-git/10164592936758126",
+    "name": "10 MCP servers worth installing right now: 1. filesystem — read/write",
+    "snippet": "These MCP servers are lightweight programs that expose specific functions—called tools or endpoints—that an AI agent can call to retrieve ...",
+    "host_name": "www.facebook.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/agent-sandbox/agent-sandbox",
+    "name": "Agent-Sandbox is an E2B compatible easy-to-use  - GitHub",
+    "snippet": "Agent-Sandbox is an E2B compatible easy-to-use enterprise-grade sandboxes for AI Agents. Allows Agents to securely run untrusted LLM-generated Code, Browser ...\nAgent-Sandbox is an E2B compatible easy-to-use enterprise-grade sandboxes for AI Agents. Allows Agents to securely run untrusted LLM-generated Code, ...",
+    "host_name": "github.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/PipedreamHQ/awesome-mcp-servers",
+    "name": "PipedreamHQ/awesome-mcp-servers - GitHub",
+    "snippet": "MCP is an open protocol that enables AI models to securely interact with local and remote resources through standardized server implementations.",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]
