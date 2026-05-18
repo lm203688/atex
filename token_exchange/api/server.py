@@ -214,6 +214,79 @@ class Handler(BaseHTTPRequestHandler):
                 }
             self._json(result)
 
+        elif p == '/v1/bonus/info':
+            # 查询充值送积分活动详情
+            bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            is_first = True
+            if auth:
+                saas_data = _load_saas()
+                uid = saas_data["api_keys"].get(auth)
+                if uid:
+                    is_first = saas_data["users"].get(uid, {}).get("total_topup_count", 0) == 0
+            self._json({
+                "promotion": bonus_cfg if bonus_cfg.get("active") else {"active": False},
+                "your_first_topup_bonus_atex": bonus_cfg.get("first_topup_bonus_atex", 0) if (bonus_cfg.get("active") and is_first) else 0,
+                "is_first_topup": is_first,
+                "examples": [
+                    {"topup_cny": 10, "bonus_cny": 1, "bonus_atex": 5, "note": "充10送1元+5ATEX"},
+                    {"topup_cny": 100, "bonus_cny": 20, "bonus_atex": 50, "note": "充100送20元+50ATEX"},
+                    {"topup_cny": 500, "bonus_cny": 150, "bonus_atex": 250, "note": "充500送150元+250ATEX"},
+                    {"topup_cny": 1000, "bonus_cny": 400, "bonus_atex": 500, "note": "充1000送400元+500ATEX"},
+                ] if bonus_cfg.get("active") else [],
+            })
+
+        elif p == '/v1/subscription/plans':
+            # 查看订阅方案
+            sub_cfg = exchange.config.get("subscription_plans", {})
+            plans = sub_cfg.get("plans", [])
+            result = {
+                "active": sub_cfg.get("active", False),
+                "trial_days": sub_cfg.get("trial_days", 0),
+                "trial_plan": sub_cfg.get("trial_plan", ""),
+                "plans": []
+            }
+            for plan in plans:
+                result["plans"].append({
+                    "id": plan["id"],
+                    "name": plan["name"],
+                    "price_cny": plan["price_cny"],
+                    "period": plan["period"],
+                    "features": plan["features"],
+                    "bonus_atex": plan.get("bonus_atex", 0),
+                    "highlight": plan.get("highlight", ""),
+                })
+            self._json(result)
+
+        elif p == '/v1/subscription/status':
+            # 查询订阅状态
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            if not auth: return self._json({"err": "authorization_required"}, 401)
+            data = _load_saas()
+            uid = data["api_keys"].get(auth)
+            if not uid: return self._json({"err": "invalid_api_key"}, 401)
+            user = data["users"].get(uid, {})
+            sub = user.get("subscription", {})
+            plan_id = sub.get("plan", "free")
+            # 检查是否过期
+            if plan_id != "free" and sub.get("expires", "") < datetime.now(TZ).strftime("%Y-%m-%d"):
+                sub["plan"] = "free"
+                sub["plan_name"] = "免费版"
+                sub["expired"] = True
+                _save_saas(data)
+                plan_id = "free"
+            plan = _get_plan(plan_id) or _get_plan("free")
+            self._json({
+                "user_id": uid,
+                "plan": plan_id,
+                "plan_name": sub.get("plan_name", plan.get("name", "免费版")),
+                "started": sub.get("started", ""),
+                "expires": sub.get("expires", ""),
+                "auto_renew": sub.get("auto_renew", False),
+                "features": plan.get("features", []),
+                "bonus_atex_monthly": plan.get("bonus_atex", 0),
+            })
+
         # ── 原ATEX路由 ──
         elif p == '/api/v1/status': self._json(exchange.status())
         elif p == '/api/v1/orderbook': self._json(exchange.query_orderbook())
@@ -484,50 +557,6 @@ class Handler(BaseHTTPRequestHandler):
                 "recent_completed": req_data["completed"][-10:],
             })
 
-        elif p == '/v1/bonus/info':
-            # 查询充值送积分活动详情
-            bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
-            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
-            is_first = True
-            if auth:
-                saas_data = _load_saas()
-                uid = saas_data["api_keys"].get(auth)
-                if uid:
-                    is_first = saas_data["users"].get(uid, {}).get("total_topup_count", 0) == 0
-            self._json({
-                "promotion": bonus_cfg if bonus_cfg.get("active") else {"active": False},
-                "your_first_topup_bonus_atex": bonus_cfg.get("first_topup_bonus_atex", 0) if (bonus_cfg.get("active") and is_first) else 0,
-                "is_first_topup": is_first,
-                "examples": [
-                    {"topup_cny": 10, "bonus_cny": 1, "bonus_atex": 5, "note": "充10送1元+5ATEX"},
-                    {"topup_cny": 100, "bonus_cny": 20, "bonus_atex": 50, "note": "充100送20元+50ATEX"},
-                    {"topup_cny": 500, "bonus_cny": 150, "bonus_atex": 250, "note": "充500送150元+250ATEX"},
-                    {"topup_cny": 1000, "bonus_cny": 400, "bonus_atex": 500, "note": "充1000送400元+500ATEX"},
-                ] if bonus_cfg.get("active") else [],
-            })
-
-        elif p == '/v1/subscription/plans':
-            # 查看订阅方案
-            sub_cfg = exchange.config.get("subscription_plans", {})
-            plans = sub_cfg.get("plans", [])
-            result = {
-                "active": sub_cfg.get("active", False),
-                "trial_days": sub_cfg.get("trial_days", 0),
-                "trial_plan": sub_cfg.get("trial_plan", ""),
-                "plans": []
-            }
-            for plan in plans:
-                result["plans"].append({
-                    "id": plan["id"],
-                    "name": plan["name"],
-                    "price_cny": plan["price_cny"],
-                    "period": plan["period"],
-                    "features": plan["features"],
-                    "bonus_atex": plan.get("bonus_atex", 0),
-                    "highlight": plan.get("highlight", ""),
-                })
-            self._json(result)
-
         elif p == '/v1/subscription/subscribe':
             # 订阅（管理接口，后续接支付宝自动扣款）
             uid = d.get("user_id", "")
@@ -563,35 +592,6 @@ class Handler(BaseHTTPRequestHandler):
                 "bonus_atex": bonus,
                 "features": plan["features"],
                 "note": "订阅已激活。自动扣费功能开发中，当前需管理员确认付款。"
-            })
-
-        elif p == '/v1/subscription/status':
-            # 查询订阅状态
-            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
-            if not auth: return self._json({"err": "authorization_required"}, 401)
-            data = _load_saas()
-            uid = data["api_keys"].get(auth)
-            if not uid: return self._json({"err": "invalid_api_key"}, 401)
-            user = data["users"].get(uid, {})
-            sub = user.get("subscription", {})
-            plan_id = sub.get("plan", "free")
-            # 检查是否过期
-            if plan_id != "free" and sub.get("expires", "") < datetime.now(TZ).strftime("%Y-%m-%d"):
-                sub["plan"] = "free"
-                sub["plan_name"] = "免费版"
-                sub["expired"] = True
-                _save_saas(data)
-                plan_id = "free"
-            plan = _get_plan(plan_id) or _get_plan("free")
-            self._json({
-                "user_id": uid,
-                "plan": plan_id,
-                "plan_name": sub.get("plan_name", plan.get("name", "免费版")),
-                "started": sub.get("started", ""),
-                "expires": sub.get("expires", ""),
-                "auto_renew": sub.get("auto_renew", False),
-                "features": plan.get("features", []),
-                "bonus_atex_monthly": plan.get("bonus_atex", 0),
             })
 
         # ── 原ATEX路由 ──
