@@ -1,0 +1,62 @@
+{
+  "last_updated": "2026-05-27",
+  "registrations": [
+    {
+      "directory": "awesome-mcp-servers",
+      "url": "https://github.com/punkpeye/awesome-mcp-servers",
+      "status": "PR_SUBMITTED",
+      "pr_url": "https://github.com/punkpeye/awesome-mcp-servers/pull/TBD",
+      "method": "GitHub PR via API",
+      "date": "2026-05-27",
+      "notes": "PR submitted via fork+branch+commit. Awaiting review."
+    },
+    {
+      "directory": "Smithery",
+      "url": "https://smithery.ai",
+      "status": "NEEDS_MANUAL",
+      "method": "Website UI (GitHub OAuth)",
+      "date": null,
+      "notes": "No public API. Need to login via GitHub OAuth and click 'Publish' → link repo https://github.com/lm203688/atex. smithery.yaml already committed."
+    },
+    {
+      "directory": "Glama.ai",
+      "url": "https://glama.ai/mcp/servers",
+      "status": "NEEDS_MANUAL",
+      "method": "Website UI",
+      "date": null,
+      "notes": "No public API. Need to submit via website form."
+    },
+    {
+      "directory": "MCP Registry (official)",
+      "url": "https://registry.modelcontextprotocol.io",
+      "status": "NEEDS_AUTH",
+      "method": "API (needs GitHub OAuth JWT)",
+      "date": null,
+      "notes": "API endpoint /v0.1/publish exists but requires GitHub OAuth JWT token, not PAT."
+    },
+    {
+      "directory": "mcpmarket.com",
+      "url": "https://mcpmarket.com",
+      "status": "NEEDS_MANUAL",
+      "method": "Website UI",
+      "date": null,
+      "notes": "No public API found."
+    },
+    {
+      "directory": "mcpservers.org",
+      "url": "https://mcpservers.org",
+      "status": "PENDING",
+      "method": "TBD",
+      "date": null,
+      "notes": "Not yet investigated."
+    },
+    {
+      "directory": "cursor.directory",
+      "url": "https://cursor.directory",
+      "status": "PENDING",
+      "method": "TBD",
+      "date": null,
+      "notes": "Not yet investigated."
+    }
+  ]
+}
