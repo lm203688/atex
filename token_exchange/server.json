@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schema/server.json",
+  "name": "atex/ai-gateway",
+  "title": "ATEX AI Gateway",
+  "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible, MCP protocol support. Web search at 5 ATEX/call.",
+  "version": "5.9.0",
+  "websiteUrl": "https://lm203688.github.io/atex/",
+  "repository": {
+    "url": "https://github.com/lm203688/atex"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "http://150.158.119.19:8420/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {apiKey}",
+          "isSecret": true,
+          "isRequired": true,
+          "description": "Your ATEX API key"
+        }
+      ],
+      "variables": {
+        "apiKey": {
+          "description": "Your ATEX API key (register at http://150.158.119.19:8420/v1/register)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      }
+    }
+  ]
+}
