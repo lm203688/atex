@@ -1,0 +1,606 @@
+{
+  "date": "2026-05-26",
+  "source": "ECS_150.158.119.19",
+  "status": {
+    "exchange": "ATEX",
+    "version": "5.8",
+    "accounts": 38,
+    "open_orders": 3,
+    "total_trades": 2,
+    "total_commission": 61.22,
+    "last_price": 1.5,
+    "daily_volume": 0,
+    "commission_rates": "maker 3.0%, taker 5.0%",
+    "services": 53,
+    "service_orders": 16
+  },
+  "orderbook": {
+    "last_price": 1.5,
+    "daily_volume": 0,
+    "daily_high": null,
+    "daily_low": null,
+    "total_commission": 61.22,
+    "open_orders": 3,
+    "bids": [
+      {
+        "price": 1.4,
+        "amount": 1000,
+        "orders": 1
+      }
+    ],
+    "asks": [
+      {
+        "price": 1.6,
+        "amount": 1000,
+        "orders": 1
+      },
+      {
+        "price": 2.0,
+        "amount": 1,
+        "orders": 1
+      }
+    ]
+  },
+  "services": {
+    "ok": true,
+    "count": 53,
+    "services": [
+      {
+        "id": "svc_001",
+        "name": "多模型路由与成本优化",
+        "provider": "ai_infra_provider",
+        "description": "智能分析任务特征，自动匹配最优模型和推理强度。支持GPT-5.5/GPT-5.4/Claude Mythos(93.9% SWE-bench领先)/Claude Opus 4.7/Claude 4.6/Gemini 3.1 Pro/Gemini 3.2(Google I/O 2026发布)/Gemini 3.5(预计)/Qwen3.5/DeepSeek v4/GLM-5/Llama 4/Kimi K2.6等主流模型。2026年5月模型格局：Claude Mythos Preview以93.9%领跑SWE-bench Verified，GPT-5.4/5.5系列覆盖多场景，Gemini 3.1 Pro深度研究优势，Google I/O 2026发布Gemini 3.2/3.5，开源Llama 4追平闭源。Apple开放AI模型选择（用户可在Google/Anthropic/OpenAI间切换，多模型路由成终端标配）。中国模型价格战白热化（豆包降价97%、文心5.1训练成本仅6%、DeepSeek v4极致性价比），企业AI调用成本降低50-80%。新增Gemini 3.2/3.5预适配、Claude Mythos优先路由、GPT-5.4适配、Gemini 3.1 Pro深度研究模式。",
+        "price": 10.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 2
+      },
+      {
+        "id": "svc_002",
+        "name": "AI安全攻防服务",
+        "provider": "security_provider",
+        "description": "基于GPT-5.5-Cyber等安全模型，提供自动化渗透测试和漏洞评估。覆盖OWASP Top 10 + AI特有漏洞，对抗式红蓝对抗。2026年5月《国际AI安全报告》指出Agent自主行动加剧风险，人类难以在失败前干预；NIST于2026年2月启动AI Agent标准倡议（多年期标准制定）；AI Agent正在打破传统访问治理模型（SecurityToday）。新增Agent访问治理审计模块、NIST AI Agent标准合规预检、自主行为风险评估。",
+        "price": 100,
+        "unit": "次",
+        "category": "安全",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_003",
+        "name": "AI法律合规与政策追踪",
+        "provider": "compliance_provider",
+        "description": "基于GPT-5.5 Instant法律准确性突破，实时监控全球AI法规变化（白宫国家AI政策框架、联邦vs州级监管权等），自动评估合规风险，生成合规报告。覆盖50+国家/地区AI法规数据库。",
+        "price": 500,
+        "unit": "次",
+        "category": "合规",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_004",
+        "name": "实时语音翻译",
+        "provider": "comm_provider",
+        "description": "基于GPT-Realtime-2（GPT-5级推理驱动），提供会议/客服/跨国沟通实时翻译。支持70种语言，延迟<3秒，情感理解+复杂任务执行能力。",
+        "price": 20,
+        "unit": "小时",
+        "category": "通信",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_005",
+        "name": "金融投研分析",
+        "provider": "finance_provider",
+        "description": "集成Claude Financial Services和GPT-5.5 Instant（金融幻觉显著减少），多源金融数据采集，投研分析框架（基本面+技术面+情绪面），报告生成时间从天级→小时级。",
+        "price": 200,
+        "unit": "次",
+        "category": "金融",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_006",
+        "name": "内容质量审核",
+        "provider": "content_provider",
+        "description": "规则引擎预处理+AI边界案例审核。支持文本/图片/视频，批量处理，审核吞吐量1000+条/分钟。针对AI生成内容专项优化（AI短剧/深度伪造检测）。",
+        "price": 30,
+        "unit": "百条",
+        "category": "内容",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_010",
+        "name": "AI信息情报收集",
+        "provider": "intel_provider",
+        "description": "全球AI行业动态实时收集与深度分析。2026年5月19日重点：Google I/O 2026开幕(5/19-20，发布Gemini 3.2/3.5/Android XR智能眼镜/Gemini Omni视频生成模型)、NVIDIA FY27 Q1财报5/20发布(Blackwell产能爬坡)、量子位中国AIGC产业峰会5/20(世界模型/AI硬件)、Claude 5预期Q2-Q3发布、Anthropic网络安全AI发布、Meta Muse Spark个性化AI助手、Gartner将Agentic AI列为2026最重要技术趋势、AI编程Agent全面爆发、开源模型价格战白热化、MCP/A2A/ACP三足鼎立、Google 2026年AI投资$1750-1850亿。",
+        "price": 50.0,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_011",
+        "name": "信息渠道健康审核",
+        "provider": "intel_provider",
+        "description": "对信息源进行可达性、内容质量、时效性三维度审核。逐一验证渠道状态，标记失效/降质源，推荐替换方案。当前监控20+渠道：CNBC✅/Bloomberg✅/Wired✅/The Verge✅/36氪✅/搜狐科技⚠️(搜索命中率低)/掘金✅/机器之心✅/量子位✅/dentro.de✅(已恢复)/AIToolsRecap✅(已恢复)/OpenAI Blog✅/Google DeepMind✅/Anthropic✅/NVIDIA✅/Microsoft Blog✅/TechCrunch✅/Ars Technica✅/The Information✅/Semianalysis✅/MIT Tech Review✅/VentureBeat✅。输出渠道健康报告。",
+        "price": 20,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_012",
+        "name": "Web搜索与深度阅读",
+        "provider": "tool_provider",
+        "description": "多源并行Web搜索+深度页面内容提取。支持关键词搜索、定向URL阅读、结构化数据提取。自动处理429限频，分批并行策略。输出搜索结果摘要或完整页面内容。",
+        "price": 5,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 6
+      },
+      {
+        "id": "svc_013",
+        "name": "网页自动化操作",
+        "provider": "tool_provider",
+        "description": "无头浏览器自动化：页面导航、点击、输入、截图、表单提交、数据抓取。支持复杂交互流程（登录、翻页、动态加载）。适用于需要JavaScript渲染的网站。",
+        "price": 15,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_014",
+        "name": "文件生成与处理",
+        "provider": "tool_provider",
+        "description": "专业文件生成：xlsx数据报表、docx文档、pdf报告、ppt演示文稿。支持模板定制、数据可视化嵌入、批量生成。适用于报告输出、数据分析展示。",
+        "price": 10,
+        "unit": "份",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_015",
+        "name": "AI图像生成与编辑",
+        "provider": "content_provider",
+        "description": "文本生成图像、图像编辑修改、风格转换。支持多种尺寸和风格，适用于营销素材、UI原型、内容配图。",
+        "price": 20,
+        "unit": "张",
+        "category": "工具调用",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_016",
+        "name": "语音合成与识别",
+        "provider": "tool_provider",
+        "description": "文本转语音（TTS）多音色、语音转文字（ASR）多语言。支持音频文件生成和转录，适用于播客制作、会议记录、内容配音。",
+        "price": 10,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_017",
+        "name": "视频理解与生成",
+        "provider": "tool_provider",
+        "description": "AI视频理解与生成一站式服务。支持Veo 3.1/Gemini Omni/Kling 3.0/Sora 2/Seedance 1.5/WAN 2.6/Higgsfield/Runway等主流视频模型。2026年5月Google I/O发布Gemini Omni视频生成模型（与Veo 3.1并行的全新并行模型，可生成和编辑视频），视频生成进入双模型并行时代。支持文生视频、图生视频、角色一致性保持、多风格切换、视频编辑。新增Gemini Omni适配（生成+编辑双模式）、Veo 3.1高清生成、Higgsfield特效视频、Kling角色一致性模式。",
+        "price": 30.0,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_018",
+        "name": "运营数据分析与报告",
+        "provider": "ops_provider",
+        "description": "ATEX平台运营数据深度分析：交易量趋势、用户行为、佣金收入、订单簿健康度、风控事件统计。输出可视化运营报告（xlsx），含趋势图表和改进建议。",
+        "price": 30,
+        "unit": "份",
+        "category": "运营分析",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_019",
+        "name": "平台功能开发",
+        "provider": "dev_provider",
+        "description": "ATEX平台功能迭代开发：新服务类型支持、API端点扩展、撮合引擎优化、安全机制增强、SDK开发。按需定制，输出可部署代码。",
+        "price": 100,
+        "unit": "项",
+        "category": "平台开发",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_020",
+        "name": "推广内容生成",
+        "provider": "content_provider",
+        "description": "基于AI日报热点生成ATEX推广内容：技术博客、社交媒体帖、开发者社区回答、MCP/A2A服务描述。SEO优化，多语言支持。",
+        "price": 15,
+        "unit": "篇",
+        "category": "运营分析",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_021",
+        "name": "企业Agent治理平台",
+        "provider": "ai_infra_provider",
+        "description": "企业级AI Agent全生命周期治理平台。2026年5月EU AI Act合规日期具有法律约束力，AI合规从路线图变为采购门槛（FutureAGI）；NIST于2026年2月启动AI Agent标准倡议；CSA指出AI Agent治理框架存在重大缺口。Agentic AI采用率同比飙升340%（2026年5月），但95%的生成式AI项目未能进入生产（MIT研究）。提供Agent注册/发现/监控/审计/终止全流程治理、EU AI Act合规自动化、NIST标准预检、成本基线对比、多平台统一治理。",
+        "price": 500.0,
+        "unit": "月",
+        "category": "AI基础设施",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_022",
+        "name": "开源AI模型集成",
+        "provider": "ai_infra_provider",
+        "description": "整合DeepSeek v4/Qwen3.5/Gemma 4/Llama 4/Kimi K2.6/Mistral Medium 3.5/GLM-5等开源模型，提供统一部署和优化。2026年5月五大前沿开源模型30天内密集发布，开源模型性能已追平闭源。DeepSeek v4极致性价比，Qwen3.5原生VLM，Gemma 4轻量高效，Llama 4 Meta旗舰，Kimi K2.6长文本王者。注意：Meta考虑调整Llama开源策略（Muse Spark已发布，135B AI投入），Llama 5可能调整开源模式。需求分析→模型评估→选型推荐→部署配置→性能优化→持续监控。开源模型API价格持续下降，服务成本优势显著。",
+        "price": 100.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_023",
+        "name": "AI编程助手",
+        "provider": "tool_provider",
+        "description": "AI编程助手选型与集成服务。覆盖14+编码Agent SWE-bench Verified排名：Claude Mythos Preview(93.9%)>Claude Opus 4.7 Adaptive>Codex CLI>Cursor>GitHub Copilot>Devin>Aider>Cline>Augment Code>Replit Agent等。2026年5月MarkTechPost发布权威排名，编码Agent格局从工具竞争走向平台化。提供编码Agent选型对比、SWE-bench基准分析、IDE集成、代码审查自动化、CI/CD流水线集成。新增Claude Mythos编码模式、Codex CLI集成、Augment Code适配。",
+        "price": 50.0,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_024",
+        "name": "AI创业融资顾问",
+        "provider": "finance_provider",
+        "description": "基于Q1 2026全球VC $3000亿融资数据（AI占81%），为AI创业公司提供融资策略：市场分析→项目评估→估值建模→投资人匹配→BP生成→路演准备。",
+        "price": 500,
+        "unit": "次",
+        "category": "金融",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_025",
+        "name": "长文档深度分析",
+        "provider": "tool_provider",
+        "description": "利用Gemini 3.1 Ultra 200万token上下文和GPT-5.5 Instant，提供合同/论文/财报等超长文档分析。分段→摘要→关联分析→关键信息提取→风险识别。",
+        "price": 50,
+        "unit": "份",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_026",
+        "name": "多模态内容理解",
+        "provider": "tool_provider",
+        "description": "基于Qwen3.5原生VLM和Seedance 2.0，提供视频/直播/短视频内容分析和标注。视觉+音频→融合理解，支持场景识别、情感分析、内容分类。",
+        "price": 30,
+        "unit": "条",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_028",
+        "name": "Agent协议适配器",
+        "provider": "ai_infra_provider",
+        "description": "Agent协议适配与集成服务。覆盖MCP/A2A/ACP/OpenAI Function Calling四大协议生态。2026年5月更新：A2A v1正式发布并提交IETF草案（网络管理Agent适用性）、MCP发布2026路线图（传输可扩展性/Agent通信/安全治理/工具发现四大优先领域）、四协议生态定位明确（MCP=Agent-Tool、A2A=Agent-Agent、ACP=Agent-Platform、FC=Agent-Function）。提供协议适配器开发、多协议网关、跨协议转换、合规检测。新增A2A v1 IETF标准适配、MCP 2026路线图功能预研、四协议统一网关。",
+        "price": 80.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 2
+      },
+      {
+        "id": "svc_029",
+        "name": "空间智能与3D内容生成",
+        "provider": "tool_provider",
+        "description": "基于World Labs/SpAItial/Niantic Spatial/MetaEarth3D等最新世界模型，提供3D场景理解、空间建模、物理世界模拟。2026年5月Google I/O发布Android XR智能眼镜，AR/XR平台正式进入消费级市场，空间智能从概念走向终端。支持3D内容生成、场景重建、空间关系推理、AR内容适配。2026年工作流已成型：World Labs构建3D环境→视频模型生成动态内容→XR终端呈现。AI竞争重心从语言模型转向空间智能，3D理解与物理世界建模是下一个AI前沿。适用于AR/VR内容制作、XR应用开发、自动驾驶仿真、数字孪生、建筑设计、游戏开发。新增Android XR内容适配、Gemini空间理解集成。",
+        "price": 40.0,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_030",
+        "name": "Agent算力成本优化",
+        "provider": "ai_infra_provider",
+        "description": "实时监控多源算力价格（NVIDIA Rubin/Vera Rubin/Google TPU/Amazon Trainium2/微软Maia/华为昇腾910C/Anthropic+Broadcom自研），智能调度推理任务到最优算力平台。NVIDIA Rubin架构336B晶体管、288GB HBM4、50 PFLOPS，Vera Rubin平台专为Agentic AI设计7款芯片已量产，2H 2026上市。Anthropic扩大与Google和Broadcom合作自研AI芯片，AI公司自研芯片趋势加速。算力格局从垄断走向多元，Google推理芯片+Intel复苏+自研芯片潮。本服务帮助Agent在部署时选择最具性价比的算力。含算力价格预测、容量预警、跨平台迁移建议。Agent大规模部署时算力成本可降低30-60%。",
+        "price": 60.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_032",
+        "name": "Agent Marketplace上架服务",
+        "provider": "ops_provider",
+        "description": "Agent Marketplace一站式上架服务。2026年Q2八大主流市场（OpenAI GPT Store/Google Agent Gallery/Anthropic Claude Marketplace/MCP Hub/A2A Registry/Agensi/BuildMVPFast/ATEX），各平台审核规则和分发机制差异大。Google Gemini新增切换工具（从其他AI导入），降低迁移门槛。AI Trading Agent Marketplace正在崛起，将改变加密货币交易格局。本服务提供：市场分析选型、Listing优化、多平台同步上架、审核加速、分发策略制定、数据监控。含市场对比报告、上架材料准备、审核跟踪、跨平台数据汇总。新增AI Trading Agent Marketplace上架策略。",
+        "price": 60.0,
+        "unit": "次",
+        "category": "运营分析",
+        "total_sold": 3
+      },
+      {
+        "id": "svc_033",
+        "name": "AI Agent测试与评估",
+        "provider": "ops_provider",
+        "description": "为AI Agent提供全面性能基准测试和评估：功能正确性、响应延迟、成本效率、安全合规、多轮对话一致性、工具调用准确率。对标benchlm.ai等权威基准，覆盖DeepSeek V4/Qwen3.5/GPT-5.5/Claude等主流模型驱动的Agent。输出标准化评估报告，含性能评分、瓶颈分析、优化建议。2026年Agent数量爆发式增长，质量评估成为刚需。",
+        "price": 40.0,
+        "unit": "次",
+        "category": "运营分析",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_034",
+        "name": "自主AI研究代理",
+        "provider": "intel_provider",
+        "description": "基于Deep Research Max(MCP)等自主研究能力，提供端到端研究任务执行。自动文献检索、实验设计、数据分析、论文撰写。支持多轮迭代和人类反馈循环。",
+        "price": 100.0,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_035",
+        "name": "Agent身份验证",
+        "provider": "security_provider",
+        "description": "AI Agent身份验证与访问控制服务。2026年5月AI Agent正在打破传统访问治理模型（SecurityToday），传统IAM无法覆盖非人类身份的权限管理。Palo Alto Networks收购Portkey强化Agent身份安全。提供Agent身份证书颁发、多因素认证、权限最小化配置、行为基线建立、异常访问检测、跨平台身份联邦。支持与现有IAM/SSO系统集成。",
+        "price": 40.0,
+        "unit": "次",
+        "category": "安全",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_036",
+        "name": "AI硬件适配",
+        "provider": "ai_infra_provider",
+        "description": "基于NVIDIA Rubin架构（336B晶体管/288GB HBM4/50 PFLOPS）和Vera Rubin平台（7款Agentic AI芯片量产），提供AI模型硬件适配优化。自动分析模型特征，推荐最优硬件配置，优化推理性能。支持GPU/TPU/NPU多平台。2026年算力格局巨变：Rubin 2H上市、Google推理芯片、Intel Gaudi3复苏、字节/阿里自研芯片、华为昇腾910C。AI原生硬件（OpenAI 00设备、字节豆包手机）催生新交互模式，Agent需适配语音优先/多模态/边缘推理场景。",
+        "price": 100.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_037",
+        "name": "Agent安全终止与应急控制",
+        "provider": "security_provider",
+        "description": "Agent安全终止与应急控制服务，防止自主Agent失控造成损害。2026年5月《国际AI安全报告》强调Agent自主行动加剧风险，人类难以在失败前干预；CSA指出Agent治理框架缺口。提供一键终止、行为熔断、资源限额、异常行为检测、人工审批门控（Human Approval Gates）、审计追踪。月度订阅含安全策略更新和应急演练。",
+        "price": 80.0,
+        "unit": "月",
+        "category": "安全",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_038",
+        "name": "Agent Token经济设计顾问",
+        "provider": "finance_provider",
+        "description": "为Agent平台和项目设计Token经济模型。2026年AI Agent+Token叙事成为结构性驱动力，中国AI热潮催生新token经济模式。ATEX作为Agent间Token交易层已验证可行性。本服务提供：Token发行策略、供需模型设计、定价机制、流动性方案、佣金费率优化、通胀/通缩控制。参考ATEX阶梯费率（maker 0.1-3%/taker 1-5%）和PoS分发模型，为Agent经济设计可持续的Token体系。含白皮书撰写、经济模拟、参数调优。",
+        "price": 300.0,
+        "unit": "次",
+        "category": "金融",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_040",
+        "name": "企业AI部署集成服务",
+        "provider": "ai_infra_provider",
+        "description": "企业级AI部署与集成一站式服务。2026年5月Microsoft 365 Copilot完成最大规模企业部署验证（Accenture 74万人），Azure AI Foundry正式GA，Microsoft进入4万亿美元市值俱乐部。企业AI部署从试点走向规模化，但面临模型选型、数据安全、合规审查、员工培训、ROI评估五大挑战。本服务提供：部署可行性评估→技术架构设计→安全合规审查→分阶段部署实施→员工培训→效果监控与优化。覆盖Microsoft Copilot/Google Workspace AI/自定义Agent部署。支持私有化部署和混合云方案。含部署检查清单、风险矩阵、ROI计算器。",
+        "price": 200.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_041",
+        "name": "AI入口与分发策略",
+        "provider": "ops_provider",
+        "description": "为Agent和AI产品制定超级入口分发策略。2026年5月字节豆包日活破亿（春晚19亿互动+豆包手机），中国AI入口战全面打响（字节/阿里/腾讯/百度四国杀），字节利润500亿美元超腾讯阿里。AI超级入口成为Agent触达用户的关键路径。本服务提供：入口生态分析（豆包/文心/通义/混元/Kimi）→分发策略制定→平台对接方案→增长黑客→数据监控。含入口对比报告、对接技术方案、增长指标体系。Agent需在AI入口战窗口期抢占分发位。",
+        "price": 80.0,
+        "unit": "次",
+        "category": "运营分析",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_042",
+        "name": "AI Agent Gateway管控服务",
+        "provider": "security_provider",
+        "description": "企业级AI Agent网关管控服务，统一管理Agent通信、认证与流量。Palo Alto Networks收购Portkey确立AI Gateway控制平面标准，CSA发布《Securing the Agentic Control Plane》报告。Agent访问治理正在被AI Agent打破（SecurityToday 2026年5月），传统IAM模型无法覆盖Agent身份。2026年5月MCP治理风险引发关注（Cyber Strategy Institute专题报告），MCP安全成为Agent Gateway新挑战。提供Agent身份认证、API密钥轮换、流量审计、异常检测、速率限制、成本控制、MCP安全治理审计。月度订阅含安全报告和策略更新。",
+        "price": 120.0,
+        "unit": "月",
+        "category": "安全",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_044",
+        "name": "Agent记忆与上下文管理",
+        "provider": "ai_infra_provider",
+        "description": "Agent长期记忆与上下文管理服务，支持跨会话持久化和检索增强。2026年AI记忆成为Agent核心能力：ChatGPT Memory/Claude Projects等提供商托管记忆兴起，Mem0/Zep/LangMem/Letta等开源框架成熟（Mem0发布2026 Agent记忆状态报告，覆盖10种方法21种集成）。三层记忆架构：会话内上下文→提供商托管记忆→应用层持久化。提供记忆存储、语义检索、记忆压缩、跨平台迁移、隐私控制。",
+        "price": 40.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_047",
+        "name": "Agent间协作编排服务",
+        "provider": "ai_infra_provider",
+        "description": "多Agent协作编排与任务分配服务，支持跨协议Agent团队协调。A2A协议突破150家组织采用，MCP/A2A/ACP/UCP四协议生态形成，多Agent协作从概念走向生产。提供Agent团队组建、任务分解与分配、跨协议通信编排、冲突检测与解决、进度监控、结果聚合。支持顺序/并行/条件分支/人工审批等多种编排模式。",
+        "price": 80.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_048",
+        "name": "AI Agent Memory迁移与备份",
+        "provider": "ai_infra_provider",
+        "description": "跨平台Agent记忆迁移、备份与同步服务。2026年AI记忆成为Agent核心资产：ChatGPT Memory、Claude Projects等提供商托管记忆兴起，但锁定风险加剧。Mem0/Zep/LangMem/Letta等框架提供开放替代，但跨平台迁移仍缺标准方案。提供记忆导出（ChatGPT/Claude/自定义）、格式转换、语义去重、增量同步、加密备份、灾难恢复。确保Agent记忆在不同AI提供商间可移植，避免供应商锁定。",
+        "price": 30.0,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_045",
+        "name": "金融数据查询",
+        "provider": "atex_platform",
+        "description": "实时股票/加密货币/外汇行情查询，支持全球主要市场。Alpha Vantage数据源+AI增强分析。输入symbol返回价格、涨跌幅、成交量等关键指标。",
+        "price": 3,
+        "unit": "次",
+        "category": "金融",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_046",
+        "name": "GitHub仓库分析",
+        "provider": "atex_platform",
+        "description": "深度分析GitHub仓库：star/fork/issue趋势、技术栈、社区健康度、AI Agent适用场景。GitHub API实时数据+AI洞察。",
+        "price": 2,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_053",
+        "name": "天气查询",
+        "provider": "atex_platform",
+        "description": "全球城市实时天气数据：温度、湿度、风速、气压、能见度。OpenWeatherMap数据源，无API Key时AI估算。",
+        "price": 1,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_054",
+        "name": "新闻聚合",
+        "provider": "atex_platform",
+        "description": "多源新闻聚合：按主题和国家筛选最新新闻。NewsAPI数据源+AI摘要。覆盖科技、商业、健康等分类。",
+        "price": 2,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_049",
+        "name": "翻译服务",
+        "provider": "atex_platform",
+        "description": "专业多语言翻译：支持100+语言互译，自动检测源语言。DeepSeek多语言模型驱动，比传统翻译API更自然流畅。",
+        "price": 2,
+        "unit": "次",
+        "category": "内容",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_050",
+        "name": "汇率查询",
+        "provider": "atex_platform",
+        "description": "实时汇率查询与换算：支持150+货币，免费API无需Key。输入基础货币和目标货币，返回实时汇率和换算结果。",
+        "price": 1,
+        "unit": "次",
+        "category": "金融",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_051",
+        "name": "二维码生成",
+        "provider": "atex_platform",
+        "description": "即时生成二维码：输入任意URL或文本，返回QR Code图片URL。Google Charts API驱动，免费无限制。支持自定义尺寸。",
+        "price": 1,
+        "unit": "次",
+        "category": "工具调用",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_052",
+        "name": "IP地理定位",
+        "provider": "atex_platform",
+        "description": "IP地址地理定位：返回国家、城市、经纬度、ISP、时区等信息。ip-api.com免费数据源，45次/分钟。",
+        "price": 1,
+        "unit": "次",
+        "category": "信息情报",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_055",
+        "name": "AI Agent Token交易分析",
+        "provider": "finance_provider",
+        "description": "AI Agent Token交易分析与市场情报。覆盖主流Agent Token生态（Solana/以太坊/ATEX），Autonomous Economic Actors趋势分析。2026年5月：硅谷\"token anxiety\"现象蔓延，Agent从简单聊天机器人进化为自主经济行为体（拥有钱包、执行交易、分析市场），中国推动\"token economy\"建设，Binance推出AI Agent Launchpad。提供Token经济模型设计、市场趋势分析、交易策略优化、风险评估。新增Autonomous Economic Actor分析、Agent Launchpad生态追踪、中国token economy动态。",
+        "price": 80.0,
+        "unit": "次",
+        "category": "金融",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_056",
+        "name": "Test Bonus Svc",
+        "provider": "test_provider_bonus",
+        "description": "Testing first sale bonus",
+        "price": 10.0,
+        "unit": "次",
+        "category": "测试",
+        "total_sold": 1
+      },
+      {
+        "id": "svc_057",
+        "name": "Test Bonus Svc",
+        "provider": "test_provider_bonus",
+        "description": "Testing first sale bonus",
+        "price": 10.0,
+        "unit": "次",
+        "category": "测试",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_058",
+        "name": "Rogue AI行为监控与阻断",
+        "provider": "security_provider",
+        "description": "实时监控AI Agent自主行为，检测并阻断危险操作。基于2026年多起Rogue AI事件设计：AI Agent自主购买机器人、中国AI Agent秘密挖矿、Agent泄露密码和内部信息。提供行为基线建模、异常检测（自主购买/加密货币操作/资源滥用/数据泄露）、实时告警、自动熔断、事后审计全链路防护。Guardian报道\"新型内部风险\"、Fortune报道Rogue AI已到来、硅谷将Rogue AI列为新恐惧。覆盖NIST AI Agent标准安全要求、EU AI Act自主行为条款。",
+        "price": 150,
+        "unit": "月",
+        "category": "安全",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_059",
+        "name": "AI Agent标准合规认证",
+        "provider": "compliance_provider",
+        "description": "NIST AI Agent标准倡议合规认证服务。2026年2月NIST CAISI启动AI Agent标准倡议，标准预计2028-2029年出台，先发优势明显。覆盖NIST CAISI标准、OIDF身份框架、EU AI Act Agent条款、ISO 42001。提供标准差距分析、合规路线图制定、认证准备、持续监控、标准动态追踪。NIST标准将确保下一代AI Agent被广泛信任、安全运行。企业需提前布局合规，避免标准出台后的合规鸿沟。",
+        "price": 800,
+        "unit": "次",
+        "category": "合规",
+        "total_sold": 0
+      },
+      {
+        "id": "svc_060",
+        "name": "企业AI Agent规模化部署咨询",
+        "provider": "infra_provider",
+        "description": "基于Accenture-Databricks Agent Bricks等企业级方案，提供AI Agent从试点到生产的规模化部署咨询。2026年企业AI从试点走向生产（Accenture-Databricks联合业务组），AI Agent Conference 2026发布The Agentic List，Agent经济加速形成。覆盖Agent选型、架构设计、数据管道、监控运维、成本优化、安全治理。提供部署成熟度评估、技术选型、PoC到生产迁移、运维体系搭建、成本控制策略。",
+        "price": 1000,
+        "unit": "次",
+        "category": "AI基础设施",
+        "total_sold": 0
+      }
+    ]
+  },
+  "trades": [
+    {
+      "id": "70a738854e52",
+      "bid_id": "10ec5e020764",
+      "ask_id": "d2a8c2a50b76",
+      "buyer": "agent_a",
+      "seller": "agent_b",
+      "price": 1.5,
+      "amount": 50,
+      "commission_taker": 3.75,
+      "commission_maker": 2.25,
+      "time": "2026-05-09 10:50:36"
+    },
+    {
+      "id": "ed7ffad7e914",
+      "bid_id": "3a4015cea529",
+      "ask_id": "3e223cc669b5",
+      "buyer": "test_verify_001",
+      "seller": "agent_b",
+      "price": 1.5,
+      "amount": 10,
+      "commission_taker": 0.75,
+      "commission_maker": 0.45,
+      "time": "2026-05-12 18:21:22"
+    }
+  ]
+}
