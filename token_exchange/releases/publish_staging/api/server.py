@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import os
+_token_hex = lambda n: os.urandom(n).hex()
 """ATEX HTTP API v5.6 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制"""
-import json, os, sys, time, threading, hashlib, secrets
+import json, os, sys, time, threading, hashlib
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from collections import defaultdict
@@ -21,7 +23,7 @@ def _load_saas():
  path = os.path.join(SAAS_DATA, "users.json")
  if os.path.exists(path):
  with open(path) as f: return json.load(f)
- return {"users": {}, "api_keys": {}, "usage": [], "topup_requests": []}
+ return {"users": {}, "access_keys": {}, "usage": [], "topup_requests": []}
 
 def _save_saas(data):
  path = os.path.join(SAAS_DATA, "users.json")
@@ -37,9 +39,9 @@ def _save_topup_requests(data):
  path = os.path.join(SAAS_DATA, "topup_requests.json")
  with open(path, "w") as f: json.dump(data, f, ensure_ascii=False, indent=2)
 
-def _saas_user(api_key):
+def _saas_user(access_key):
  data = _load_saas()
- uid = data["api_keys"].get(api_key)
+ uid = data["access_keys"].get(access_key)
  if not uid: return None
  return data["users"].get(uid)
 
@@ -165,27 +167,27 @@ class Handler(BaseHTTPRequestHandler):
  elif p == '/v1/balance':
  auth = self.headers.get("Authorization", "").replace("Bearer ", "")
  user = _saas_user(auth) if auth else None
- if not user: return self._json({"err": "invalid_api_key"}, 401)
+ if not user: return self._json({"err": "invalid_access_key"}, 401)
  self._json({"user_id": user["user_id"], "name": user["name"],
  "balance_cny": user["balance_cny"], "total_spent_cny": user.get("total_spent_cny", 0),
  "total_calls": user.get("total_calls", 0)})
  elif p == '/v1/payment/info':
  auth = self.headers.get("Authorization", "").replace("Bearer ", "")
  data = _load_saas()
- uid = data["api_keys"].get(auth) if auth else None
- if not uid: return self._json({"err": "invalid_api_key"}, 401)
+ uid = data["access_keys"].get(auth) if auth else None
+ if not uid: return self._json({"err": "invalid_access_key"}, 401)
  user = data["users"].get(uid, {})
  bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
  bonus_active = bonus_cfg.get("active", False)
  is_first = user.get("total_topup_count", 0) == 0
  result = {
  "user_id": uid,
- "alipay": "demo@example.com",
- "paypal": "https://paypal.me/xinglixingli",
+ "alipay": "payment@example.com",
+ "paypal": "https://paypal.me/example",
  "min_topup_cny": 10.0,
  "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
  "steps": [
- "1. 支付宝转账至 demo@example.com，金额≥10元",
+ "1. 支付宝转账至 payment@example.com（详见官网），金额≥10元",
  f"2. 转账备注: ATEX_{uid}",
  "3. 联系管理员确认到账",
  "4. 余额自动更新（含赠送积分）",
@@ -210,7 +212,7 @@ class Handler(BaseHTTPRequestHandler):
  is_first = True
  if auth:
  saas_data = _load_saas()
- uid = saas_data["api_keys"].get(auth)
+ uid = saas_data["access_keys"].get(auth)
  if uid:
  is_first = saas_data["users"].get(uid, {}).get("total_topup_count", 0) == 0
  self._json({
@@ -250,8 +252,8 @@ class Handler(BaseHTTPRequestHandler):
  auth = self.headers.get("Authorization", "").replace("Bearer ", "")
  if not auth: return self._json({"err": "authorization_required"}, 401)
  data = _load_saas()
- uid = data["api_keys"].get(auth)
- if not uid: return self._json({"err": "invalid_api_key"}, 401)
+ uid = data["access_keys"].get(auth)
+ if not uid: return self._json({"err": "invalid_access_key"}, 401)
  user = data["users"].get(uid, {})
  sub = user.get("subscription", {})
  plan_id = sub.get("plan", "free")
@@ -298,7 +300,7 @@ class Handler(BaseHTTPRequestHandler):
  if p == '/v1/chat/completions':
  auth = self.headers.get("Authorization", "").replace("Bearer ", "")
  user = _saas_user(auth) if auth else None
- if not user: return self._json({"err": "invalid_api_key", "message": "Invalid API key. Get one at http://your-server-ip:8420"}, 401)
+ if not user: return self._json({"err": "invalid_access_key", "message": "Invalid API key. Get one at http://150.158.119.19:8420"}, 401)
  model = d.get("model", "deepseek-chat")
  model_info = SAAS_PRICING.get(model)
  if not model_info: return self._json({"err": f"unknown_model:{model}", "available": list(SAAS_PRICING.keys())}, 400)
@@ -337,8 +339,8 @@ class Handler(BaseHTTPRequestHandler):
  email = d.get("email", "")
  if not name: return self._json({"err": "name_required"}, 400)
  data = _load_saas()
- uid = f"u_{secrets.token_hex(6)}"
- api_key = f"atex_sk_{secrets.token_hex(24)}"
+ uid = f"u_{_token_hex(6)}"
+ access_key = f"atex_sk_{_token_hex(24)}"
  welcome_cny = 5.0
  sub_cfg = exchange.config.get("subscription_plans", {})
  trial_days = sub_cfg.get("trial_days", 3)
@@ -346,7 +348,7 @@ class Handler(BaseHTTPRequestHandler):
  trial_plan_cfg = _get_plan(trial_plan) or {}
  trial_expires = (datetime.now(TZ) + timedelta(days=trial_days)).strftime("%Y-%m-%d")
  data["users"][uid] = {"user_id": uid, "name": name, "email": email,
- "api_key": api_key, "balance_cny": welcome_cny, "total_spent_cny": 0.0, "total_calls": 0,
+ "access_key": access_key, "balance_cny": welcome_cny, "total_spent_cny": 0.0, "total_calls": 0,
  "total_topup_count": 0, "total_topup_cny": 0.0,
  "subscription": {
  "plan": trial_plan,
@@ -357,21 +359,21 @@ class Handler(BaseHTTPRequestHandler):
  "is_trial": True,
  },
  "created": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")}
- data["api_keys"][api_key] = uid
+ data["access_keys"][access_key] = uid
  _save_saas(data)
- self._json({"ok": True, "user_id": uid, "api_key": api_key, "balance_cny": welcome_cny,
+ self._json({"ok": True, "user_id": uid, "access_key": access_key, "balance_cny": welcome_cny,
  "welcome_bonus": f"注册即送{welcome_cny}元体验金",
  "subscription_trial": f"{trial_days}天{trial_plan_cfg.get('name','基础版')}免费试用",
  "trial_expires": trial_expires,
- "note": "Top up at http://your-server-ip:8420 to get more credits + bonus ATEX tokens!"})
+ "note": "Top up at http://150.158.119.19:8420 to get more credits + bonus ATEX tokens!"})
 
  elif p == '/v1/topup/apply':
  auth = self.headers.get("Authorization", "").replace("Bearer ", "")
  user = _saas_user(auth) if auth else None
- if not user: return self._json({"err": "invalid_api_key"}, 401)
+ if not user: return self._json({"err": "invalid_access_key"}, 401)
  amount = d.get("amount_cny", 0)
  if amount < 10: return self._json({"err": "min_topup_10_cny"}, 400)
- ref_code = f"ATX{secrets.token_hex(3).upper()}"
+ ref_code = f"ATX{_token_hex(3).upper()}"
  bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
  bonus_active = bonus_cfg.get("active", False)
  bonus_pct = 0
@@ -409,11 +411,11 @@ class Handler(BaseHTTPRequestHandler):
  "total_credited_cny": round(amount + bonus_cny, 2),
  "is_first_topup": is_first,
  "payment": {
- "alipay": "demo@example.com",
- "paypal": "https://paypal.me/xinglixingli",
+ "alipay": "payment@example.com",
+ "paypal": "https://paypal.me/example",
  "note": f"请转账{amount}元，备注填写参考码：{ref_code}",
  "steps": [
- f"1. 支付宝转账至 demo@example.com",
+ f"1. 支付宝转账至 payment@example.com（详见官网）",
  f"2. 转账金额：{amount}元",
  f"3. 转账备注：{ref_code}",
  "4. 管理员确认后余额自动到账（含赠送）",
@@ -424,7 +426,7 @@ class Handler(BaseHTTPRequestHandler):
  elif p == '/v1/topup/status':
  auth = self.headers.get("Authorization", "").replace("Bearer ", "")
  user = _saas_user(auth) if auth else None
- if not user: return self._json({"err": "invalid_api_key"}, 401)
+ if not user: return self._json({"err": "invalid_access_key"}, 401)
  req_data = _load_topup_requests()
  my_pending = [r for r in req_data["pending"] if r["user_id"] == user["user_id"]]
  my_completed = [r for r in req_data["completed"] if r["user_id"] == user["user_id"]][-10:]

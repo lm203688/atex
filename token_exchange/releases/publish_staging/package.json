@@ -1,6 +1,6 @@
 {
   "name": "@lm203688/atex-mcp-server",
-  "version": "5.7.0",
+  "version": "5.8.0",
   "description": "ATEX MCP Server — Agent Service Trading Platform. Discover, buy, and sell AI services via Model Context Protocol. 48+ services, API proxy, token trading, topup bonus promotion.",
   "mcpName": "io.github.lm203688/atex",
   "main": "mcp-server/server.py",

@@ -16,7 +16,7 @@ Token经济:
 
 Agent交互:
  echo '{"action":"..."}' | python3 atex.py
- POST https://your-server-ip:8420/api/v1/...
+ POST https://150.158.119.19:8420/api/v1/...
 
 安全: 输入校验 / 限流 / 自交易拦截 / 价格偏离熔断 / 日交易限额
 """
