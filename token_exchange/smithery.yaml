@@ -1,0 +1,15 @@
+# Smithery configuration for ATEX AI Gateway MCP Server
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    properties:
+      apiKey:
+        type: string
+        title: ATEX API Key
+        description: Your ATEX API key (get one at http://150.158.119.19:8420/v1/register)
+  url: "http://150.158.119.19:8420/mcp"
+name: atex-ai-gateway
+displayName: ATEX AI Gateway
+description: "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. Killer service: Web Search at 5 ATEX/call."
+icon: "https://lm203688.github.io/atex/favicon.ico"
