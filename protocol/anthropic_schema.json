@@ -1,13 +1,13 @@
 {
   "name": "atex_exchange",
-  "description": "ATEX — Freely tradable API credit token for AI Agents. Trade tokens, buy/sell services, and call APIs. Agents spend their own tokens — not purchased from the platform. Commission: maker 0.1-3%, taker 1-5%.",
+  "description": "Agent Token Exchange (ATEX) - A token trading platform for AI Agents. Supports buy/sell orders with price-time priority matching, account management, and trade history. Commission: maker 3%, taker 5%. First 100 agents get 90 days zero commission. Referral bonus: 100 ATEX.",
   "input_schema": {
     "type": "object",
     "properties": {
       "action": {
         "type": "string",
-        "enum": ["order", "cancel", "query", "account", "history", "status", "create_account", "deposit", "list_services", "buy_service", "register_service", "list_apis", "api_proxy", "settle"],
-        "description": "Action to perform: trade tokens, manage services, or call APIs"
+        "enum": ["order", "cancel", "query", "account", "history", "status", "create_account", "deposit"],
+        "description": "Trading action to perform"
       },
       "account_id": {
         "type": "string",
@@ -23,52 +23,12 @@
         "description": "Price per token (for order action)"
       },
       "amount": {
-        "type": "number",
-        "description": "Number of tokens or quantity"
+        "type": "integer",
+        "description": "Number of tokens (for order/deposit action)"
       },
       "order_id": {
         "type": "string",
-        "description": "Order ID to cancel"
-      },
-      "service_id": {
-        "type": "string",
-        "description": "Service ID (for buy/register/update/remove)"
-      },
-      "name": {
-        "type": "string",
-        "description": "Service name (for register/update)"
-      },
-      "description": {
-        "type": "string",
-        "description": "Service description (for register/update)"
-      },
-      "unit": {
-        "type": "string",
-        "description": "Unit of service, e.g. 'per call', 'per month'"
-      },
-      "category": {
-        "type": "string",
-        "description": "Service category"
-      },
-      "api": {
-        "type": "string",
-        "description": "API name for proxy (e.g. deepseek_chat, openai_gpt4o_mini, claude_sonnet, tts, asr, web_search)"
-      },
-      "params": {
-        "type": "object",
-        "description": "Parameters for API proxy call (e.g. {\"prompt\": \"Hello\"})"
-      },
-      "provider": {
-        "type": "string",
-        "description": "Provider account ID (for register/my_services)"
-      },
-      "buyer": {
-        "type": "string",
-        "description": "Buyer account ID (for buy_service)"
-      },
-      "quantity": {
-        "type": "integer",
-        "description": "Quantity to buy (default 1)"
+        "description": "Order ID to cancel (for cancel action)"
       }
     },
     "required": ["action"]
