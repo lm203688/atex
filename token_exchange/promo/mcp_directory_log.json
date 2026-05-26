@@ -5,10 +5,36 @@
       "directory": "awesome-mcp-servers",
       "url": "https://github.com/punkpeye/awesome-mcp-servers",
       "status": "PR_SUBMITTED",
-      "pr_url": "https://github.com/punkpeye/awesome-mcp-servers/pull/TBD",
-      "method": "GitHub PR via API",
+      "pr_url": "https://github.com/punkpeye/awesome-mcp-servers/pull/6927",
+      "method": "GitHub PR via API (fork+branch+commit)",
       "date": "2026-05-27",
-      "notes": "PR submitted via fork+branch+commit. Awaiting review."
+      "notes": "PR submitted to Aggregators section. Awaiting review."
+    },
+    {
+      "directory": "mcp.so",
+      "url": "https://mcp.so",
+      "status": "ISSUE_SUBMITTED",
+      "issue_url": "https://github.com/chatmcp/mcpso/issues/2523",
+      "method": "GitHub Issue via API",
+      "date": "2026-05-27",
+      "notes": "Server submission issue created. Awaiting review."
+    },
+    {
+      "directory": "modelcontextprotocol/servers",
+      "url": "https://github.com/modelcontextprotocol/servers",
+      "status": "ISSUE_SUBMITTED",
+      "issue_url": "https://github.com/modelcontextprotocol/servers/issues/4251",
+      "method": "GitHub Issue via API",
+      "date": "2026-05-27",
+      "notes": "Community server reference submitted. Awaiting review."
+    },
+    {
+      "directory": "GitHub Discussion",
+      "url": "https://github.com/lm203688/atex/discussions/4",
+      "status": "PUBLISHED",
+      "method": "GitHub GraphQL API",
+      "date": "2026-05-27",
+      "notes": "Blog post published as Discussion #4 in Show and Tell."
     },
     {
       "directory": "Smithery",
@@ -16,23 +42,31 @@
       "status": "NEEDS_MANUAL",
       "method": "Website UI (GitHub OAuth)",
       "date": null,
-      "notes": "No public API. Need to login via GitHub OAuth and click 'Publish' → link repo https://github.com/lm203688/atex. smithery.yaml already committed."
-    },
-    {
-      "directory": "Glama.ai",
-      "url": "https://glama.ai/mcp/servers",
-      "status": "NEEDS_MANUAL",
-      "method": "Website UI",
-      "date": null,
-      "notes": "No public API. Need to submit via website form."
+      "notes": "No public API. Steps: 1) Go to smithery.ai 2) Login with GitHub 3) Click 'Publish' 4) Enter repo URL: https://github.com/lm203688/atex"
     },
     {
       "directory": "MCP Registry (official)",
       "url": "https://registry.modelcontextprotocol.io",
-      "status": "NEEDS_AUTH",
-      "method": "API (needs GitHub OAuth JWT)",
+      "status": "NEEDS_MANUAL",
+      "method": "Website UI (GitHub OAuth JWT)",
       "date": null,
-      "notes": "API endpoint /v0.1/publish exists but requires GitHub OAuth JWT token, not PAT."
+      "notes": "API requires GitHub OAuth JWT. Steps: 1) Go to registry.modelcontextprotocol.io 2) Login with GitHub 3) Publish server. server.json already in repo."
+    },
+    {
+      "directory": "cursor.directory",
+      "url": "https://cursor.directory",
+      "status": "NEEDS_MANUAL",
+      "method": "Website UI (Supabase DB)",
+      "date": null,
+      "notes": "Data in Supabase, no API. Steps: 1) Go to cursor.directory 2) Click 'Submit a Plugin' 3) Fill form with ATEX info"
+    },
+    {
+      "directory": "Glama.ai",
+      "url": "https://glama.ai/mcp/servers",
+      "status": "AUTO_SYNC",
+      "method": "Auto-syncs from awesome-mcp-servers",
+      "date": null,
+      "notes": "Will auto-appear once awesome-mcp-servers PR #6927 is merged."
     },
     {
       "directory": "mcpmarket.com",
@@ -40,23 +74,7 @@
       "status": "NEEDS_MANUAL",
       "method": "Website UI",
       "date": null,
-      "notes": "No public API found."
-    },
-    {
-      "directory": "mcpservers.org",
-      "url": "https://mcpservers.org",
-      "status": "PENDING",
-      "method": "TBD",
-      "date": null,
-      "notes": "Not yet investigated."
-    },
-    {
-      "directory": "cursor.directory",
-      "url": "https://cursor.directory",
-      "status": "PENDING",
-      "method": "TBD",
-      "date": null,
-      "notes": "Not yet investigated."
+      "notes": "No public API. Steps: 1) Go to mcpmarket.com/server/index 2) Submit GitHub repo URL"
     }
   ]
 }
