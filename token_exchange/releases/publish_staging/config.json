@@ -1,11 +1,11 @@
 {
-  "version": "5.8",
+  "version": "5.9",
   "name": "ATEX",
   "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
   "created": "2026-05-09",
   "updated": "2026-05-26",
-  "api_url": "http://150.158.119.19:8420",
-  "public_endpoint": "http://150.158.119.19:8420/api/v1",
+  "api_url": "http://atex.example.com:8420",
+  "public_endpoint": "http://atex.example.com:8420/api/v1",
   "commission_rate": {
     "maker": 0.03,
     "taker": 0.05,

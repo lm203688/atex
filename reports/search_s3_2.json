@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://www.dynatrace.com/news/blog/agentic-ai-how-mcp-and-ai-agents-drive-the-latest-automation-revolution",
+    "name": "Understanding MCP, A2A, and the future of automation - Dynatrace",
+    "snippet": "Using Model Context Protocol (MCP) to facilitate agent-to-agent communication, these systems are revolutionizing how enterprises automate tasks ...",
+    "host_name": "www.dynatrace.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.digitalapplied.com/blog/ai-agent-protocol-ecosystem-map-2026-mcp-a2a-acp-ucp",
+    "name": "AI Agent Protocol Ecosystem Map 2026: Complete Visual",
+    "snippet": "The protocols are complementary, not competing: A complete enterprise agent stack in 2026 will use all four protocols: MCP for tool access, A2A for agent ...",
+    "host_name": "www.digitalapplied.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://orca.security/resources/blog/bringing-memory-to-ai-mcp-a2a-agent-context-protocols",
+    "name": "Memory in AI: MCP, A2A & Agent Context Protocols | Orca Security",
+    "snippet": "Explore how MCP, A2A, and other agent context protocols bring memory to AI—along with the security risks and best practices to protect ...",
+    "host_name": "orca.security",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://boomi.com/blog/what-is-mcp-acp-a2a",
+    "name": "What Is MCP, ACP, and A2A? AI Agent Protocols Explained - Boomi",
+    "snippet": "MCP: Model Context Protocol standardizes how AI agents connect to business tools and data sources through a universal interface, eliminating ...",
+    "host_name": "boomi.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://getstream.io/blog/ai-agent-protocols",
+    "name": "Guide to AI Agent Protocols: MCP, A2A, ACP & More - GetStream.io",
+    "snippet": "Learn how AI agent protocols work, how they differ, and which ones are compatible. This is a clear guide to MCP, A2A, ACP, ANP, AP2, ...",
+    "host_name": "getstream.io",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=hZNEztvTrzc",
+    "name": "Understanding A2A and MCP in AI | AI Insights & Innovation",
+    "snippet": "... A2A (Agent-to-Agent Protocol) and MCP (Model Context Protocol) ... The Briefing With Jen Psaki 5/14/2026 | MSNBC Breaking News Today May 14 2026.",
+    "host_name": "www.youtube.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://truthifi.com/education/state-of-mcp-2026-ai-agents-custom-connectors",
+    "name": "The state of MCP 2026: how AI agents connect to your data - Truthifi",
+    "snippet": "It is the protocol that determines whether an AI agent can access live external data or is limited to its training knowledge. And what is an MCP ...",
+    "host_name": "truthifi.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.truefoundry.com/blog/mcp-vs-a2a",
+    "name": "MCP vs A2A: Key Differences, Use Cases, and Enterprise Integration",
+    "snippet": "Explore MCP vs A2A differences: MCP boosts single-agent tasks, while A2A enables multi-agent collaboration, task sharing, and dynamic ...",
+    "host_name": "www.truefoundry.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

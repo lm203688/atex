@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5",
+    "name": "Gemini 3.5: frontier intelligence with action - Google Blog",
+    "snippet": "At Google I/O we released Gemini 3.5, our latest series of models combining frontier intelligence with action.",
+    "host_name": "blog.google",
+    "rank": 0,
+    "date": "May 19, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://cloud.google.com/blog/products/ai-machine-learning/innovations-from-google-io-26-on-google-cloud",
+    "name": "Innovations from Google I/O 26 on Google Cloud | Google Cloud Blog",
+    "snippet": "Gemini 3.5: Our latest family of models combines frontier intelligence with action – starting with Gemini 3.5 Flash. · Gemini Omni: · Google ...",
+    "host_name": "cloud.google.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.google.dev/gemini-api/docs/changelog",
+    "name": "Release notes | Gemini API - Google AI for Developers",
+    "snippet": "May 5, 2026. Updated File Search to support multimodal search. You can now natively embed and search through images using the gemini-embedding- ...",
+    "host_name": "ai.google.dev",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=-3yhqxAswqc",
+    "name": "Google Gemini's New Updates are INSANE! (Google I/O  - YouTube",
+    "snippet": "... Google Gemini's latest updates from Google I/O 2026. It covers Google Spark 24/7 AI Agents, Google's new Omni model, Gemini 3.5 Flash and more!",
+    "host_name": "www.youtube.com",
+    "rank": 3,
+    "date": "May 20, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://deepmind.google/models/model-cards/gemini-3-5-flash",
+    "name": "Gemini 3.5 Flash - Model Card - Google DeepMind",
+    "snippet": "Published 19 May 2026. Gemini 3.5 Flash. Learn more · View PDF version ... Model cards may be updated from time to time; for example, to include updated evaluations as the model is improved or revised.",
+    "host_name": "deepmind.google",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://gemini.google/release-notes",
+    "name": "‎Gemini Apps' release updates & improvements",
+    "snippet": "Explore the latest updates from Gemini Apps - including improvements in generative AI capabilities, expanded access, and more.",
+    "host_name": "gemini.google",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://deepmind.google/blog",
+    "name": "News - Google DeepMind",
+    "snippet": "Strengthening Singapore's AI Future: A New National Partnership. May 2026 Responsibility & Safety. Learn more. Gemini 3.5: frontier intelligence with action.",
+    "host_name": "deepmind.google",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.google/products-and-platforms/products/search/search-io-2026",
+    "name": "Google Search's I/O 2026 updates: AI agents and more",
+    "snippet": "Starting today, we're upgrading Search with Gemini 3.5 Flash — our newest Flash model delivering sustained frontier performance for agents and ...",
+    "host_name": "blog.google",
+    "rank": 7,
+    "date": "May 19, 2026",
+    "favicon": ""
+  }
+]

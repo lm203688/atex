@@ -35,7 +35,7 @@ Things like:
 
 Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
 
-### 定时任务总览（2026-05-19 更新 v5.6）
+### 定时任务总览（2026-05-27 更新 v5.8）
 
 **三条工作流线 + 冷启动引擎 + 综合日报 + GitHub发布 + 生态扫描：**
 
@@ -172,9 +172,9 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
   - svc_051: 二维码生成 (Google Charts, 1 ATEX)
   - svc_052: IP地理定位 (ip-api.com, 1 ATEX)
 - **ID冲突修复（5/17）**: 高价值服务重分配→svc_053(协作编排)/svc_054(Memory迁移)/svc_055(Token交易分析)
-- **服务总数**: 53个（含3个今日新增：svc_058 Rogue AI监控/svc_059合规认证/svc_060企业部署咨询）
+- **服务总数**: 56个（含svc_058-063新增+svc_064 AI设计工具集成）
 - **有执行逻辑的服务**: 17个
-- **零销量率**: 78.4%（40/51真实服务零销量，核心问题不是服务不够而是转化不足）
+- **零销量率**: 75%（20/56服务零销量，核心问题不是服务不够而是转化不足）
 - **定时扫描**: 每周三0:30信息渠道审核+GitHub生态扫描
 - **免费API Key**: Alpha Vantage=demo, OpenWeatherMap/NewsAPI需申请（当前fallback到AI估算）
 - **关键原则**: 每个服务必须有执行逻辑，不再注册概念服务；新增服务前检查ID唯一性

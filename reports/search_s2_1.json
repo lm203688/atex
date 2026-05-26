@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://ai.meta.com/blog/meta-llama-3-1",
+    "name": "Introducing Llama 3.1: Our most capable models to date - Meta AI",
+    "snippet": "We're publicly releasing Meta Llama 3.1 405B, which we believe is the world's largest and most capable openly available foundation model.",
+    "host_name": "ai.meta.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.nytimes.com/2026/03/12/technology/meta-avocado-ai-model-delayed.html",
+    "name": "Meta Delays Rollout of New A.I. Model After Performance Concerns",
+    "snippet": "As a result, Meta has delayed Avocado's release to at least May from this month, the people said. They added that the leaders of Meta's A.I. ...",
+    "host_name": "www.nytimes.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.barrons.com/articles/meta-stock-price-ai-delay-google-avocado-c960418b",
+    "name": "Meta Delays New AI Model. Its Loss Could Be Google's Gain.",
+    "snippet": "Meta Platforms is reportedly struggling to develop a new AI model, “Avocado,” leading to a potential delay until May. Meta is reportedly ...",
+    "host_name": "www.barrons.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.meta.com/blog/llama-4-multimodal-intelligence",
+    "name": "The Llama 4 herd: The beginning of a new era of natively  - Meta AI",
+    "snippet": "We're introducing Llama 4 Scout and Llama 4 Maverick, the first open-weight natively multimodal models with unprecedented context length support.",
+    "host_name": "ai.meta.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/LocalLLaMA/comments/1n2xc58/meta_is_racing_the_clock_to_launch_its_newest",
+    "name": "Meta is racing the clock to launch its newest Llama AI model this year",
+    "snippet": "Maybe this \"Llama 4.5\" will be open weights, since Llama 4 was open weights. Or maybe not! Let's see what they actually do.",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=4LHWo8DT2vU",
+    "name": "Meta's LLaMA 4 Dropped: What Other AI Models Are Coming?",
+    "snippet": "Save. Report. Comments. Add a comment... 58:12 · Go to channel The Daily AI Show · The Daily AI Show Live: May 18, 2026. The Daily AI Show. New.",
+    "host_name": "www.youtube.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.investing.com/analysis/metas-llama-4-may-disappoint-the-hype-but-impresses-where-it-counts-200659882",
+    "name": "Meta's LLaMa 4 May Disappoint the Hype, but Impresses Where It",
+    "snippet": "Meta could begin to explore the direct monetization of Meta AI in early 2026. As of its last earnings report, Meta AI had 700 million users.",
+    "host_name": "www.investing.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.digitimes.com/news/a20251211PD206/meta-llama-development-2026.html",
+    "name": "Meta reportedly delays Llama successor, shifts to closed-source AI",
+    "snippet": "The new Avocado model, originally planned for launch by the end of 2025, will be developed under tighter control by the TBD Lab within Meta ...",
+    "host_name": "www.digitimes.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]

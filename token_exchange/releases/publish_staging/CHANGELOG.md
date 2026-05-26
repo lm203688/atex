@@ -1,7 +1,8 @@
 # Changelog
 
-## [5.8] — 2026-05-26
-- Updated service marketplace (53 services)
+## [5.9] — 2026-05-27
+- Updated service marketplace (57 services)
+- Exchange engine updated (2026-05-26)
 
 ## [4.2] — 2026-05-11
 - Unified platform: Token exchange + Service marketplace

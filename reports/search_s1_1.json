@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://openai.com/news",
+    "name": "OpenAI News",
+    "snippet": "May 22, 2026. Geometry > ArtCard > Polynomial Construction. An OpenAI model has disproved a central conjecture in discrete geometry. Research May 20, 2026. Art ...",
+    "host_name": "openai.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.openai.com/en/articles/6825453-chatgpt-release-notes",
+    "name": "ChatGPT — Release Notes - OpenAI Help Center",
+    "snippet": "May 21, 2026. Codex updates: richer context, goal mode, browser improvements, and remote locked use. Codex now has more ways to understand your work context ...",
+    "host_name": "help.openai.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://openai.com/index/introducing-gpt-5",
+    "name": "Introducing GPT-5 - OpenAI",
+    "snippet": "GPT‑5 is significantly better at instruction following, and we see a corresponding improvement in its ability to follow custom instructions. We' ...",
+    "host_name": "openai.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=0Uu_VJeVVfo",
+    "name": "Introducing GPT-5 - YouTube",
+    "snippet": "Comments · OpenAI DevDay 2025: Opening Keynote with Sam Altman · Andrej Karpathy: Software Is Changing (Again) · The Rachel Maddow Show 5/25/26 | ...",
+    "host_name": "www.youtube.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://openai.com/index/introducing-gpt-5-5",
+    "name": "Introducing GPT-5.5 - OpenAI",
+    "snippet": "Update on April 24, 2026: GPT‑5.5 and GPT‑5.5 Pro are now available in the API. The system card has also been updated to describe the ...",
+    "host_name": "openai.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://releasebot.io/updates/openai",
+    "name": "OpenAI Release Notes - May 2026 Latest Updates - Releasebot",
+    "snippet": "May 21, 2026. ChatGPT adds richer context awareness and longer-running task support in Codex, including Mac app Appshots, generally available Goal mode, more ...",
+    "host_name": "releasebot.io",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.instagram.com/reel/DYnVmgKyr1B",
+    "name": "OpenAI is offering $2M in tokens to every YC company in the spring",
+    "snippet": "... likes, 125 comments - ycombinator on May 21, 2026: \"OpenAI is ... Download Voru app & to keep up with the latest AI & Tech news.",
+    "host_name": "www.instagram.com",
+    "rank": 6,
+    "date": "May 21, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://community.openai.com/t/deprecation-notice-upcoming-model-shutdowns-in-2026/1379553",
+    "name": "Deprecation notice: upcoming model shutdowns in 2026",
+    "snippet": "Over the next three to six months, we will deprecate a set of older OpenAI models to improve reliability and simplify model selection, with ...",
+    "host_name": "community.openai.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  }
+]
