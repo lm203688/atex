@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "atex-ai-gateway": {
+      "url": "http://150.158.119.19:8420/mcp",
+      "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call.",
+      "icon": "https://lm203688.github.io/atex/favicon.ico",
+      "auth": {
+        "type": "bearer",
+        "description": "ATEX API Key (register at http://150.158.119.19:8420/v1/register)"
+      }
+    }
+  }
+}
