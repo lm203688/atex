@@ -1,0 +1,30 @@
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    paths:
+      - 'server.json'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for OIDC
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Publish to MCP Registry
+        env:
+          MCP_REGISTRY_URL: https://registry.modelcontextprotocol.io
+        run: |
+          # Get GitHub OIDC token
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=mcp-registry" | jq -r '.value')
+          
+          # Publish using OIDC token
+          curl -X POST "$MCP_REGISTRY_URL/v0.1/publish" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            -d @server.json
