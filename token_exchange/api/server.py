@@ -303,6 +303,9 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
+        # ── MCP协议端点（Streamable HTTP）──
+        elif p == '/mcp': self._mcp_get()
+        elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
@@ -674,7 +677,116 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/settle':
             r = exchange.settle(d.get("account",""), d.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
+        # ── MCP协议端点（Streamable HTTP）──
+        elif p == '/mcp':
+            self._mcp_post(d)
         else: self._json({"err":"not_found"}, 404)
+
+    # ── MCP协议处理（Streamable HTTP）──
+    def _mcp_server_card(self):
+        """GET /.well-known/mcp/server-card.json — Smithery扫描用"""
+        self._json({
+            "name": "ATEX AI Gateway",
+            "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call.",
+            "version": "5.9.0",
+            "url": "http://150.158.119.19:8420/mcp",
+            "protocolVersion": "2025-03-26",
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"},
+            "tools": [
+                {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key."},
+                {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call."},
+                {"name": "check_balance", "description": "Check your ATEX account balance and usage."},
+                {"name": "list_models", "description": "List available AI models and their pricing."},
+                {"name": "list_services", "description": "List all available services in the ATEX marketplace."}
+            ]
+        })
+
+    def _mcp_get(self):
+        """GET /mcp — 返回MCP服务器信息（Smithery扫描用）"""
+        self._json({
+            "name": "ATEX AI Gateway",
+            "version": "5.9.0",
+            "protocolVersion": "2025-03-26",
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"}
+        })
+
+    def _mcp_post(self, d):
+        """POST /mcp — MCP JSON-RPC 2.0 处理"""
+        method = d.get("method", "")
+        req_id = d.get("id")
+        params = d.get("params", {})
+
+        # 认证
+        auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+        user = _saas_user(auth) if auth else None
+
+        if method == "initialize":
+            return self._json({
+                "jsonrpc": "2.0", "id": req_id,
+                "result": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {"tools": {"listChanged": False}},
+                    "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"}
+                }
+            })
+        elif method == "tools/list":
+            tools = [
+                {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key.",
+                 "inputSchema": {"type": "object", "properties": {"model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat"}, "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}}}, "required": ["messages"]}},
+                {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call.",
+                 "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}}, "required": ["query"]}},
+                {"name": "check_balance", "description": "Check your ATEX account balance and usage.",
+                 "inputSchema": {"type": "object", "properties": {}}},
+                {"name": "list_models", "description": "List available AI models and their pricing.",
+                 "inputSchema": {"type": "object", "properties": {}}},
+                {"name": "list_services", "description": "List all available services in the ATEX marketplace.",
+                 "inputSchema": {"type": "object", "properties": {"category": {"type": "string", "description": "Filter by category"}}}},
+            ]
+            return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
+        elif method == "tools/call":
+            tool_name = params.get("name", "")
+            args = params.get("arguments", {})
+            if tool_name == "chat":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
+                model = args.get("model", "deepseek-chat")
+                messages = args.get("messages", [{"role": "user", "content": args.get("prompt", "")}])
+                model_info = SAAS_PRICING.get(model)
+                if not model_info: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Unknown model: {model}"}}, 400)
+                if model_info.get("status") == "coming_soon": return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32603, "message": f"Model {model} coming soon"}})
+                prompt = messages[-1].get("content", "") if messages else ""
+                result = execute_api_proxy(model_info.get("backend", "deepseek") + "_chat" if model_info.get("backend") == "deepseek" else model, {"prompt": prompt, "messages": messages})
+                content = result.get("content", str(result))
+                usage = result.get("usage", {})
+                input_tokens = usage.get("prompt_tokens", len(prompt)//4)
+                output_tokens = usage.get("completion_tokens", len(content)//4)
+                cost_cny = round(model_info["input_per_1k"]*input_tokens/1000 + model_info["output_per_1k"]*output_tokens/1000, 6)
+                cost_cny = max(cost_cny, 0.001)
+                _deduct(user["user_id"], cost_cny, model, input_tokens, output_tokens)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": content}], "cost_cny": cost_cny}})
+            elif tool_name == "web_search":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                query = args.get("query", "")
+                result = execute_service("svc_012", {"query": query}, user["user_id"])
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}})
+            elif tool_name == "check_balance":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"balance_cny": user["balance_cny"], "total_calls": user.get("total_calls",0)})}]}})
+            elif tool_name == "list_models":
+                models = [{"id": mid, "name": info["name"], "status": info.get("status","live"), "pricing": {"input_per_1k_cny": info["input_per_1k"], "output_per_1k_cny": info["output_per_1k"]}} for mid, info in SAAS_PRICING.items()]
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(models, ensure_ascii=False)}]}})
+            elif tool_name == "list_services":
+                svcs = exchange.list_services()
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(svcs, ensure_ascii=False)[:4000]}]}})
+            else:
+                return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}, 400)
+        elif method == "notifications/initialized":
+            # Client notification, no response needed
+            return self._json({"jsonrpc": "2.0", "id": req_id, "result": {}})
+        else:
+            return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}, 400)
+
     def _proto(self):
         return self._json({
             "name": "ATEX", "version": "5.6",

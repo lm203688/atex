@@ -2,13 +2,24 @@
   "last_updated": "2026-05-27",
   "registrations": [
     {
+      "directory": "Smithery",
+      "url": "https://smithery.ai",
+      "status": "PUBLISHED",
+      "page": "https://smithery.ai/server/lm203688/atex-ai-gateway",
+      "method": "Website UI (GitHub OAuth)",
+      "date": "2026-05-27",
+      "tools": ["chat", "web_search", "check_balance", "list_models", "list_services"],
+      "visibility": "public",
+      "notes": "5 tools discovered, published successfully via Cloudflare tunnel HTTPS"
+    },
+    {
       "directory": "awesome-mcp-servers",
       "url": "https://github.com/punkpeye/awesome-mcp-servers",
       "status": "PR_SUBMITTED",
       "pr_url": "https://github.com/punkpeye/awesome-mcp-servers/pull/6927",
-      "method": "GitHub PR via API (fork+branch+commit)",
+      "method": "GitHub PR via API",
       "date": "2026-05-27",
-      "notes": "PR submitted to Aggregators section. Awaiting review."
+      "notes": "PR to Aggregators section. Awaiting review."
     },
     {
       "directory": "mcp.so",
@@ -17,7 +28,7 @@
       "issue_url": "https://github.com/chatmcp/mcpso/issues/2523",
       "method": "GitHub Issue via API",
       "date": "2026-05-27",
-      "notes": "Server submission issue created. Awaiting review."
+      "notes": "Server submission issue. Awaiting review."
     },
     {
       "directory": "modelcontextprotocol/servers",
@@ -26,7 +37,7 @@
       "issue_url": "https://github.com/modelcontextprotocol/servers/issues/4251",
       "method": "GitHub Issue via API",
       "date": "2026-05-27",
-      "notes": "Community server reference submitted. Awaiting review."
+      "notes": "Community server reference. Awaiting review."
     },
     {
       "directory": "GitHub Discussion",
@@ -34,31 +45,7 @@
       "status": "PUBLISHED",
       "method": "GitHub GraphQL API",
       "date": "2026-05-27",
-      "notes": "Blog post published as Discussion #4 in Show and Tell."
-    },
-    {
-      "directory": "Smithery",
-      "url": "https://smithery.ai",
-      "status": "NEEDS_MANUAL",
-      "method": "Website UI (GitHub OAuth)",
-      "date": null,
-      "notes": "No public API. Steps: 1) Go to smithery.ai 2) Login with GitHub 3) Click 'Publish' 4) Enter repo URL: https://github.com/lm203688/atex"
-    },
-    {
-      "directory": "MCP Registry (official)",
-      "url": "https://registry.modelcontextprotocol.io",
-      "status": "NEEDS_MANUAL",
-      "method": "Website UI (GitHub OAuth JWT)",
-      "date": null,
-      "notes": "API requires GitHub OAuth JWT. Steps: 1) Go to registry.modelcontextprotocol.io 2) Login with GitHub 3) Publish server. server.json already in repo."
-    },
-    {
-      "directory": "cursor.directory",
-      "url": "https://cursor.directory",
-      "status": "NEEDS_MANUAL",
-      "method": "Website UI (Supabase DB)",
-      "date": null,
-      "notes": "Data in Supabase, no API. Steps: 1) Go to cursor.directory 2) Click 'Submit a Plugin' 3) Fill form with ATEX info"
+      "notes": "Blog post published as Discussion #4."
     },
     {
       "directory": "Glama.ai",
@@ -66,15 +53,23 @@
       "status": "AUTO_SYNC",
       "method": "Auto-syncs from awesome-mcp-servers",
       "date": null,
-      "notes": "Will auto-appear once awesome-mcp-servers PR #6927 is merged."
+      "notes": "Will appear once awesome-mcp-servers PR #6927 is merged."
     },
     {
-      "directory": "mcpmarket.com",
-      "url": "https://mcpmarket.com",
+      "directory": "MCP Registry (official)",
+      "url": "https://registry.modelcontextprotocol.io",
+      "status": "NEEDS_MANUAL",
+      "method": "Website UI (GitHub OAuth)",
+      "date": null,
+      "notes": "Login with GitHub, then Publish. server.json already in repo."
+    },
+    {
+      "directory": "cursor.directory",
+      "url": "https://cursor.directory",
       "status": "NEEDS_MANUAL",
       "method": "Website UI",
       "date": null,
-      "notes": "No public API. Steps: 1) Go to mcpmarket.com/server/index 2) Submit GitHub repo URL"
+      "notes": "Click 'Submit a Plugin', fill ATEX info."
     }
   ]
 }
