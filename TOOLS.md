@@ -35,14 +35,14 @@ Things like:
 
 Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
 
-### 定时任务总览（2026-05-27 更新 v5.8）
+### 定时任务总览（2026-05-28 更新 v5.9）
 
 **三条工作流线 + 冷启动引擎 + 综合日报 + GitHub发布 + 生态扫描：**
 
 | 时间 | 工作流线 | 任务 | 输出 |
 |------|---------|------|------|
 | 周三0:30 | 信息收集+生态 | **信息渠道审核+GitHub生态服务扫描** | 聊天 + 新服务注册 |
-| 1:00 | 平台运营 | ATEX推广执行 | 聊天 + promotion_log.json |
+| 1:00 | 平台运营 | MCP目录注册与推广 | 聊天 + mcp_directory_log.json |
 | 2:00 | 全局 | **每日综合日报** | **xlsx（3 Sheet）→ send_file** |
 | 3:00 | 服务板块 | Agent服务方向分析 | xlsx → send_file + services.json更新 |
 | 4:00 | 平台运营 | **GitHub发布（有变更时）** | **聊天（审核结果）** |
@@ -178,6 +178,22 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 - **定时扫描**: 每周三0:30信息渠道审核+GitHub生态扫描
 - **免费API Key**: Alpha Vantage=demo, OpenWeatherMap/NewsAPI需申请（当前fallback到AI估算）
 - **关键原则**: 每个服务必须有执行逻辑，不再注册概念服务；新增服务前检查ID唯一性
+
+### MCP目录注册备忘（2026-05-28）
+
+- **已注册**：Smithery✅PUBLISHED, awesome-mcp-servers PR#6927(open), mcp.so Issue#2523(open), modelcontextprotocol/servers Issue#4251(open), GitHub Discussion#4✅
+- **Glama.ai**：通过repo根目录glama.json自动索引，24h内爬取。nirholas/automate-glama-submit可批量
+- **mcpservers.org**：TanStack Start SSR，表单需浏览器提交。server function ID=62b9fa28...，API端点拒绝非HTML请求
+- **MCPMarket**：CherryHQ/mcpmarket是npm monorepo，需发布@scope/server npm包，不适合API提交
+- **cursor.directory**：429限频严重，需.mcp.json在repo根目录（Open Plugins标准）
+- **注册材料**：名称=ATEX AI Gateway, 描述=One API Key for 6 AI models, GitHub=lm203688/atex, 落地页=lm203688.github.io/atex
+
+### 综合日报生成备忘
+
+- **依赖**：openpyxl（需预装：`pip install openpyxl`）
+- **数据源**：daily_service_tracking.json + services.json + daily_platform_ops.json + bootstrap_report.json + atex.py status
+- **搜索**：14组web_search分5批（每批2-3个+间隔12秒），8篇page_reader深度阅读
+- **⚠️ 任务链过长**：搜索+深度阅读+数据读取+xlsx生成，单次执行容易中断。改进：搜索结果缓存到文件，xlsx生成分离为独立步骤
 
 ---
 

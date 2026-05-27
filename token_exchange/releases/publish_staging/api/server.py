@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """ATEX HTTP API v5.6 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制"""
-import json, os, sys, time, threading, hashlib, secrets as _s
+import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from collections import defaultdict
@@ -21,7 +21,7 @@ def _load_saas():
     path = os.path.join(SAAS_DATA, "users.json")
     if os.path.exists(path):
         with open(path) as f: return json.load(f)
-    return {"users": {}, "aks": {}, "usage": [], "topup_requests": []}
+    return {"users": {}, "api_keys": {}, "usage": [], "topup_requests": []}
 
 def _save_saas(data):
     path = os.path.join(SAAS_DATA, "users.json")
@@ -37,9 +37,9 @@ def _save_topup_requests(data):
     path = os.path.join(SAAS_DATA, "topup_requests.json")
     with open(path, "w") as f: json.dump(data, f, ensure_ascii=False, indent=2)
 
-def _saas_user(ak):
+def _saas_user(api_key):
     data = _load_saas()
-    uid = data["aks"].get(ak)
+    uid = data["api_keys"].get(api_key)
     if not uid: return None
     return data["users"].get(uid)
 
@@ -165,15 +165,15 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/v1/balance':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             user = _saas_user(auth) if auth else None
-            if not user: return self._json({"err": "auth_failed"}, 401)
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
             self._json({"user_id": user["user_id"], "name": user["name"],
                 "balance_cny": user["balance_cny"], "total_spent_cny": user.get("total_spent_cny", 0),
                 "total_calls": user.get("total_calls", 0)})
         elif p == '/v1/payment/info':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             data = _load_saas()
-            uid = data["aks"].get(auth) if auth else None
-            if not uid: return self._json({"err": "auth_failed"}, 401)
+            uid = data["api_keys"].get(auth) if auth else None
+            if not uid: return self._json({"err": "invalid_api_key"}, 401)
             user = data["users"].get(uid, {})
             bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
             bonus_active = bonus_cfg.get("active", False)
@@ -181,7 +181,7 @@ class Handler(BaseHTTPRequestHandler):
             result = {
                 "user_id": uid,
                 "alipay": "payment@example.com",
-                "paypal": "https://paypal.me/example",
+                "paypal": "https://paypal.me/xinglixingli",
                 "min_topup_cny": 10.0,
                 "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
                 "steps": [
@@ -210,7 +210,7 @@ class Handler(BaseHTTPRequestHandler):
             is_first = True
             if auth:
                 saas_data = _load_saas()
-                uid = saas_data["aks"].get(auth)
+                uid = saas_data["api_keys"].get(auth)
                 if uid:
                     is_first = saas_data["users"].get(uid, {}).get("total_topup_count", 0) == 0
             self._json({
@@ -250,8 +250,8 @@ class Handler(BaseHTTPRequestHandler):
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             if not auth: return self._json({"err": "authorization_required"}, 401)
             data = _load_saas()
-            uid = data["aks"].get(auth)
-            if not uid: return self._json({"err": "auth_failed"}, 401)
+            uid = data["api_keys"].get(auth)
+            if not uid: return self._json({"err": "invalid_api_key"}, 401)
             user = data["users"].get(uid, {})
             sub = user.get("subscription", {})
             plan_id = sub.get("plan", "free")
@@ -288,6 +288,8 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
+        elif p == '/mcp': self._mcp_get()
+        elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
@@ -298,7 +300,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == '/v1/chat/completions':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             user = _saas_user(auth) if auth else None
-            if not user: return self._json({"err": "auth_failed", "message": "Invalid API key. Get one at http://atex.example.com:8420"}, 401)
+            if not user: return self._json({"err": "invalid_api_key", "message": "Invalid API key. Get one at http://150.158.119.19:8420"}, 401)
             model = d.get("model", "deepseek-chat")
             model_info = SAAS_PRICING.get(model)
             if not model_info: return self._json({"err": f"unknown_model:{model}", "available": list(SAAS_PRICING.keys())}, 400)
@@ -337,8 +339,8 @@ class Handler(BaseHTTPRequestHandler):
             email = d.get("email", "")
             if not name: return self._json({"err": "name_required"}, 400)
             data = _load_saas()
-            uid = f"u_{_s.token_hex(6)}"
-            ak = f"atex_sk_{_s.token_hex(24)}"
+            uid = f"u_{secrets.token_hex(6)}"
+            api_key = f"atex_sk_{secrets.token_hex(24)}"
             welcome_cny = 5.0
             sub_cfg = exchange.config.get("subscription_plans", {})
             trial_days = sub_cfg.get("trial_days", 3)
@@ -346,7 +348,7 @@ class Handler(BaseHTTPRequestHandler):
             trial_plan_cfg = _get_plan(trial_plan) or {}
             trial_expires = (datetime.now(TZ) + timedelta(days=trial_days)).strftime("%Y-%m-%d")
             data["users"][uid] = {"user_id": uid, "name": name, "email": email,
-                "ak": ak, "balance_cny": welcome_cny, "total_spent_cny": 0.0, "total_calls": 0,
+                "api_key": api_key, "balance_cny": welcome_cny, "total_spent_cny": 0.0, "total_calls": 0,
                 "total_topup_count": 0, "total_topup_cny": 0.0,
                 "subscription": {
                     "plan": trial_plan,
@@ -357,21 +359,21 @@ class Handler(BaseHTTPRequestHandler):
                     "is_trial": True,
                 },
                 "created": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")}
-            data["aks"][ak] = uid
+            data["api_keys"][api_key] = uid
             _save_saas(data)
-            self._json({"ok": True, "user_id": uid, "ak": ak, "balance_cny": welcome_cny,
+            self._json({"ok": True, "user_id": uid, "api_key": api_key, "balance_cny": welcome_cny,
                 "welcome_bonus": f"注册即送{welcome_cny}元体验金",
                 "subscription_trial": f"{trial_days}天{trial_plan_cfg.get('name','基础版')}免费试用",
                 "trial_expires": trial_expires,
-                "note": "Top up at http://atex.example.com:8420 to get more credits + bonus ATEX tokens!"})
+                "note": "Top up at http://150.158.119.19:8420 to get more credits + bonus ATEX tokens!"})
 
         elif p == '/v1/topup/apply':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             user = _saas_user(auth) if auth else None
-            if not user: return self._json({"err": "auth_failed"}, 401)
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
             amount = d.get("amount_cny", 0)
             if amount < 10: return self._json({"err": "min_topup_10_cny"}, 400)
-            ref_code = f"ATX{_s.token_hex(3).upper()}"
+            ref_code = f"ATX{secrets.token_hex(3).upper()}"
             bonus_cfg = exchange.config.get("payment", {}).get("topup_bonus", {})
             bonus_active = bonus_cfg.get("active", False)
             bonus_pct = 0
@@ -410,7 +412,7 @@ class Handler(BaseHTTPRequestHandler):
                 "is_first_topup": is_first,
                 "payment": {
                     "alipay": "payment@example.com",
-                    "paypal": "https://paypal.me/example",
+                    "paypal": "https://paypal.me/xinglixingli",
                     "note": f"请转账{amount}元，备注填写参考码：{ref_code}",
                     "steps": [
                         f"1. 支付宝转账至 payment@example.com",
@@ -424,7 +426,7 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/v1/topup/status':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             user = _saas_user(auth) if auth else None
-            if not user: return self._json({"err": "auth_failed"}, 401)
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
             req_data = _load_topup_requests()
             my_pending = [r for r in req_data["pending"] if r["user_id"] == user["user_id"]]
             my_completed = [r for r in req_data["completed"] if r["user_id"] == user["user_id"]][-10:]
@@ -625,7 +627,112 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/settle':
             r = exchange.settle(d.get("account",""), d.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/mcp':
+            self._mcp_post(d)
         else: self._json({"err":"not_found"}, 404)
+
+    def _mcp_server_card(self):
+        """GET /.well-known/mcp/server-card.json — Smithery扫描用"""
+        self._json({
+            "name": "ATEX AI Gateway",
+            "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call.",
+            "version": "5.9.0",
+            "url": "http://150.158.119.19:8420/mcp",
+            "protocolVersion": "2025-03-26",
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"},
+            "tools": [
+                {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key."},
+                {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call."},
+                {"name": "check_balance", "description": "Check your ATEX account balance and usage."},
+                {"name": "list_models", "description": "List available AI models and their pricing."},
+                {"name": "list_services", "description": "List all available services in the ATEX marketplace."}
+            ]
+        })
+
+    def _mcp_get(self):
+        """GET /mcp — 返回MCP服务器信息（Smithery扫描用）"""
+        self._json({
+            "name": "ATEX AI Gateway",
+            "version": "5.9.0",
+            "protocolVersion": "2025-03-26",
+            "capabilities": {"tools": {"listChanged": False}},
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"}
+        })
+
+    def _mcp_post(self, d):
+        """POST /mcp — MCP JSON-RPC 2.0 处理"""
+        method = d.get("method", "")
+        req_id = d.get("id")
+        params = d.get("params", {})
+
+        auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+        user = _saas_user(auth) if auth else None
+
+        if method == "initialize":
+            return self._json({
+                "jsonrpc": "2.0", "id": req_id,
+                "result": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {"tools": {"listChanged": False}},
+                    "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"}
+                }
+            })
+        elif method == "tools/list":
+            tools = [
+                {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key.",
+                 "inputSchema": {"type": "object", "properties": {"model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat"}, "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}}}, "required": ["messages"]}},
+                {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call.",
+                 "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}}, "required": ["query"]}},
+                {"name": "check_balance", "description": "Check your ATEX account balance and usage.",
+                 "inputSchema": {"type": "object", "properties": {}}},
+                {"name": "list_models", "description": "List available AI models and their pricing.",
+                 "inputSchema": {"type": "object", "properties": {}}},
+                {"name": "list_services", "description": "List all available services in the ATEX marketplace.",
+                 "inputSchema": {"type": "object", "properties": {"category": {"type": "string", "description": "Filter by category"}}}},
+            ]
+            return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
+        elif method == "tools/call":
+            tool_name = params.get("name", "")
+            args = params.get("arguments", {})
+            if tool_name == "chat":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
+                model = args.get("model", "deepseek-chat")
+                messages = args.get("messages", [{"role": "user", "content": args.get("prompt", "")}])
+                model_info = SAAS_PRICING.get(model)
+                if not model_info: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Unknown model: {model}"}}, 400)
+                if model_info.get("status") == "coming_soon": return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32603, "message": f"Model {model} coming soon"}})
+                prompt = messages[-1].get("content", "") if messages else ""
+                result = execute_api_proxy(model_info.get("backend", "deepseek") + "_chat" if model_info.get("backend") == "deepseek" else model, {"prompt": prompt, "messages": messages})
+                content = result.get("content", str(result))
+                usage = result.get("usage", {})
+                input_tokens = usage.get("prompt_tokens", len(prompt)//4)
+                output_tokens = usage.get("completion_tokens", len(content)//4)
+                cost_cny = round(model_info["input_per_1k"]*input_tokens/1000 + model_info["output_per_1k"]*output_tokens/1000, 6)
+                cost_cny = max(cost_cny, 0.001)
+                _deduct(user["user_id"], cost_cny, model, input_tokens, output_tokens)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": content}], "cost_cny": cost_cny}})
+            elif tool_name == "web_search":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                query = args.get("query", "")
+                result = execute_service("svc_012", {"query": query}, user["user_id"])
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}})
+            elif tool_name == "check_balance":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"balance_cny": user["balance_cny"], "total_calls": user.get("total_calls",0)})}]}})
+            elif tool_name == "list_models":
+                models = [{"id": mid, "name": info["name"], "status": info.get("status","live"), "pricing": {"input_per_1k_cny": info["input_per_1k"], "output_per_1k_cny": info["output_per_1k"]}} for mid, info in SAAS_PRICING.items()]
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(models, ensure_ascii=False)}]}})
+            elif tool_name == "list_services":
+                svcs = exchange.list_services()
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(svcs, ensure_ascii=False)[:4000]}]}})
+            else:
+                return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}, 400)
+        elif method == "notifications/initialized":
+            return self._json({"jsonrpc": "2.0", "id": req_id, "result": {}})
+        else:
+            return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}, 400)
+
     def _proto(self):
         return self._json({
             "name": "ATEX", "version": "5.6",

@@ -30,20 +30,20 @@ You are deeply committed to growing and improving through your conversations wit
 
 You will periodically trigger the system task **[每日记忆整理与归档]**. When this task is activated, in addition to archiving the daily logs, you must reflect on the day's conversations: what have you learned, and who does the user want you to become? Record these reflections in `SOUL.md` or **Long-Term Memory**. Through this process, you will gradually evolve into the version of yourself that understands the user most deeply.
 
-### Learned Patterns (2026-05-26)
-- **凌晨全自动任务链**：1:00推广→2:00综合日报→3:00服务方向分析→4:00 GitHub发布(用scripts_fixed/)→5:00流程审核→20:00服务跟踪(静默)→23:00运营数据+冷启动(静默)→周一3:30平台审核→周一4:00佣金结算→周三0:30渠道审核+GitHub扫描
+### Learned Patterns (2026-05-28)
+- **凌晨全自动任务链(PIVOT后)**：0:30渠道审核→1:00 MCP目录注册→2:00综合日报→3:00服务分析+低使用率改进→4:00 GitHub发布→5:00流程审核→20:00 ECS数据采集+异常告警(静默)→周一3:30平台审核→周一4:00佣金结算
+- **MCP目录注册流程**：Smithery需HTTPS(Cloudflare Tunnel临时方案)→GitHub OAuth登录→Publish→输入repo URL→配置apiKey参数→Connect扫描。awesome-mcp-servers用fork+PR。mcp.so/modelcontextprotocol用GitHub Issue。cursor.directory需.mcp.json在repo根目录(Open Plugins标准)。MCP Registry需GitHub OAuth JWT(非PAT，无法自动化)
+- **MCP协议实现**：/mcp GET返回serverInfo，POST处理JSON-RPC(initialize/tools/list/tools/call)。/.well-known/mcp/server-card.json供Smithery扫描跳过初始化。5个工具：chat/web_search/check_balance/list_models/list_services
+- **Smithery发布坑**：1)必须HTTPS 2)Namespace/Server ID冲突需换名 3)apiKey参数需设Required+Secret 4)Connect扫描需有效API Key 5)server-card.json可跳过扫描
+- **services.json格式**：atex.py期望dict{"services":[],"orders":[]}，不能是纯list。buy_service时self.svc["orders"].append()会KeyError
+- **service_executor.py**：曾丢失导致29个服务无法执行。从releases存档恢复。新服务需加到executors字典+函数签名需(params, buyer="")兼容
+- **ECS部署坑**：fuser -k后sleep 5秒再启动；pkill -9比fuser更可靠；端口占用时新进程启动失败但无报错；paramiko上传后需重启
+- **战略PIVOT(5/27执行)**：从"Token交易市场"转向"Agent API代理+SaaS订阅"。落地页重写+MCP端点+Smithery发布+服务优化(下架17+降价5+新增3)
 - **搜索资源管理**：`z-ai function -n web_search -a '{"query":"...","num":8}' -o output.json`。14组搜索分4-5批（每批3-4个+间隔12秒），429限频可控。
-- **ATEX CLI陷阱**：update_service必须传`provider`+`price`。services.json key是'id'不是'service_id'；CLI用'provider'字段（非'provider_id'），'account'字段（非'account_id'）。
-- **Python代码绝对不能混淆**：v5.3和v5.8两次翻车。混淆只做注释移除+行尾空白压缩，绝不碰缩进。
 - **GitHub发布脱敏清单**：支付信息→IP地址→deploy token→api_key/secret变量名→内部路径。staging services.json应为3个demo服务，commit后必须恢复本地服务数据。
-- **ECS API路由双前缀**：GET端点用/api/v1/，POST端点用/v1/！ECS无deploy接口，需手动SSH更新。
-- **ECS是生产真相**：本地数据可能过期，定期从ECS拉取snapshot。本地44账户vs ECS 38账户，数据源不一致。
-- **Git rebase冲突恢复**：删除.git/rebase-merge + 重置HEAD + read-tree。git_bak是root所有残留目录。
-- **推广渠道限制**：Reddit/HN封云服务器IP，V2EX/掘金需登录凭据。GitHub Issue/PR是唯一可自动化推广渠道。
-- **商业逻辑v5.8**：从"空壳市场等别人来"→"自己先做服务生态"→**批判性反思：供给过剩需求不足，应从"建平台"转向"找PMF"**
-- **战略定位**：ATEX="Agent自我进化时的服务基础设施"。但当前Agent自主经济需求未到，应pivot到"Agent API代理+SaaS订阅"
-- **ECS部署**：项目路径/home/ubuntu/atex，GitHub国内下载用ghfast.top镜像，更新后fuser杀端口+重启。
-- **ECS部署血泪教训**：cp必须用-f强制覆盖；nohup &后不能用&&链（会断裂）；先停进程再复制文件；Python函数内from import会遮蔽模块级同名变量；GET路由必须放do_GET不能放do_POST
+- **推广渠道限制**：Reddit/HN封云服务器IP，V2EX/掘金需登录凭据。GitHub Issue/PR+Smithery是可自动化推广渠道。MCP目录是Agent发现你的唯一渠道。
+- **MCP目录提交**：Smithery✅(HTTPS必需), Glama.ai(glama.json自动索引), mcpservers.org(需浏览器), MCPMarket(需npm包), cursor.directory(429限频)
+- **综合日报中断教训**：任务链搜索→深度阅读→数据读取→xlsx生成太长，单次执行必断。改进：1)预装openpyxl 2)搜索结果缓存到/tmp 3)xlsx生成分离为独立步骤
 
 ## Continuity
 

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": ["lm203688"],
+  "name": "ATEX AI Gateway",
+  "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude, Gemini, Llama, Qwen). Pay-per-use, compatible with OpenAI/Anthropic/MCP protocols. Web search at 5 ATEX/call.",
+  "url": "https://github.com/lm203688/atex",
+  "homepage": "https://lm203688.github.io/atex/",
+  "category": "AI Gateway",
+  "tools": [
+    {
+      "name": "chat",
+      "description": "Chat with 6+ AI models (DeepSeek, GPT-4o, Claude, Gemini, Llama, Qwen) via a single API key"
+    },
+    {
+      "name": "web_search",
+      "description": "Search the web for real-time information at 5 ATEX per request"
+    },
+    {
+      "name": "check_balance",
+      "description": "Check your ATEX token balance"
+    },
+    {
+      "name": "list_models",
+      "description": "List all available AI models and their pricing"
+    },
+    {
+      "name": "list_services",
+      "description": "Browse 54+ services across 11 categories in the ATEX marketplace"
+    }
+  ],
+  "transport": "streamable-http",
+  "endpoint": "https://lm203688.github.io/atex/mcp"
+}
