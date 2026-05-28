@@ -1,7 +1,7 @@
 # Changelog
 
-## [5.10] — 2026-05-28
-- Updated service marketplace (45 services)
+## [5.11] — 2026-05-29
+- Updated service marketplace (47 services)
 - Exchange engine updated (2026-05-26)
 
 ## [4.2] — 2026-05-11

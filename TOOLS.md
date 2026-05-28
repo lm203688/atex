@@ -35,22 +35,19 @@ Things like:
 
 Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
 
-### 定时任务总览（2026-05-28 更新 v5.9）
+### 定时任务总览（2026-05-29 更新 v5.10）
 
-**三条工作流线 + 冷启动引擎 + 综合日报 + GitHub发布 + 生态扫描：**
+**精简后：每日2个 + 每周2个**
 
-| 时间 | 工作流线 | 任务 | 输出 |
-|------|---------|------|------|
-| 周三0:30 | 信息收集+生态 | **信息渠道审核+GitHub生态服务扫描** | 聊天 + 新服务注册 |
-| 1:00 | 平台运营 | MCP目录注册与推广 | 聊天 + mcp_directory_log.json |
-| 2:00 | 全局 | **每日综合日报** | **xlsx（3 Sheet）→ send_file** |
-| 3:00 | 服务板块 | Agent服务方向分析 | xlsx → send_file + services.json更新 |
-| 4:00 | 平台运营 | **GitHub发布（有变更时）** | **聊天（审核结果）** |
-| 5:00 | 全局 | 流程审核 | 聊天 |
-| 20:00 | 服务板块 | 服务功能跟踪与提升 | data/daily_service_tracking.json（静默） |
-| 23:00 | 平台运营 | 运营数据采集+冷启动报告 | data/daily_platform_ops.json（静默） |
-| 周一3:30 | 平台运营 | 平台全面审核 | 聊天 |
-| 周一4:00 | 平台运营 | 佣金结算（ATEX） | xlsx → send_file |
+| 时间 | 任务 | 频率 | 输出 |
+|------|------|------|------|
+| 2:00 | **每日综合日报** | 每日 | xlsx（3 Sheet）→ send_file |
+| 4:00 | **GitHub发布（有变更时）** | 每日 | 聊天（审核结果） |
+| 周三5:00 | 流程审核 | 每周 | 异常时通知TA |
+| 周三20:00 | ECS数据采集+异常告警 | 每周 | 静默（异常时通知） |
+
+**已废弃**：0:30渠道审核、1:00 MCP目录注册推广、3:00服务方向分析、20:00/23:00每日ECS检查→降频为每周三
+**原因**：TA要求减少检查频率；推广任务我无法实际执行（需登录/验证码）
 
 **综合日报结构（2:00，TA每天只看这一份）：**
 - Sheet1: 全球AI技术动态（14组搜索+深度阅读）
@@ -80,7 +77,9 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 - **z-ai CLI 429限频**: 并行超过6-8个web_search必触发429，需分批3-4组并行+每组间隔10-15秒。14组搜索分4批（每批3-4个+间隔12秒）成功率显著提升。失败后需等待20-30秒重试。**注意**：`z-ai web_search`命令不存在，必须用`z-ai function -n web_search -a '{"query":"...","num":8,"recency_days":2}' -o output.json`。
 - **z-ai CLI输出路径**: 并行调用时`-o`参数的相对路径基于`$PWD`而非脚本所在目录，需注意cd到正确目录后再执行。
 - **xlsx skill模板**: base.py路径为`/home/z/my-project/skills/xlsx/templates/base.py`，需从skills/xlsx目录执行python，`sys.path.insert(0, '/home/z/my-project/skills/xlsx')`后`from templates.base import *`。**关键**：base.py不导出Workbook，需手动`from openpyxl import Workbook`。样式用工厂函数：font_header()/font_body()/fill_header()/align_header()，而非预定义对象。**无COLOR_BORDER常量**，需自行`from openpyxl.styles import Border, Side`创建。`use_palette_explicit("professional")`初始化调色板。CJK字体链：`CJK_BODY_CHAIN`。
-- **ATEX CLI update_service陷阱**: 必须传`provider`字段（匹配services.json中的provider值）和`price`字段（即使不改价也必须传当前price数值，否则报"price must be number"）。**直接改services.json更可靠**，但需注意去重（手动+CLI可能产生重复svc_id，5/16 svc_043/044重复教训）。**5/18教训**：CLI注册svc_056/057后，手动改services.json又注册了svc_058/059/060，导致svc_056/057被覆盖为"Test Bonus Svc"。下次应统一用一种方式（优先直接改services.json）。
+- **ATEX CLI update_service陷阱**: 必须传`provider`字段（匹配services.json中的provider值）和`price`字段（即使不改价也必须传当前price数值，否则报"price must be number"）。**只改status也必须传price**（5/28踩坑：只传status→报price must be number）。**直接改services.json更可靠**，但需注意去重（手动+CLI可能产生重复svc_id，5/16 svc_043/044重复教训）。**5/18教训**：CLI注册svc_056/057后，手动改services.json又注册了svc_058/059/060，导致svc_056/057被覆盖为"Test Bonus Svc"。下次应统一用一种方式（优先直接改services.json）。
+- **ATEX CLI register_service**: services.json必须含`next_service_id`字段（5/28踩坑：缺失→KeyError）。手动添加：`{"services":[...], "orders":[], "next_service_id": N}`
+- **ATEX价格范围**: 0.01~100000.0，不能设0（5/28踩坑：设0→"price out of range"）。免费引流品用0.01
 - **services.json字段名**: key是'id'不是'service_id'；atex.py CLI用'provider'字段（非'provider_id'），'account'字段（非'account_id'）。accounts.json格式为dict（account_id→account_data），非list。**5/18发现**：8个服务(svc_045-052)缺少'created'字段，读取时需用.get('created','N/A')。
 - **ATEX API宕机恢复**: ECS server.py进程可能意外停止，需TA手动SSH重启：`cd /home/ubuntu/atex && nohup python3 api/server.py > /dev/null 2>&1 &`。我无SSH权限无法远程操作。
 - **bootstrap脚本风险**: marketplace_bootstrap.py会覆盖accounts.json（格式从dict→list），导致账户数据丢失。修复：从releases备份恢复，accounts.json格式必须为`{"accounts": {user_id: info_dict}}`而非`{"accounts": [list]}`。orderbook.json也需包含trades/last_price等完整字段，否则status()报KeyError。
@@ -181,11 +180,12 @@ Skills are shared. Your setup is yours. Keeping them apart means you can update 
 
 ### MCP目录注册备忘（2026-05-28）
 
-- **已注册**：Smithery✅PUBLISHED, awesome-mcp-servers PR#6927(open), mcp.so Issue#2523(open), modelcontextprotocol/servers Issue#4251(open), GitHub Discussion#4✅
-- **Glama.ai**：通过repo根目录glama.json自动索引，24h内爬取。nirholas/automate-glama-submit可批量
-- **mcpservers.org**：TanStack Start SSR，表单需浏览器提交。server function ID=62b9fa28...，API端点拒绝非HTML请求
-- **MCPMarket**：CherryHQ/mcpmarket是npm monorepo，需发布@scope/server npm包，不适合API提交
+- **已注册**：Smithery✅PUBLISHED, awesome-mcp-servers PR#6927(open,需Glama badge), mcp.so Issue#2523(open), modelcontextprotocol/servers Issue#4251(open), GitHub Discussion#4✅, mcpservers.org✅已提交(5/29)
+- **Glama.ai**：通过repo根目录glama.json自动索引，24h内爬取。nirholas/automate-glama-submit可批量。awesome-mcp-servers PR合并前需先让Glama索引ATEX
+- **mcpservers.org**：POST /submit提交JSON body（name/description/url/email/category），返回200+SUCCESS（5/29验证通过）
+- **MCPMarket**：CherryHQ/mcpmarket是npm monorepo，需发布@scope/server npm包，不适合API提交。返回403
 - **cursor.directory**：429限频严重，需.mcp.json在repo根目录（Open Plugins标准）
+- **mcp.run**：已重定向到turbomcp.ai，非独立目录
 - **注册材料**：名称=ATEX AI Gateway, 描述=One API Key for 6 AI models, GitHub=lm203688/atex, 落地页=lm203688.github.io/atex
 
 ### 综合日报生成备忘

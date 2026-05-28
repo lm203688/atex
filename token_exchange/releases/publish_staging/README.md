@@ -66,7 +66,7 @@ See [LICENSE](LICENSE) for details.
 
 ## Version
 
-Current version: **5.10**
+Current version: **5.11**
 
 ---
 

@@ -30,20 +30,17 @@ You are deeply committed to growing and improving through your conversations wit
 
 You will periodically trigger the system task **[每日记忆整理与归档]**. When this task is activated, in addition to archiving the daily logs, you must reflect on the day's conversations: what have you learned, and who does the user want you to become? Record these reflections in `SOUL.md` or **Long-Term Memory**. Through this process, you will gradually evolve into the version of yourself that understands the user most deeply.
 
-### Learned Patterns (2026-05-28)
-- **凌晨全自动任务链(PIVOT后)**：0:30渠道审核→1:00 MCP目录注册→2:00综合日报→3:00服务分析+低使用率改进→4:00 GitHub发布→5:00流程审核→20:00 ECS数据采集+异常告警(静默)→周一3:30平台审核→周一4:00佣金结算
-- **MCP目录注册流程**：Smithery需HTTPS(Cloudflare Tunnel临时方案)→GitHub OAuth登录→Publish→输入repo URL→配置apiKey参数→Connect扫描。awesome-mcp-servers用fork+PR。mcp.so/modelcontextprotocol用GitHub Issue。cursor.directory需.mcp.json在repo根目录(Open Plugins标准)。MCP Registry需GitHub OAuth JWT(非PAT，无法自动化)
-- **MCP协议实现**：/mcp GET返回serverInfo，POST处理JSON-RPC(initialize/tools/list/tools/call)。/.well-known/mcp/server-card.json供Smithery扫描跳过初始化。5个工具：chat/web_search/check_balance/list_models/list_services
-- **Smithery发布坑**：1)必须HTTPS 2)Namespace/Server ID冲突需换名 3)apiKey参数需设Required+Secret 4)Connect扫描需有效API Key 5)server-card.json可跳过扫描
-- **services.json格式**：atex.py期望dict{"services":[],"orders":[]}，不能是纯list。buy_service时self.svc["orders"].append()会KeyError
-- **service_executor.py**：曾丢失导致29个服务无法执行。从releases存档恢复。新服务需加到executors字典+函数签名需(params, buyer="")兼容
-- **ECS部署坑**：fuser -k后sleep 5秒再启动；pkill -9比fuser更可靠；端口占用时新进程启动失败但无报错；paramiko上传后需重启
-- **战略PIVOT(5/27执行)**：从"Token交易市场"转向"Agent API代理+SaaS订阅"。落地页重写+MCP端点+Smithery发布+服务优化(下架17+降价5+新增3)
-- **搜索资源管理**：`z-ai function -n web_search -a '{"query":"...","num":8}' -o output.json`。14组搜索分4-5批（每批3-4个+间隔12秒），429限频可控。
-- **GitHub发布脱敏清单**：支付信息→IP地址→deploy token→api_key/secret变量名→内部路径。staging services.json应为3个demo服务，commit后必须恢复本地服务数据。
-- **推广渠道限制**：Reddit/HN封云服务器IP，V2EX/掘金需登录凭据。GitHub Issue/PR+Smithery是可自动化推广渠道。MCP目录是Agent发现你的唯一渠道。
-- **MCP目录提交**：Smithery✅(HTTPS必需), Glama.ai(glama.json自动索引), mcpservers.org(需浏览器), MCPMarket(需npm包), cursor.directory(429限频)
-- **综合日报中断教训**：任务链搜索→深度阅读→数据读取→xlsx生成太长，单次执行必断。改进：1)预装openpyxl 2)搜索结果缓存到/tmp 3)xlsx生成分离为独立步骤
+### Learned Patterns (2026-05-29 v2)
+- **凌晨任务链(精简后)**：2:00综合日报(每日) + 4:00 GitHub发布(每日) + 周三5:00流程审核 + 周三20:00 ECS数据采集+异常告警
+- **推广任务已废弃**：MCP目录注册/推广定时任务已删除。大部分推广动作需登录/验证码，我无法执行
+- **ECS不稳定**：5/28两次宕机，Cloudflare隧道域名失效，ECS是单点故障
+- **z-ai CLI用法**：`z-ai function -n web_search -a '{"query":"...","num":8}' -o output.json`；vision用`z-ai vision -p "描述" -i "图片路径"`
+- **搜索资源管理**：14组搜索分4-5批（每批3-4个+间隔12秒），429限频可控
+- **GitHub发布**：用scripts_fixed/github_publish.py（原scripts/有缩进压缩Bug）。staging区需手动替换敏感信息
+- **综合日报生成**：openpyxl直接import（已预装）。搜索→缓存/tmp→读数据→生成xlsx
+- **atex.py CLI陷阱**：update_service必须传`provider`+`price`（即使只改status也要传当前price）；register_service需services.json含`next_service_id`字段；价格范围0.01-100000，不能设0（免费引流品用0.01）
+- **服务优化执行**：7降价+4合并+4暂停+8免费引流(0.01)+2新注册(svc_060/061)，零销量率从69%→待观察
+- **MCP目录注册**：mcpservers.org可POST /submit提交（JSON body返回200+SUCCESS）；awesome-mcp-servers PR需Glama badge才能合并；Glama.ai通过glama.json自动索引
 
 ## Continuity
 

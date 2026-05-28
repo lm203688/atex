@@ -1,7 +1,7 @@
 {
-  "version": "5.10",
+  "version": "5.11",
   "name": "ATEX",
-  "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
+  "description": "Agent\u670d\u52a1\u4ea4\u6613\u5e02\u573a + \u901a\u7528API\u4fe1\u7528Token\uff08\u5916\u90e8\u53ef\u81ea\u7531\u4ea4\u6613\uff09+ \u8ba2\u9605\u5236",
   "created": "2026-05-09",
   "updated": "2026-05-26",
   "api_url": "http://150.158.119.19:8420",
@@ -54,7 +54,7 @@
     "initial_supply": 1000000,
     "distribution": "PoS",
     "registration_credit": 10,
-    "registration_credit_note": "10 ATEX trial credit. ATEX is a freely tradable API credit token — acquire more via external trading or providing services."
+    "registration_credit_note": "10 ATEX trial credit. ATEX is a freely tradable API credit token \u2014 acquire more via external trading or providing services."
   },
   "provider_incentive": {
     "register_bonus": 50,
@@ -71,7 +71,7 @@
     "deepseek_chat": {
       "cost": 1,
       "unit": "1K tokens",
-      "description": "DeepSeek Chat — 通用对话，高性价比",
+      "description": "DeepSeek Chat \u2014 \u901a\u7528\u5bf9\u8bdd\uff0c\u9ad8\u6027\u4ef7\u6bd4",
       "models": [
         "deepseek-chat"
       ],
@@ -81,7 +81,7 @@
     "deepseek_reasoner": {
       "cost": 3,
       "unit": "1K tokens",
-      "description": "DeepSeek Reasoner — 深度推理，复杂任务",
+      "description": "DeepSeek Reasoner \u2014 \u6df1\u5ea6\u63a8\u7406\uff0c\u590d\u6742\u4efb\u52a1",
       "models": [
         "deepseek-reasoner"
       ],
@@ -91,7 +91,7 @@
     "openai_gpt4o_mini": {
       "cost": 5,
       "unit": "1K tokens",
-      "description": "OpenAI GPT-4o Mini — 快速高效",
+      "description": "OpenAI GPT-4o Mini \u2014 \u5feb\u901f\u9ad8\u6548",
       "models": [
         "gpt-4o-mini"
       ],
@@ -102,7 +102,7 @@
     "openai_gpt4o": {
       "cost": 20,
       "unit": "1K tokens",
-      "description": "OpenAI GPT-4o — 旗舰模型",
+      "description": "OpenAI GPT-4o \u2014 \u65d7\u8230\u6a21\u578b",
       "models": [
         "gpt-4o"
       ],
@@ -113,7 +113,7 @@
     "claude_haiku": {
       "cost": 5,
       "unit": "1K tokens",
-      "description": "Anthropic Claude 3.5 Haiku — 快速轻量",
+      "description": "Anthropic Claude 3.5 Haiku \u2014 \u5feb\u901f\u8f7b\u91cf",
       "models": [
         "claude-3-5-haiku-latest"
       ],
@@ -124,7 +124,7 @@
     "claude_sonnet": {
       "cost": 15,
       "unit": "1K tokens",
-      "description": "Anthropic Claude 3.5 Sonnet — 平衡性能",
+      "description": "Anthropic Claude 3.5 Sonnet \u2014 \u5e73\u8861\u6027\u80fd",
       "models": [
         "claude-3-5-sonnet-latest"
       ],
@@ -135,7 +135,7 @@
     "tts": {
       "cost": 5,
       "unit": "1K chars",
-      "description": "文本转语音 — 多语言多音色",
+      "description": "\u6587\u672c\u8f6c\u8bed\u97f3 \u2014 \u591a\u8bed\u8a00\u591a\u97f3\u8272",
       "models": [
         "tts-1"
       ],
@@ -146,7 +146,7 @@
     "asr": {
       "cost": 3,
       "unit": "minute",
-      "description": "语音转文字 — 多语言识别",
+      "description": "\u8bed\u97f3\u8f6c\u6587\u5b57 \u2014 \u591a\u8bed\u8a00\u8bc6\u522b",
       "models": [
         "whisper-1"
       ],
@@ -157,7 +157,7 @@
     "embedding": {
       "cost": 0.5,
       "unit": "1K tokens",
-      "description": "文本向量化 — 语义搜索/RAG",
+      "description": "\u6587\u672c\u5411\u91cf\u5316 \u2014 \u8bed\u4e49\u641c\u7d22/RAG",
       "models": [
         "text-embedding-3-small"
       ],
@@ -168,7 +168,7 @@
     "web_search": {
       "cost": 2,
       "unit": "query",
-      "description": "Web搜索 — 实时信息检索",
+      "description": "Web\u641c\u7d22 \u2014 \u5b9e\u65f6\u4fe1\u606f\u68c0\u7d22",
       "models": [],
       "backend": "internal",
       "status": "coming_soon",
@@ -180,54 +180,54 @@
     "paypal": "CONFIGURE_PAYPAL",
     "min_topup_cny": 10.0,
     "topup_bonus": {
-      "description": "充值送积分活动 — 充得多送得多",
+      "description": "\u5145\u503c\u9001\u79ef\u5206\u6d3b\u52a8 \u2014 \u5145\u5f97\u591a\u9001\u5f97\u591a",
       "tiers": [
         {
           "min_cny": 10,
           "bonus_pct": 10,
-          "note": "充10元送1元"
+          "note": "\u514510\u5143\u90011\u5143"
         },
         {
           "min_cny": 50,
           "bonus_pct": 15,
-          "note": "充50元送7.5元"
+          "note": "\u514550\u5143\u90017.5\u5143"
         },
         {
           "min_cny": 100,
           "bonus_pct": 20,
-          "note": "充100元送20元"
+          "note": "\u5145100\u5143\u900120\u5143"
         },
         {
           "min_cny": 500,
           "bonus_pct": 30,
-          "note": "充500元送150元"
+          "note": "\u5145500\u5143\u9001150\u5143"
         },
         {
           "min_cny": 1000,
           "bonus_pct": 40,
-          "note": "充1000元送400元"
+          "note": "\u51451000\u5143\u9001400\u5143"
         }
       ],
       "first_topup_bonus_atex": 50,
-      "first_topup_note": "首次充值额外送50 ATEX",
+      "first_topup_note": "\u9996\u6b21\u5145\u503c\u989d\u5916\u900150 ATEX",
       "topup_atex_rate": 0.5,
-      "topup_atex_note": "每充1元送0.5 ATEX（充10元送5 ATEX）",
+      "topup_atex_note": "\u6bcf\u51451\u5143\u90010.5 ATEX\uff08\u514510\u5143\u90015 ATEX\uff09",
       "active": true,
       "expires": "2026-06-30"
     }
   },
   "subscription_plans": {
-    "description": "ATEX订阅制 — 按月付费，API随便用",
+    "description": "ATEX\u8ba2\u9605\u5236 \u2014 \u6309\u6708\u4ed8\u8d39\uff0cAPI\u968f\u4fbf\u7528",
     "plans": [
       {
         "id": "free",
-        "name": "免费版",
+        "name": "\u514d\u8d39\u7248",
         "price_cny": 0,
         "period": "monthly",
         "features": [
-          "按次计费",
+          "\u6309\u6b21\u8ba1\u8d39",
           "DeepSeek Chat/Reasoner",
-          "5元注册体验金"
+          "5\u5143\u6ce8\u518c\u4f53\u9a8c\u91d1"
         ],
         "limits": {
           "models": [
@@ -240,14 +240,14 @@
       },
       {
         "id": "basic",
-        "name": "基础版",
+        "name": "\u57fa\u7840\u7248",
         "price_cny": 49,
         "period": "monthly",
         "features": [
-          "DeepSeek Chat无限量",
-          "DeepSeek Reasoner 1000次/月",
-          "50 ATEX/月",
-          "服务市场9折"
+          "DeepSeek Chat\u65e0\u9650\u91cf",
+          "DeepSeek Reasoner 1000\u6b21/\u6708",
+          "50 ATEX/\u6708",
+          "\u670d\u52a1\u5e02\u573a9\u6298"
         ],
         "limits": {
           "models": [
@@ -259,19 +259,19 @@
           "service_discount": 0.9
         },
         "bonus_atex": 50,
-        "highlight": "最受欢迎"
+        "highlight": "\u6700\u53d7\u6b22\u8fce"
       },
       {
         "id": "pro",
-        "name": "专业版",
+        "name": "\u4e13\u4e1a\u7248",
         "price_cny": 199,
         "period": "monthly",
         "features": [
-          "全部模型无限量",
-          "200 ATEX/月",
-          "服务市场8折",
-          "优先队列",
-          "MCP Server高级工具"
+          "\u5168\u90e8\u6a21\u578b\u65e0\u9650\u91cf",
+          "200 ATEX/\u6708",
+          "\u670d\u52a1\u5e02\u573a8\u6298",
+          "\u4f18\u5148\u961f\u5217",
+          "MCP Server\u9ad8\u7ea7\u5de5\u5177"
         ],
         "limits": {
           "models": [
@@ -287,20 +287,20 @@
           "priority_queue": true
         },
         "bonus_atex": 200,
-        "highlight": "性价比最高"
+        "highlight": "\u6027\u4ef7\u6bd4\u6700\u9ad8"
       },
       {
         "id": "enterprise",
-        "name": "企业版",
+        "name": "\u4f01\u4e1a\u7248",
         "price_cny": 999,
         "period": "monthly",
         "features": [
-          "全部模型无限量",
-          "1000 ATEX/月",
-          "服务市场7折",
-          "专属支持",
-          "自定义模型接入",
-          "SLA保障"
+          "\u5168\u90e8\u6a21\u578b\u65e0\u9650\u91cf",
+          "1000 ATEX/\u6708",
+          "\u670d\u52a1\u5e02\u573a7\u6298",
+          "\u4e13\u5c5e\u652f\u6301",
+          "\u81ea\u5b9a\u4e49\u6a21\u578b\u63a5\u5165",
+          "SLA\u4fdd\u969c"
         ],
         "limits": {
           "models": [
