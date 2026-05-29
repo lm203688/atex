@@ -63,3 +63,14 @@ logs
 services_real
 data
 git_bak/
+# Internal workspace files
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+upload
+*.xlsx
+# Sensitive data
+saas_data/
+*.xlsx
+saas_data/

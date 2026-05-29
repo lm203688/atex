@@ -253,12 +253,12 @@ class Handler(BaseHTTPRequestHandler):
             is_first = user.get("total_topup_count", 0) == 0
             result = {
                 "user_id": uid,
-                "alipay": "lx688@sina.com",
-                "paypal": "https://paypal.me/xinglixingli",
+                "alipay": "CONFIGURE_ALIPAY",
+                "paypal": "CONFIGURE_PAYPAL",
                 "min_topup_cny": 10.0,
                 "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
                 "steps": [
-                    "1. 支付宝转账至 lx688@sina.com，金额≥10元",
+                    "1. 支付宝转账至 CONFIGURE_ALIPAY，金额≥10元",
                     f"2. 转账备注: ATEX_{uid}",
                     "3. 联系管理员确认到账",
                     "4. 余额自动更新（含赠送积分）",
@@ -508,11 +508,11 @@ class Handler(BaseHTTPRequestHandler):
                 "total_credited_cny": round(amount + bonus_cny, 2),
                 "is_first_topup": is_first,
                 "payment": {
-                    "alipay": "lx688@sina.com",
-                    "paypal": "https://paypal.me/xinglixingli",
+                    "alipay": "CONFIGURE_ALIPAY",
+                    "paypal": "CONFIGURE_PAYPAL",
                     "note": f"请转账{amount}元，备注填写参考码：{ref_code}",
                     "steps": [
-                        f"1. 支付宝转账至 lx688@sina.com",
+                        f"1. 支付宝转账至 CONFIGURE_ALIPAY",
                         f"2. 转账金额：{amount}元",
                         f"3. 转账备注：{ref_code}",
                         "4. 管理员确认后余额自动到账（含赠送）",
