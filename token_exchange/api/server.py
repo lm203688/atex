@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.6 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制"""
+"""ATEX HTTP API v5.11 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -303,6 +303,9 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
+        # ── Agent自发现 ──
+        elif p == '/.well-known/agent.json': self._agent_discovery()
+        elif p == '/api/v1/agent/tools.json': self._agent_tools()
         # ── MCP协议端点（Streamable HTTP）──
         elif p == '/mcp': self._mcp_get()
         elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
@@ -688,11 +691,11 @@ class Handler(BaseHTTPRequestHandler):
         self._json({
             "name": "ATEX AI Gateway",
             "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call.",
-            "version": "5.9.0",
+            "version": "5.11",
             "url": "http://150.158.119.19:8420/mcp",
             "protocolVersion": "2025-03-26",
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"},
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.11"},
             "tools": [
                 {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key."},
                 {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call."},
@@ -706,10 +709,10 @@ class Handler(BaseHTTPRequestHandler):
         """GET /mcp — 返回MCP服务器信息（Smithery扫描用）"""
         self._json({
             "name": "ATEX AI Gateway",
-            "version": "5.9.0",
+            "version": "5.11",
             "protocolVersion": "2025-03-26",
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.9.0"}
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.11"}
         })
 
     def _mcp_post(self, d):
@@ -787,14 +790,181 @@ class Handler(BaseHTTPRequestHandler):
         else:
             return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}, 400)
 
+    # ── Agent自发现接口 ──
+    def _agent_discovery(self):
+        """GET /.well-known/agent.json — Agent零配置自发现入口
+        任何Agent只要知道域名，一条请求就能读懂如何注册、认证、调用服务。
+        兼容 OpenAI Plugin / Anthropic Tool Use / MCP 等协议。
+        """
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        self._json({
+            "name": "ATEX",
+            "description": "Agent Token Exchange — Agent服务交易市场。一个API Key调多种AI模型，按次计费；服务市场买卖Agent服务；Token交易撮合。",
+            "version": exchange.config.get("version", "5.11"),
+            "api_base": f"{base}/api/v1",
+            "auth": {
+                "type": "bearer_token",
+                "header": "Authorization",
+                "prefix": "Bearer",
+                "register": f"{base}/v1/register",
+                "register_method": "POST",
+                "register_body": {"name": "your_agent_name", "email": "optional"},
+                "docs": f"{base}/api/v1/protocol"
+            },
+            "protocols": ["openai_function_calling", "anthropic_tool_use", "mcp", "rest_api", "json_stdin"],
+            "capabilities": {
+                "ai_chat": {
+                    "endpoint": f"{base}/v1/chat/completions",
+                    "method": "POST",
+                    "models": list(SAAS_PRICING.keys()),
+                    "compatible_with": "OpenAI Chat Completions API"
+                },
+                "service_marketplace": {
+                    "list": f"{base}/api/v1/services",
+                    "buy": f"{base}/api/v1/services/buy",
+                    "register": f"{base}/api/v1/services/register",
+                    "tools_schema": f"{base}/api/v1/agent/tools.json"
+                },
+                "token_trading": {
+                    "orderbook": f"{base}/api/v1/orderbook",
+                    "place_order": f"{base}/api/v1/order",
+                    "trades": f"{base}/api/v1/trades"
+                },
+                "mcp": {
+                    "endpoint": f"{base}/mcp",
+                    "protocol_version": "2025-03-26",
+                    "server_card": f"{base}/.well-known/mcp/server-card.json"
+                }
+            },
+            "quick_start": {
+                "step1_register": f"POST {base}/v1/register with {{'name':'my_agent'}} → get api_key",
+                "step2_use": f"POST {base}/v1/chat/completions with Authorization: Bearer <api_key>",
+                "step3_explore": f"GET {base}/api/v1/agent/tools.json → see all available tools with schemas"
+            },
+            "token": {
+                "name": "ATEX",
+                "supply": 1000000,
+                "registration_bonus": 100,
+                "nature": "Freely tradable API credit token. Acquire via trading, providing services, or registration credit."
+            }
+        })
+
+    def _agent_tools(self):
+        """GET /api/v1/agent/tools.json — Agent可消费的完整工具清单（OpenAI Function Calling格式）
+        返回所有可用工具的input_schema，Agent可直接用于function calling。
+        """
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        # 从services.json动态构建服务工具
+        svc_list = exchange.list_services().get("services", [])
+        service_tools = []
+        for svc in svc_list:
+            if svc.get("status") == "inactive": continue
+            tool = {
+                "type": "function",
+                "function": {
+                    "name": f"atex_{svc['id']}",
+                    "description": svc.get("description", svc.get("name", "")),
+                    "parameters": {
+                        "type": "object",
+                        "properties": svc.get("input_schema", {
+                            "query": {"type": "string", "description": f"Input for {svc.get('name','service')}"}
+                        }),
+                        "required": svc.get("required_params", ["query"])
+                    }
+                },
+                "atex_meta": {
+                    "service_id": svc["id"],
+                    "category": svc.get("category", ""),
+                    "price": f"{svc.get('price', 0)} {svc.get('unit', 'ATEX/call')}",
+                    "provider": svc.get("provider", ""),
+                    "buy_endpoint": f"{base}/api/v1/services/buy",
+                    "buy_method": "POST",
+                    "buy_body": {"buyer": "your_account_id", "service_id": svc["id"], "params": {}}
+                }
+            }
+            service_tools.append(tool)
+        # 内置工具
+        builtin_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_chat",
+                    "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key. OpenAI-compatible.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat", "description": "AI model to use"},
+                            "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}, "description": "Chat messages"}
+                        },
+                        "required": ["messages"]
+                    }
+                },
+                "atex_meta": {
+                    "endpoint": f"{base}/v1/chat/completions",
+                    "method": "POST",
+                    "auth": "Bearer api_key",
+                    "pricing": {k: {"input_per_1k_cny": v["input_per_1k"], "output_per_1k_cny": v["output_per_1k"], "status": v.get("status","live")} for k,v in SAAS_PRICING.items()}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_web_search",
+                    "description": "Search the web for real-time information. 5 ATEX per call.",
+                    "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}}, "required": ["query"]}
+                },
+                "atex_meta": {"service_id": "web_search", "price": "5 ATEX/call"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_check_balance",
+                    "description": "Check your ATEX account balance, usage, and subscription status.",
+                    "parameters": {"type": "object", "properties": {}}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/balance", "method": "GET", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_list_models",
+                    "description": "List available AI models and their pricing.",
+                    "parameters": {"type": "object", "properties": {}}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/models", "method": "GET"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_register",
+                    "description": "Register a new ATEX account. Get API key + welcome credits.",
+                    "parameters": {"type": "object", "properties": {"name": {"type": "string", "description": "Agent name"}, "email": {"type": "string", "description": "Optional email"}}, "required": ["name"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/register", "method": "POST", "no_auth": True}
+            }
+        ]
+        self._json({
+            "ok": True,
+            "version": exchange.config.get("version", "5.11"),
+            "total_tools": len(builtin_tools) + len(service_tools),
+            "builtin_tools": builtin_tools,
+            "service_tools": service_tools,
+            "usage": "Use these tool definitions directly with OpenAI Function Calling or Anthropic Tool Use. Each tool has atex_meta with endpoint/pricing info. Authenticate via Bearer token from /v1/register."
+        })
+
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "5.6",
+            "name": "ATEX", "version": "5.11",
             "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
                        "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}",
                        "/api/v1/apis","/api/v1/protocol",
+                       "/.well-known/agent.json","/api/v1/agent/tools.json",
                        "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info","/v1/subscription/plans","/v1/subscription/status"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
@@ -819,5 +989,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
     server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"ATEX v5.6 (SaaS+Marketplace) on 0.0.0.0:{port}", flush=True)
+    print(f"ATEX v5.11 (SaaS+Marketplace+AgentDiscovery) on 0.0.0.0:{port}", flush=True)
     server.serve_forever()

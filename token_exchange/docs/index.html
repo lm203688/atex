@@ -86,6 +86,7 @@
         <span class="badge badge-mcp">MCP Server</span>
         <span class="badge badge-openai">OpenAI 兼容</span>
         <span class="badge badge-cny">人民币结算</span>
+        <span class="badge" style="background:rgba(253,203,110,0.15);color:var(--gold);border:1px solid rgba(253,203,110,0.3);">Agent 自发现</span>
     </div>
 </div>
 
@@ -154,6 +155,50 @@
         <div class="model-name">Claude 3.5 Haiku</div>
         <div class="model-price">¥0.008/1K → ¥0.04/1K</div>
         <span class="tag tag-orange">即将上线</span>
+    </div>
+</div>
+
+<!-- Agent 自发现 -->
+<h2>🤖 Agent 自发现 — 零配置接入</h2>
+
+<p>任何 Agent 只需一条 HTTP 请求，即可自动发现 ATEX 的全部能力、注册账号、开始调用。无需读文档，无需手动配置。</p>
+
+<div class="highlight">
+    <p><strong>GET /.well-known/agent.json</strong> — Agent 自发现入口</p>
+    <pre><code>curl http://150.158.119.19:8420/.well-known/agent.json
+
+# 返回：平台名称、认证方式、所有端点、协议兼容、快速入门
+# Agent 读完这个 JSON 就知道怎么接入</code></pre>
+</div>
+
+<div class="highlight">
+    <p><strong>GET /api/v1/agent/tools.json</strong> — 完整工具清单（OpenAI Function Calling 格式）</p>
+    <pre><code>curl http://150.158.119.19:8420/api/v1/agent/tools.json
+
+# 返回：所有可用工具的 input_schema + atex_meta（端点/价格/调用方式）
+# 直接喂给 OpenAI / Anthropic / MCP 的 function calling</code></pre>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <div class="icon">🔌</div>
+        <h3>OpenAI Function Calling</h3>
+        <p>tools.json 直接作为 tools 参数传入，改一行 base_url 即可。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🛠️</div>
+        <h3>Anthropic Tool Use</h3>
+        <p>相同 schema 格式，Claude 原生 tool_use 直接消费。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🔗</div>
+        <h3>MCP 协议</h3>
+        <p>ATEX 同时提供 MCP 端点，Smithery 可自动扫描发现。</p>
+    </div>
+    <div class="card">
+        <div class="icon">⚡</div>
+        <h3>REST API</h3>
+        <p>任何 HTTP 客户端都能调用，JSON 交互，无 SDK 依赖。</p>
     </div>
 </div>
 
@@ -311,7 +356,9 @@ curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
 <!-- API端点 -->
 <h2>🔗 API 端点</h2>
 
-<pre><code>POST /v1/register               注册账号（送5元+3天基础版试用）
+<pre><code>GET  /.well-known/agent.json    Agent 自发现（零配置接入）
+GET  /api/v1/agent/tools.json  完整工具清单（Function Calling 格式）
+POST /v1/register               注册账号（送5元+3天基础版试用）
 POST /v1/chat/completions       聊天补全（OpenAI 兼容）
 GET  /v1/models                 查看可用模型
 GET  /v1/balance                查询余额
@@ -323,8 +370,8 @@ GET  /mcp                       MCP 协议端点</code></pre>
 </div>
 
 <div class="footer">
-    <p>ATEX v5.9 — AI API Gateway + MCP Server · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
-    <p style="margin-top:0.5rem;">6 个 AI 模型 · OpenAI 兼容 · MCP 协议 · 人民币结算 · 余额永不过期</p>
+    <p>ATEX v5.11 — AI API Gateway + MCP Server + Agent Discovery · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
+    <p style="margin-top:0.5rem;">6 个 AI 模型 · OpenAI 兼容 · MCP 协议 · Agent 自发现 · 人民币结算 · 余额永不过期</p>
 </div>
 
 </body>
