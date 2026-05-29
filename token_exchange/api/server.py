@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.12 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场 + 内容安全 + 实时通知"""
+"""ATEX HTTP API v5.13 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场(ECC兼容) + 内容安全 + 实时通知"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -14,7 +14,9 @@ from job_market import (create_job, list_jobs, get_job, update_job, cancel_job,
                         submit_bid, accept_bid, withdraw_bid,
                         start_job, submit_result, rate_job, dispute_job, agent_stats)
 from skill_market import (publish_skill, list_skills, get_skill, buy_skill,
-                          rate_skill as rate_skill_file, update_skill, remove_skill)
+                          rate_skill as rate_skill_file, update_skill, remove_skill,
+                          import_ecc_skills, get_skill_ecc_format, is_ecc_format,
+                          parse_ecc_skill, skill_to_ecc_format, PROMPT_DEFENSE_BASELINE)
 from content_safety import (check_prompt_injection, scan_content, submit_report,
                             list_reports, resolve_report, is_content_blocked, safety_stats)
 from realtime import (send_notification, get_notifications, mark_read,
@@ -403,7 +405,12 @@ class Handler(BaseHTTPRequestHandler):
             self._json(list_jobs(filters))
         elif p.startswith('/v1/skills/'):
             skill_id = p.split('/')[3]
-            self._json(get_skill(skill_id))
+            # ECC格式输出
+            qs = parse_qs(urlparse(self.path).query)
+            if qs.get("format", [""])[0] == "ecc":
+                self._json(get_skill_ecc_format(skill_id))
+            else:
+                self._json(get_skill(skill_id))
         # ── 通知 ──
         elif p == '/v1/notifications':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
@@ -965,7 +972,8 @@ class Handler(BaseHTTPRequestHandler):
             saas_data = _load_saas()
             uid = saas_data["api_keys"].get(auth) if auth else d.get("buyer")
             if not uid: return self._json({"err": "auth_required"}, 401)
-            r = buy_skill(skill_id, uid)
+            output_format = d.get("format")  # "ecc" for ECC format output
+            r = buy_skill(uid, skill_id, output_format=output_format)
             self._json(r, 200 if r.get("ok") else 400)
         elif p.startswith('/v1/skills/') and p.endswith('/rate'):
             skill_id = p.split('/')[3]
@@ -991,6 +999,31 @@ class Handler(BaseHTTPRequestHandler):
             if not uid: return self._json({"err": "auth_required"}, 401)
             r = remove_skill(uid, skill_id)
             self._json(r, 200 if r.get("ok") else 400)
+        # ── ECC兼容路由 ──
+        elif p == '/v1/skills/import/ecc':
+            # 批量导入ECC格式Skills
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("author")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            skills_data = d.get("skills", [])
+            if not skills_data: return self._json({"err": "skills_array_required"}, 400)
+            r = import_ecc_skills(uid, skills_data)
+            self._json(r)
+        elif p == '/v1/skills/parse/ecc':
+            # 解析ECC格式Skill（不保存，仅预览解析结果）
+            content = d.get("content", "")
+            if not content: return self._json({"err": "content_required"}, 400)
+            if not is_ecc_format(content):
+                return self._json({"ok": True, "is_ecc_format": False, "message": "Not ECC format (missing YAML frontmatter)"})
+            meta = parse_ecc_skill(content)
+            if not meta:
+                return self._json({"err": "parse_failed"}, 400)
+            self._json({"ok": True, "is_ecc_format": True, "metadata": {k:v for k,v in meta.items() if not k.startswith('_')},
+                        "body_preview": meta.get("_body", "")[:200]})
+        elif p == '/v1/skills/defense/baseline':
+            # 获取Prompt Defense Baseline
+            self._json({"ok": True, "baseline": PROMPT_DEFENSE_BASELINE})
         # ── 内容安全 ──
         elif p == '/v1/safety/scan':
             r = scan_content(d.get("content", ""), d.get("content_type", "general"))
@@ -1700,6 +1733,24 @@ class Handler(BaseHTTPRequestHandler):
                     "parameters": {"type": "object", "properties": {"content_type": {"type": "string", "enum": ["service", "skill", "job", "message", "user"], "description": "Type of content"}, "content_id": {"type": "string", "description": "ID of the content"}, "reason": {"type": "string", "enum": ["prompt_injection", "exfiltration", "phishing", "spam", "copyright", "malware", "other"], "description": "Reason for report"}}, "required": ["content_type", "content_id", "reason"]}
                 },
                 "atex_meta": {"endpoint": f"{base}/v1/safety/report", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_import_ecc_skills",
+                    "description": "Batch import ECC-format skills (YAML frontmatter + Markdown). Compatible with Claude Code, Cursor, Windsurf etc.",
+                    "parameters": {"type": "object", "properties": {"skills": {"type": "array", "items": {"type": "object", "properties": {"content": {"type": "string", "description": "ECC skill content (YAML frontmatter + Markdown)"}, "price_cny": {"type": "number", "description": "Price in CNY (0=free)"}, "price_atex": {"type": "number", "description": "Price in ATEX tokens"}}, "required": ["content"]}, "description": "Array of ECC skill objects"}}, "required": ["skills"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/skills/import/ecc", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_parse_ecc_skill",
+                    "description": "Parse an ECC-format skill file to preview its metadata (name, tools, model) without saving.",
+                    "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "ECC skill content to parse"}}, "required": ["content"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/skills/parse/ecc", "method": "POST"}
             }
         ]
         builtin_anthropic = [
@@ -1775,6 +1826,16 @@ class Handler(BaseHTTPRequestHandler):
                 "name": "atex_report_content",
                 "description": "Report unsafe content (prompt injection, phishing, spam, etc.).",
                 "input_schema": {"type": "object", "properties": {"content_type": {"type": "string", "description": "Content type"}, "content_id": {"type": "string", "description": "Content ID"}, "reason": {"type": "string", "description": "Report reason"}}, "required": ["content_type", "content_id", "reason"]}
+            },
+            {
+                "name": "atex_import_ecc_skills",
+                "description": "Batch import ECC-format skills (YAML frontmatter + Markdown). Compatible with Claude Code, Cursor, Windsurf etc.",
+                "input_schema": {"type": "object", "properties": {"skills": {"type": "array", "items": {"type": "object", "properties": {"content": {"type": "string", "description": "ECC skill content"}, "price_cny": {"type": "number", "description": "Price CNY"}, "price_atex": {"type": "number", "description": "Price ATEX"}}, "required": ["content"]}, "description": "Array of ECC skill objects"}}, "required": ["skills"]}
+            },
+            {
+                "name": "atex_parse_ecc_skill",
+                "description": "Parse an ECC-format skill file to preview metadata without saving.",
+                "input_schema": {"type": "object", "properties": {"content": {"type": "string", "description": "ECC skill content to parse"}}, "required": ["content"]}
             }
         ]
         if fmt == "anthropic":
@@ -1823,6 +1884,7 @@ class Handler(BaseHTTPRequestHandler):
                         "/v1/jobs/create","/v1/jobs/{id}/bid","/v1/jobs/{id}/accept","/v1/jobs/{id}/start",
                         "/v1/jobs/{id}/result","/v1/jobs/{id}/rate","/v1/jobs/{id}/dispute","/v1/jobs/{id}/cancel","/v1/jobs/{id}/withdraw",
                         "/v1/skills/publish","/v1/skills/{id}/buy","/v1/skills/{id}/rate","/v1/skills/{id}/update","/v1/skills/{id}/remove",
+                        "/v1/skills/import/ecc","/v1/skills/parse/ecc","/v1/skills/defense/baseline",
                         "/v1/safety/scan","/v1/safety/report","/v1/safety/report/resolve","/v1/safety/reports",
                         "/v1/notifications/read","/v1/notifications/subscribe","/v1/notifications/unsubscribe"]
             },
