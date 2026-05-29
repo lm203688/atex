@@ -384,7 +384,6 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/mcp': self._mcp_get()
         elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
         # ── Job市场 ──
-        elif p == '/v1/jobs': self._json(list_jobs(d))
         elif p.startswith('/v1/jobs/') and p.endswith('/bids'):
             job_id = p.split('/')[3]
             job = get_job(job_id)
@@ -393,7 +392,15 @@ class Handler(BaseHTTPRequestHandler):
             job_id = p.split('/')[3]
             self._json(get_job(job_id))
         # ── Skill市场 ──
-        elif p == '/v1/skills': self._json(list_skills(d))
+        elif p == '/v1/skills':
+            qs = parse_qs(urlparse(self.path).query)
+            filters = {k: v[0] for k, v in qs.items() if v}
+            self._json(list_skills(filters))
+        # ── Job市场GET ──
+        elif p == '/v1/jobs':
+            qs = parse_qs(urlparse(self.path).query)
+            filters = {k: v[0] for k, v in qs.items() if v}
+            self._json(list_jobs(filters))
         elif p.startswith('/v1/skills/'):
             skill_id = p.split('/')[3]
             self._json(get_skill(skill_id))
