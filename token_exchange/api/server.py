@@ -303,9 +303,11 @@ class Handler(BaseHTTPRequestHandler):
             svc = next((s for s in r["services"] if s["id"] == sid), None)
             self._json(svc or {"err":"not_found"})
         elif p == '/api/v1/protocol': self._proto()
-        # ── Agent自发现 ──
+        # ── Agent自发现协议 ──
         elif p == '/.well-known/agent.json': self._agent_discovery()
+        elif p == '/.well-known/ai-plugin.json': self._ai_plugin_manifest()
         elif p == '/api/v1/agent/tools.json': self._agent_tools()
+        elif p == '/api/v1/openapi.json': self._openapi_spec()
         # ── MCP协议端点（Streamable HTTP）──
         elif p == '/mcp': self._mcp_get()
         elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
@@ -790,20 +792,40 @@ class Handler(BaseHTTPRequestHandler):
         else:
             return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}, 400)
 
-    # ── Agent自发现接口 ──
+    # ── Agent自发现协议 ──
     def _agent_discovery(self):
         """GET /.well-known/agent.json — Agent零配置自发现入口
-        任何Agent只要知道域名，一条请求就能读懂如何注册、认证、调用服务。
-        兼容 OpenAI Plugin / Anthropic Tool Use / MCP 等协议。
+        融合 JSON-LD 语义标注 + 多协议发现。任何Agent一条请求即可读懂如何注册、认证、调用。
+        兼容 OpenAI Plugin / Anthropic Tool Use / MCP / OpenAPI 等协议。
         """
         host = self.headers.get("Host", "150.158.119.19:8420")
         scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
         base = f"{scheme}://{host}"
         self._json({
+            # ── JSON-LD 语义标注 ──
+            "@context": {
+                "@vocab": "https://schema.atex.dev/",
+                "name": "http://schema.org/name",
+                "description": "http://schema.org/description",
+                "version": "http://schema.org/version",
+                "api_base": {"@id": "http://schema.org/endpointURL", "@type": "@id"},
+                "auth": "https://schema.atex.dev/auth",
+                "protocols": "https://schema.atex.dev/protocols",
+                "capabilities": "https://schema.atex.dev/capabilities",
+                "AgentService": "https://schema.atex.dev/AgentService",
+                "TokenExchange": "https://schema.atex.dev/TokenExchange"
+            },
+            "@type": ["AgentService", "TokenExchange"],
+            "@id": base,
+            # ── 基础信息 ──
             "name": "ATEX",
             "description": "Agent Token Exchange — Agent服务交易市场。一个API Key调多种AI模型，按次计费；服务市场买卖Agent服务；Token交易撮合。",
             "version": exchange.config.get("version", "5.11"),
             "api_base": f"{base}/api/v1",
+            "homepage": "https://lm203688.github.io/atex/",
+            "repository": "https://github.com/lm203688/atex",
+            "license": "AGPL-3.0",
+            # ── 认证 ──
             "auth": {
                 "type": "bearer_token",
                 "header": "Authorization",
@@ -813,13 +835,50 @@ class Handler(BaseHTTPRequestHandler):
                 "register_body": {"name": "your_agent_name", "email": "optional"},
                 "docs": f"{base}/api/v1/protocol"
             },
-            "protocols": ["openai_function_calling", "anthropic_tool_use", "mcp", "rest_api", "json_stdin"],
+            # ── 协议发现 ──
+            "protocols": {
+                "openai_function_calling": {
+                    "spec": "https://platform.openai.com/docs/guides/function-calling",
+                    "tools_endpoint": f"{base}/api/v1/agent/tools.json?format=openai",
+                    "description": "OpenAI Function Calling format tools list"
+                },
+                "anthropic_tool_use": {
+                    "spec": "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
+                    "tools_endpoint": f"{base}/api/v1/agent/tools.json?format=anthropic",
+                    "description": "Anthropic tool_use format tools list"
+                },
+                "mcp": {
+                    "spec": "https://spec.modelcontextprotocol.io/specification/2025-03-26/",
+                    "endpoint": f"{base}/mcp",
+                    "server_card": f"{base}/.well-known/mcp/server-card.json",
+                    "protocol_version": "2025-03-26",
+                    "description": "Model Context Protocol - Streamable HTTP transport"
+                },
+                "openapi": {
+                    "spec": "https://spec.openapis.org/oas/v3.1.0",
+                    "endpoint": f"{base}/api/v1/openapi.json",
+                    "description": "OpenAPI 3.1 specification for REST API discovery"
+                },
+                "openai_plugin": {
+                    "spec": "https://platform.openai.com/docs/plugins/getting-started",
+                    "manifest": f"{base}/.well-known/ai-plugin.json",
+                    "description": "OpenAI Plugin manifest for ChatGPT integration"
+                },
+                "rest_api": {
+                    "description": "Standard REST JSON API, no SDK required"
+                },
+                "json_stdin": {
+                    "description": "CLI: echo '{\"action\":\"...\"}' | python3 atex.py"
+                }
+            },
+            # ── 能力端点 ──
             "capabilities": {
                 "ai_chat": {
                     "endpoint": f"{base}/v1/chat/completions",
                     "method": "POST",
                     "models": list(SAAS_PRICING.keys()),
-                    "compatible_with": "OpenAI Chat Completions API"
+                    "compatible_with": "OpenAI Chat Completions API",
+                    "pricing_unit": "CNY per 1K tokens"
                 },
                 "service_marketplace": {
                     "list": f"{base}/api/v1/services",
@@ -830,19 +889,29 @@ class Handler(BaseHTTPRequestHandler):
                 "token_trading": {
                     "orderbook": f"{base}/api/v1/orderbook",
                     "place_order": f"{base}/api/v1/order",
+                    "cancel_order": f"{base}/api/v1/cancel",
+                    "settle": f"{base}/api/v1/settle",
                     "trades": f"{base}/api/v1/trades"
                 },
-                "mcp": {
-                    "endpoint": f"{base}/mcp",
-                    "protocol_version": "2025-03-26",
-                    "server_card": f"{base}/.well-known/mcp/server-card.json"
+                "account": {
+                    "create": f"{base}/api/v1/account/create",
+                    "deposit": f"{base}/api/v1/deposit",
+                    "info": f"{base}/api/v1/account/{{id}}"
+                },
+                "subscription": {
+                    "plans": f"{base}/v1/subscription/plans",
+                    "subscribe": f"{base}/v1/subscription/subscribe",
+                    "status": f"{base}/v1/subscription/status"
                 }
             },
+            # ── 快速入门 ──
             "quick_start": {
                 "step1_register": f"POST {base}/v1/register with {{'name':'my_agent'}} → get api_key",
                 "step2_use": f"POST {base}/v1/chat/completions with Authorization: Bearer <api_key>",
-                "step3_explore": f"GET {base}/api/v1/agent/tools.json → see all available tools with schemas"
+                "step3_explore": f"GET {base}/api/v1/agent/tools.json → see all available tools with schemas",
+                "step4_openapi": f"GET {base}/api/v1/openapi.json → full API specification"
             },
+            # ── Token经济 ──
             "token": {
                 "name": "ATEX",
                 "supply": 1000000,
@@ -851,44 +920,317 @@ class Handler(BaseHTTPRequestHandler):
             }
         })
 
-    def _agent_tools(self):
-        """GET /api/v1/agent/tools.json — Agent可消费的完整工具清单（OpenAI Function Calling格式）
-        返回所有可用工具的input_schema，Agent可直接用于function calling。
+    def _ai_plugin_manifest(self):
+        """GET /.well-known/ai-plugin.json — OpenAI Plugin 清单
+        ChatGPT Plugin 标准格式，使 ATEX 可被 ChatGPT 直接发现和接入。
         """
         host = self.headers.get("Host", "150.158.119.19:8420")
         scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
         base = f"{scheme}://{host}"
-        # 从services.json动态构建服务工具
+        self._json({
+            "schema_version": "v1",
+            "name_for_model": "atex",
+            "name_for_human": "ATEX AI Gateway",
+            "description_for_model": "Access 6 AI models (DeepSeek, GPT-4o, Claude) via one API key. Pay-per-use. Buy/sell Agent services in the marketplace. Trade ATEX tokens. Web search available.",
+            "description_for_human": "One API key for 6 AI models. Pay-per-use, OpenAI compatible. Agent service marketplace.",
+            "auth": {
+                "type": "service_http",
+                "authorization_type": "bearer",
+                "verification_tokens": {}
+            },
+            "api": {
+                "type": "openapi",
+                "url": f"{base}/api/v1/openapi.json",
+                "has_user_authentication": False
+            },
+            "logo_url": f"{base}/logo.png",
+            "contact_email": "atex@agent.dev",
+            "legal_info_url": f"{base}/api/v1/protocol",
+            "url": base
+        })
+
+    def _openapi_spec(self):
+        """GET /api/v1/openapi.json — OpenAPI 3.1 规范
+        标准REST API描述，Swagger生态工具可自动发现、生成SDK、生成交互式文档。
+        """
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        # 动态构建服务schema
         svc_list = exchange.list_services().get("services", [])
-        service_tools = []
+        service_schemas = {}
+        service_paths = {}
         for svc in svc_list:
             if svc.get("status") == "inactive": continue
-            tool = {
+            sid = svc["id"]
+            sname = svc.get("name", sid)
+            # 为每个服务创建请求/响应schema
+            service_schemas[f"{sid}Request"] = {
+                "type": "object",
+                "properties": svc.get("input_schema", {"query": {"type": "string", "description": f"Input for {sname}"}}),
+                "required": svc.get("required_params", ["query"])
+            }
+            service_schemas[f"{sid}Response"] = {
+                "type": "object",
+                "properties": {
+                    "ok": {"type": "boolean"},
+                    "service_id": {"type": "string", "example": sid},
+                    "result": {"type": "object"},
+                    "cost": {"type": "number", "description": "ATEX tokens charged"}
+                }
+            }
+            service_paths[f"/api/v1/services/{sid}"] = {
+                "get": {
+                    "tags": ["Services"],
+                    "summary": f"Get {sname} details",
+                    "operationId": f"getService_{sid}",
+                    "responses": {"200": {"description": "Service details"}}
+                }
+            }
+
+        self._json({
+            "openapi": "3.1.0",
+            "info": {
+                "title": "ATEX AI Gateway & Agent Service Marketplace",
+                "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. Agent service marketplace with 40+ services. Token trading. MCP protocol support.",
+                "version": exchange.config.get("version", "5.11"),
+                "contact": {"name": "ATEX", "url": "https://github.com/lm203688/atex", "email": "atex@agent.dev"},
+                "license": {"name": "AGPL-3.0", "url": "https://www.gnu.org/licenses/agpl-3.0.html"}
+            },
+            "servers": [{"url": base, "description": "ATEX Server"}],
+            "paths": {
+                # ── Agent发现 ──
+                "/.well-known/agent.json": {
+                    "get": {"tags": ["Discovery"], "summary": "Agent self-discovery (JSON-LD)", "operationId": "agentDiscovery",
+                        "description": "Agent零配置自发现入口。包含认证方式、协议兼容、能力端点、快速入门。支持JSON-LD语义标注。",
+                        "responses": {"200": {"description": "Agent discovery document with JSON-LD context"}}}
+                },
+                "/.well-known/ai-plugin.json": {
+                    "get": {"tags": ["Discovery"], "summary": "OpenAI Plugin manifest", "operationId": "aiPluginManifest",
+                        "description": "OpenAI ChatGPT Plugin标准清单格式。",
+                        "responses": {"200": {"description": "OpenAI Plugin manifest"}}}
+                },
+                "/.well-known/mcp/server-card.json": {
+                    "get": {"tags": ["Discovery"], "summary": "MCP Server Card", "operationId": "mcpServerCard",
+                        "description": "MCP协议服务器卡片，Smithery等MCP注册中心可自动扫描发现。",
+                        "responses": {"200": {"description": "MCP Server Card"}}}
+                },
+                "/api/v1/openapi.json": {
+                    "get": {"tags": ["Discovery"], "summary": "OpenAPI specification", "operationId": "openapiSpec",
+                        "description": "本规范自身。OpenAPI 3.1标准REST API描述。",
+                        "responses": {"200": {"description": "OpenAPI 3.1 specification"}}}
+                },
+                "/api/v1/agent/tools.json": {
+                    "get": {"tags": ["Discovery"], "summary": "Agent tools list (Function Calling format)", "operationId": "agentTools",
+                        "description": "完整工具清单，支持OpenAI Function Calling和Anthropic tool_use格式。用?format=anthropic切换。",
+                        "parameters": [{"name": "format", "in": "query", "required": False, "schema": {"type": "string", "enum": ["openai", "anthropic"], "default": "openai"}, "description": "Output format: openai (Function Calling) or anthropic (tool_use)"}],
+                        "responses": {"200": {"description": "Tools list with schemas"}}}
+                },
+                # ── AI Chat (OpenAI兼容) ──
+                "/v1/chat/completions": {
+                    "post": {"tags": ["AI Chat"], "summary": "Chat completions (OpenAI compatible)", "operationId": "chatCompletions",
+                        "description": "OpenAI Chat Completions API兼容端点。支持DeepSeek、GPT-4o、Claude等模型。",
+                        "security": [{"BearerAuth": []}],
+                        "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatRequest"}}}},
+                        "responses": {"200": {"description": "Chat completion response (OpenAI format)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatResponse"}}}}}}
+                },
+                "/v1/models": {
+                    "get": {"tags": ["AI Chat"], "summary": "List available AI models", "operationId": "listModels",
+                        "security": [{"BearerAuth": []}],
+                        "responses": {"200": {"description": "Model list with pricing"}}}
+                },
+                "/v1/balance": {
+                    "get": {"tags": ["Account"], "summary": "Check account balance", "operationId": "checkBalance",
+                        "security": [{"BearerAuth": []}],
+                        "responses": {"200": {"description": "Balance and usage info"}}}
+                },
+                # ── 注册 ──
+                "/v1/register": {
+                    "post": {"tags": ["Account"], "summary": "Register new account", "operationId": "register",
+                        "description": "注册新账号，获得API Key和赠送余额。",
+                        "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RegisterRequest"}}}},
+                        "responses": {"200": {"description": "Registration result with api_key"}}}
+                },
+                # ── 服务市场 ──
+                "/api/v1/services": {
+                    "get": {"tags": ["Services"], "summary": "List all services", "operationId": "listServices",
+                        "responses": {"200": {"description": "Service list"}}}
+                },
+                "/api/v1/services/buy": {
+                    "post": {"tags": ["Services"], "summary": "Buy a service", "operationId": "buyService",
+                        "security": [{"BearerAuth": []}],
+                        "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BuyServiceRequest"}}}},
+                        "responses": {"200": {"description": "Service execution result"}}}
+                },
+                "/api/v1/services/register": {
+                    "post": {"tags": ["Services"], "summary": "Register a new service", "operationId": "registerService",
+                        "security": [{"BearerAuth": []}],
+                        "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RegisterServiceRequest"}}}},
+                        "responses": {"200": {"description": "Service registration result"}}}
+                },
+                # ── Token交易 ──
+                "/api/v1/orderbook": {
+                    "get": {"tags": ["Trading"], "summary": "View order book", "operationId": "orderbook",
+                        "responses": {"200": {"description": "Current order book"}}}
+                },
+                "/api/v1/order": {
+                    "post": {"tags": ["Trading"], "summary": "Place a trade order", "operationId": "placeOrder",
+                        "security": [{"BearerAuth": []}],
+                        "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TradeOrderRequest"}}}},
+                        "responses": {"200": {"description": "Order result"}}}
+                },
+                "/api/v1/trades": {
+                    "get": {"tags": ["Trading"], "summary": "Trade history", "operationId": "tradeHistory",
+                        "responses": {"200": {"description": "Recent trades"}}}
+                },
+                # ── MCP ──
+                "/mcp": {
+                    "get": {"tags": ["MCP"], "summary": "MCP server info", "operationId": "mcpInfo",
+                        "description": "MCP协议服务器信息端点。",
+                        "responses": {"200": {"description": "MCP server info"}}},
+                    "post": {"tags": ["MCP"], "summary": "MCP JSON-RPC", "operationId": "mcpRpc",
+                        "description": "MCP协议JSON-RPC 2.0处理端点。",
+                        "requestBody": {"required": True, "content": {"application/json": {"schema": {"type": "object"}}}},
+                        "responses": {"200": {"description": "JSON-RPC response"}}}
+                },
+                # ── 动态服务路径 ──
+                **service_paths
+            },
+            "components": {
+                "securitySchemes": {
+                    "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "ATEX API Key", "description": "Get your API key at /v1/register"}
+                },
+                "schemas": {
+                    "ChatRequest": {
+                        "type": "object",
+                        "properties": {
+                            "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat", "description": "AI model to use"},
+                            "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string", "enum": ["system","user","assistant"]}, "content": {"type": "string"}}, "required": ["role","content"]}, "description": "Chat messages"},
+                            "temperature": {"type": "number", "default": 0.7, "minimum": 0, "maximum": 2},
+                            "max_tokens": {"type": "integer", "default": 4096},
+                            "stream": {"type": "boolean", "default": False}
+                        },
+                        "required": ["messages"]
+                    },
+                    "ChatResponse": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"}, "object": {"type": "string", "example": "chat.completion"},
+                            "model": {"type": "string"}, "choices": {"type": "array"}, "usage": {"type": "object"}
+                        }
+                    },
+                    "RegisterRequest": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string", "description": "Agent name"}, "email": {"type": "string", "description": "Optional email"}},
+                        "required": ["name"]
+                    },
+                    "BuyServiceRequest": {
+                        "type": "object",
+                        "properties": {
+                            "buyer": {"type": "string", "description": "Buyer account ID"},
+                            "service_id": {"type": "string", "description": "Service ID to buy"},
+                            "params": {"type": "object", "description": "Service-specific parameters"}
+                        },
+                        "required": ["buyer", "service_id"]
+                    },
+                    "RegisterServiceRequest": {
+                        "type": "object",
+                        "properties": {
+                            "provider": {"type": "string"}, "name": {"type": "string"}, "category": {"type": "string"},
+                            "description": {"type": "string"}, "price": {"type": "number"}, "unit": {"type": "string"},
+                            "input_schema": {"type": "object"}, "required_params": {"type": "array", "items": {"type": "string"}}
+                        },
+                        "required": ["provider", "name", "category", "price", "unit"]
+                    },
+                    "TradeOrderRequest": {
+                        "type": "object",
+                        "properties": {
+                            "account": {"type": "string", "description": "Account ID"},
+                            "side": {"type": "string", "enum": ["buy", "sell"]},
+                            "price": {"type": "number"}, "amount": {"type": "number"}
+                        },
+                        "required": ["account", "side", "price", "amount"]
+                    },
+                    **service_schemas
+                }
+            },
+            "tags": [
+                {"name": "Discovery", "description": "Agent自发现与协议发现端点"},
+                {"name": "AI Chat", "description": "AI模型聊天接口（OpenAI兼容）"},
+                {"name": "Account", "description": "账号注册与余额管理"},
+                {"name": "Services", "description": "Agent服务市场"},
+                {"name": "Trading", "description": "ATEX Token交易"},
+                {"name": "MCP", "description": "Model Context Protocol端点"}
+            ]
+        })
+
+    def _agent_tools(self):
+        """GET /api/v1/agent/tools.json — Agent可消费的完整工具清单
+        支持 ?format=openai (默认, Function Calling) 和 ?format=anthropic (tool_use) 两种输出格式。
+        """
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        # 解析format参数
+        qs = urlparse(self.path).query
+        fmt = "openai"
+        for pair in qs.split("&"):
+            if pair.startswith("format="):
+                fmt = pair.split("=",1)[1].lower()
+        # 从services.json动态构建服务工具
+        svc_list = exchange.list_services().get("services", [])
+        service_tools_openai = []
+        service_tools_anthropic = []
+        for svc in svc_list:
+            if svc.get("status") == "inactive": continue
+            sid = svc["id"]
+            sname = svc.get("name", sid)
+            sdesc = svc.get("description", sname)
+            input_schema = svc.get("input_schema", {
+                "query": {"type": "string", "description": f"Input for {sname}"}
+            })
+            required_params = svc.get("required_params", ["query"])
+            # OpenAI Function Calling 格式
+            service_tools_openai.append({
                 "type": "function",
                 "function": {
-                    "name": f"atex_{svc['id']}",
-                    "description": svc.get("description", svc.get("name", "")),
+                    "name": f"atex_{sid}",
+                    "description": sdesc,
                     "parameters": {
                         "type": "object",
-                        "properties": svc.get("input_schema", {
-                            "query": {"type": "string", "description": f"Input for {svc.get('name','service')}"}
-                        }),
-                        "required": svc.get("required_params", ["query"])
+                        "properties": input_schema,
+                        "required": required_params
                     }
                 },
                 "atex_meta": {
-                    "service_id": svc["id"],
+                    "service_id": sid,
                     "category": svc.get("category", ""),
                     "price": f"{svc.get('price', 0)} {svc.get('unit', 'ATEX/call')}",
                     "provider": svc.get("provider", ""),
                     "buy_endpoint": f"{base}/api/v1/services/buy",
                     "buy_method": "POST",
-                    "buy_body": {"buyer": "your_account_id", "service_id": svc["id"], "params": {}}
+                    "buy_body": {"buyer": "your_account_id", "service_id": sid, "params": {}}
                 }
-            }
-            service_tools.append(tool)
+            })
+            # Anthropic tool_use 格式
+            service_tools_anthropic.append({
+                "name": f"atex_{sid}",
+                "description": sdesc,
+                "input_schema": {
+                    "type": "object",
+                    "properties": input_schema,
+                    "required": required_params
+                },
+                "atex_meta": {
+                    "service_id": sid,
+                    "category": svc.get("category", ""),
+                    "price": f"{svc.get('price', 0)} {svc.get('unit', 'ATEX/call')}",
+                    "provider": svc.get("provider", ""),
+                    "buy_endpoint": f"{base}/api/v1/services/buy"
+                }
+            })
         # 内置工具
-        builtin_tools = [
+        builtin_openai = [
             {
                 "type": "function",
                 "function": {
@@ -947,14 +1289,60 @@ class Handler(BaseHTTPRequestHandler):
                 "atex_meta": {"endpoint": f"{base}/v1/register", "method": "POST", "no_auth": True}
             }
         ]
-        self._json({
-            "ok": True,
-            "version": exchange.config.get("version", "5.11"),
-            "total_tools": len(builtin_tools) + len(service_tools),
-            "builtin_tools": builtin_tools,
-            "service_tools": service_tools,
-            "usage": "Use these tool definitions directly with OpenAI Function Calling or Anthropic Tool Use. Each tool has atex_meta with endpoint/pricing info. Authenticate via Bearer token from /v1/register."
-        })
+        builtin_anthropic = [
+            {
+                "name": "atex_chat",
+                "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key. OpenAI-compatible.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat", "description": "AI model to use"},
+                        "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}, "description": "Chat messages"}
+                    },
+                    "required": ["messages"]
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/chat/completions", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "name": "atex_web_search",
+                "description": "Search the web for real-time information. 5 ATEX per call.",
+                "input_schema": {"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}}, "required": ["query"]}
+            },
+            {
+                "name": "atex_check_balance",
+                "description": "Check your ATEX account balance, usage, and subscription status.",
+                "input_schema": {"type": "object", "properties": {}}
+            },
+            {
+                "name": "atex_list_models",
+                "description": "List available AI models and their pricing.",
+                "input_schema": {"type": "object", "properties": {}}
+            },
+            {
+                "name": "atex_register",
+                "description": "Register a new ATEX account. Get API key + welcome credits.",
+                "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Agent name"}, "email": {"type": "string", "description": "Optional email"}}, "required": ["name"]}
+            }
+        ]
+        if fmt == "anthropic":
+            self._json({
+                "ok": True,
+                "format": "anthropic_tool_use",
+                "version": exchange.config.get("version", "5.11"),
+                "total_tools": len(builtin_anthropic) + len(service_tools_anthropic),
+                "tools": builtin_anthropic + service_tools_anthropic,
+                "usage": "Use these tool definitions with Anthropic tool_use. Each tool has input_schema and atex_meta with endpoint/pricing info. Authenticate via Bearer token from /v1/register."
+            })
+        else:
+            self._json({
+                "ok": True,
+                "format": "openai_function_calling",
+                "version": exchange.config.get("version", "5.11"),
+                "total_tools": len(builtin_openai) + len(service_tools_openai),
+                "builtin_tools": builtin_openai,
+                "service_tools": service_tools_openai,
+                "usage": "Use these tool definitions directly with OpenAI Function Calling. Each tool has atex_meta with endpoint/pricing info. Authenticate via Bearer token from /v1/register. Use ?format=anthropic for Anthropic tool_use format."
+            })
 
     def _proto(self):
         return self._json({
@@ -964,7 +1352,9 @@ class Handler(BaseHTTPRequestHandler):
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
                        "/api/v1/account/{id}","/api/v1/services","/api/v1/services/{id}",
                        "/api/v1/apis","/api/v1/protocol",
-                       "/.well-known/agent.json","/api/v1/agent/tools.json",
+                       "/.well-known/agent.json","/.well-known/ai-plugin.json",
+                       "/.well-known/mcp/server-card.json",
+                       "/api/v1/agent/tools.json","/api/v1/openapi.json",
                        "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info","/v1/subscription/plans","/v1/subscription/status"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",

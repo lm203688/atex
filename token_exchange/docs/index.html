@@ -161,22 +161,41 @@
 <!-- Agent 自发现 -->
 <h2>🤖 Agent 自发现 — 零配置接入</h2>
 
-<p>任何 Agent 只需一条 HTTP 请求，即可自动发现 ATEX 的全部能力、注册账号、开始调用。无需读文档，无需手动配置。</p>
+<p>任何 Agent 只需一条 HTTP 请求，即可自动发现 ATEX 的全部能力、注册账号、开始调用。支持 5 种主流发现协议，覆盖所有 Agent 框架。</p>
 
 <div class="highlight">
-    <p><strong>GET /.well-known/agent.json</strong> — Agent 自发现入口</p>
+    <p><strong>GET /.well-known/agent.json</strong> — Agent 自发现入口（JSON-LD 语义标注）</p>
     <pre><code>curl http://150.158.119.19:8420/.well-known/agent.json
 
-# 返回：平台名称、认证方式、所有端点、协议兼容、快速入门
-# Agent 读完这个 JSON 就知道怎么接入</code></pre>
+# 返回：JSON-LD @context + 平台信息 + 认证方式 + 7种协议端点 + 能力清单 + 快速入门
+# 语义化标注，Agent 可理解 ATEX 是 AgentService + TokenExchange</code></pre>
 </div>
 
 <div class="highlight">
-    <p><strong>GET /api/v1/agent/tools.json</strong> — 完整工具清单（OpenAI Function Calling 格式）</p>
-    <pre><code>curl http://150.158.119.19:8420/api/v1/agent/tools.json
+    <p><strong>GET /api/v1/agent/tools.json</strong> — 完整工具清单（双格式输出）</p>
+    <pre><code># OpenAI Function Calling 格式（默认）
+curl http://150.158.119.19:8420/api/v1/agent/tools.json
 
-# 返回：所有可用工具的 input_schema + atex_meta（端点/价格/调用方式）
-# 直接喂给 OpenAI / Anthropic / MCP 的 function calling</code></pre>
+# Anthropic tool_use 格式
+curl http://150.158.119.19:8420/api/v1/agent/tools.json?format=anthropic
+
+# 返回：所有可用工具的 input_schema + atex_meta（端点/价格/调用方式）</code></pre>
+</div>
+
+<div class="highlight">
+    <p><strong>GET /api/v1/openapi.json</strong> — OpenAPI 3.1 规范</p>
+    <pre><code>curl http://150.158.119.19:8420/api/v1/openapi.json
+
+# 标准 OpenAPI 3.1 规范，Swagger UI 可视化，自动生成 SDK
+# 包含所有端点的请求/响应 schema、认证方式、标签分组</code></pre>
+</div>
+
+<div class="highlight">
+    <p><strong>GET /.well-known/ai-plugin.json</strong> — OpenAI Plugin 清单</p>
+    <pre><code>curl http://150.158.119.19:8420/.well-known/ai-plugin.json
+
+# ChatGPT Plugin 标准格式，指向 OpenAPI 规范
+# ChatGPT 可直接发现并接入 ATEX</code></pre>
 </div>
 
 <div class="grid">
@@ -188,17 +207,27 @@
     <div class="card">
         <div class="icon">🛠️</div>
         <h3>Anthropic Tool Use</h3>
-        <p>相同 schema 格式，Claude 原生 tool_use 直接消费。</p>
+        <p>?format=anthropic 切换输出，Claude 原生 tool_use 直接消费。</p>
     </div>
     <div class="card">
         <div class="icon">🔗</div>
         <h3>MCP 协议</h3>
-        <p>ATEX 同时提供 MCP 端点，Smithery 可自动扫描发现。</p>
+        <p>ATEX 同时提供 MCP 端点 + Server Card，Smithery 可自动扫描发现。</p>
     </div>
     <div class="card">
-        <div class="icon">⚡</div>
-        <h3>REST API</h3>
-        <p>任何 HTTP 客户端都能调用，JSON 交互，无 SDK 依赖。</p>
+        <div class="icon">📖</div>
+        <h3>OpenAPI 3.1</h3>
+        <p>标准 REST API 规范，Swagger UI 可视化，自动生成多语言 SDK。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🧩</div>
+        <h3>OpenAI Plugin</h3>
+        <p>ChatGPT Plugin 清单格式，ChatGPT 直接发现并接入。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🏷️</div>
+        <h3>JSON-LD 语义</h3>
+        <p>agent.json 内嵌 @context 语义标注，机器可理解 ATEX 的类型和能力。</p>
     </div>
 </div>
 
@@ -356,16 +385,19 @@ curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
 <!-- API端点 -->
 <h2>🔗 API 端点</h2>
 
-<pre><code>GET  /.well-known/agent.json    Agent 自发现（零配置接入）
-GET  /api/v1/agent/tools.json  完整工具清单（Function Calling 格式）
-POST /v1/register               注册账号（送5元+3天基础版试用）
-POST /v1/chat/completions       聊天补全（OpenAI 兼容）
-GET  /v1/models                 查看可用模型
-GET  /v1/balance                查询余额
-POST /api/v1/services/buy       购买服务（Web搜索等）
-GET  /v1/subscription/plans     查看订阅方案
-POST /v1/subscription/subscribe 订阅方案
-GET  /mcp                       MCP 协议端点</code></pre>
+<pre><code>GET  /.well-known/agent.json       Agent 自发现（JSON-LD 语义标注）
+GET  /.well-known/ai-plugin.json   OpenAI Plugin 清单
+GET  /.well-known/mcp/server-card.json  MCP Server Card
+GET  /api/v1/agent/tools.json      工具清单（?format=openai|anthropic）
+GET  /api/v1/openapi.json          OpenAPI 3.1 规范
+POST /v1/register                  注册账号（送5元+3天基础版试用）
+POST /v1/chat/completions          聊天补全（OpenAI 兼容）
+GET  /v1/models                    查看可用模型
+GET  /v1/balance                   查询余额
+POST /api/v1/services/buy          购买服务（Web搜索等）
+GET  /v1/subscription/plans        查看订阅方案
+POST /v1/subscription/subscribe    订阅方案
+GET  /mcp                          MCP 协议端点</code></pre>
 
 </div>
 
