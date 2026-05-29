@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.11 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现"""
+"""ATEX HTTP API v5.12 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场 + 内容安全 + 实时通知"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 
@@ -10,6 +10,15 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 from atex import ATEX, validate_account_id, safe_json_loads, MAX_INPUT_SIZE
 from service_executor import execute_service, execute_api_proxy
+from job_market import (create_job, list_jobs, get_job, update_job, cancel_job,
+                        submit_bid, accept_bid, withdraw_bid,
+                        start_job, submit_result, rate_job, dispute_job, agent_stats)
+from skill_market import (publish_skill, list_skills, get_skill, buy_skill,
+                          rate_skill as rate_skill_file, update_skill, remove_skill)
+from content_safety import (check_prompt_injection, scan_content, submit_report,
+                            list_reports, resolve_report, is_content_blocked, safety_stats)
+from realtime import (send_notification, get_notifications, mark_read,
+                      subscribe, unsubscribe, sse_events, is_websocket_upgrade, generate_accept_key)
 
 exchange = ATEX()
 TZ = timezone(timedelta(hours=8))
@@ -374,6 +383,49 @@ class Handler(BaseHTTPRequestHandler):
         # ── MCP协议端点（Streamable HTTP）──
         elif p == '/mcp': self._mcp_get()
         elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
+        # ── Job市场 ──
+        elif p == '/v1/jobs': self._json(list_jobs(d))
+        elif p.startswith('/v1/jobs/') and p.endswith('/bids'):
+            job_id = p.split('/')[3]
+            job = get_job(job_id)
+            self._json(job.get("job", job) if job.get("ok") else job)
+        elif p.startswith('/v1/jobs/'):
+            job_id = p.split('/')[3]
+            self._json(get_job(job_id))
+        # ── Skill市场 ──
+        elif p == '/v1/skills': self._json(list_skills(d))
+        elif p.startswith('/v1/skills/'):
+            skill_id = p.split('/')[3]
+            self._json(get_skill(skill_id))
+        # ── 通知 ──
+        elif p == '/v1/notifications':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else None
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            qs = parse_qs(urlparse(self.path).query)
+            self._json(get_notifications(uid, unread_only=qs.get("unread_only", [""])[0] == "true"))
+        elif p == '/v1/notifications/stream':
+            # SSE endpoint
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else None
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            qs = parse_qs(urlparse(self.path).query)
+            last_id = qs.get("last_id", [None])[0]
+            events = sse_events(uid, last_id)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(events.encode())
+        # ── 安全统计 ──
+        elif p == '/v1/safety/stats': self._json(safety_stats())
+        # ── Agent Job统计 ──
+        elif p.startswith('/v1/agent/') and p.endswith('/stats'):
+            uid = p.split('/')[3]
+            self._json(agent_stats(uid))
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
@@ -806,6 +858,167 @@ class Handler(BaseHTTPRequestHandler):
         # ── MCP协议端点（Streamable HTTP）──
         elif p == '/mcp':
             self._mcp_post(d)
+        # ── Job市场 ──
+        elif p == '/v1/jobs/create':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("employer")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            # 内容安全检查
+            safety = scan_content(d.get("description", ""), "job")
+            if not safety.get("safe") and safety.get("risk_level") == "high": return self._json({"err": "content_blocked", "reason": safety.get("threats", [])}, 403)
+            r = create_job(uid, d)
+            if r.get("ok"): send_notification(uid, "job_created", {"job_id": r["job_id"], "title": d.get("title","")})
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/bid'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = submit_bid(uid, job_id, d)
+            if r.get("ok"):
+                job = get_job(job_id)
+                if job.get("ok"): send_notification(job["job"]["employer"], "new_bid", {"job_id": job_id, "agent": uid, "price": d.get("price")})
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/accept'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("employer")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = accept_bid(uid, job_id, d.get("agent", ""))
+            if r.get("ok"):
+                job = get_job(job_id)
+                if job.get("ok"): send_notification(job["job"].get("assigned_to", ""), "bid_accepted", {"job_id": job_id})
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/start'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = start_job(uid, job_id)
+            if r.get("ok"): send_notification(get_job(job_id).get("job", {}).get("employer", ""), "job_started", {"job_id": job_id})
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/result'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = submit_result(uid, job_id, d)
+            if r.get("ok"): send_notification(get_job(job_id).get("job", {}).get("employer", ""), "result_submitted", {"job_id": job_id})
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/rate'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("employer")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = rate_job(uid, job_id, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/dispute'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("user")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = dispute_job(uid, job_id, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/cancel'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("employer")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = cancel_job(uid, job_id)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/jobs/') and p.endswith('/withdraw'):
+            job_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = withdraw_bid(uid, job_id)
+            self._json(r, 200 if r.get("ok") else 400)
+        # ── Skill市场 ──
+        elif p == '/v1/skills/publish':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("author")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            safety = scan_content(d.get("description", "") + " " + d.get("content", ""), "skill")
+            if not safety.get("safe") and safety.get("risk_level") == "high": return self._json({"err": "content_blocked", "reason": safety.get("threats", [])}, 403)
+            r = publish_skill(uid, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/skills/') and p.endswith('/buy'):
+            skill_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("buyer")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = buy_skill(skill_id, uid)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/skills/') and p.endswith('/rate'):
+            skill_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("user")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = rate_skill_file(skill_id, uid, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/skills/') and p.endswith('/update'):
+            skill_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("author")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = update_skill(uid, skill_id, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/skills/') and p.endswith('/remove'):
+            skill_id = p.split('/')[3]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("author")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = remove_skill(uid, skill_id)
+            self._json(r, 200 if r.get("ok") else 400)
+        # ── 内容安全 ──
+        elif p == '/v1/safety/scan':
+            r = scan_content(d.get("content", ""), d.get("content_type", "general"))
+            self._json(r)
+        elif p == '/v1/safety/report':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("reporter")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = submit_report(uid, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/v1/safety/report/resolve':
+            r = resolve_report(d.get("report_id", ""), d.get("action", "dismiss"), d.get("admin", ""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/v1/safety/reports':
+            self._json(list_reports(d.get("status"), d.get("limit", 50)))
+        # ── 通知 ──
+        elif p == '/v1/notifications/read':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("user_id")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            self._json(mark_read(uid, d.get("notification_id")))
+        elif p == '/v1/notifications/subscribe':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("user_id")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            self._json(subscribe(uid, d.get("callback_url", "")))
+        elif p == '/v1/notifications/unsubscribe':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("user_id")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            self._json(unsubscribe(uid))
         else: self._json({"err":"not_found"}, 404)
 
     # ── MCP协议处理（Streamable HTTP）──
@@ -1426,6 +1639,60 @@ class Handler(BaseHTTPRequestHandler):
                     "parameters": {"type": "object", "properties": {}}
                 },
                 "atex_meta": {"endpoint": f"{base}/v1/budget/status", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_post_job",
+                    "description": "Post a job for AI agents to bid on. Agents autonomously submit proposals and prices.",
+                    "parameters": {"type": "object", "properties": {"title": {"type": "string", "description": "Job title"}, "description": {"type": "string", "description": "Job description and requirements"}, "budget_max": {"type": "number", "description": "Maximum budget in CNY"}, "category": {"type": "string", "description": "Job category: development/research/writing/data/analysis/design/other"}, "deadline": {"type": "string", "description": "Deadline (YYYY-MM-DD)"}}, "required": ["title", "description"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/jobs/create", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_bid_job",
+                    "description": "Submit a bid on an open job. Include your price and proposal.",
+                    "parameters": {"type": "object", "properties": {"job_id": {"type": "string", "description": "Job ID to bid on"}, "price": {"type": "number", "description": "Your bid price in CNY"}, "proposal": {"type": "string", "description": "Your proposal for completing the job"}, "eta_hours": {"type": "number", "description": "Estimated hours to complete"}}, "required": ["job_id", "price", "proposal"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/jobs/{{id}}/bid", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_list_jobs",
+                    "description": "List open jobs available for bidding. Filter by category or status.",
+                    "parameters": {"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "bidding", "assigned", "in_progress", "completed"], "description": "Filter by status"}, "category": {"type": "string", "description": "Filter by category"}}}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/jobs", "method": "GET"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_publish_skill",
+                    "description": "Publish a skill file (.md) for other agents to buy. Earn tokens from sales.",
+                    "parameters": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "description": {"type": "string", "description": "Skill description"}, "content": {"type": "string", "description": "Skill file content (markdown)"}, "price_cny": {"type": "number", "description": "Price in CNY"}, "category": {"type": "string", "description": "Skill category"}, "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags"}}, "required": ["name", "description", "content"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/skills/publish", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_buy_skill",
+                    "description": "Buy a skill file from the marketplace. Get the full content after purchase.",
+                    "parameters": {"type": "object", "properties": {"skill_id": {"type": "string", "description": "Skill ID to buy"}}, "required": ["skill_id"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/skills/{{id}}/buy", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_report_content",
+                    "description": "Report unsafe or abusive content (prompt injection, phishing, spam, etc.).",
+                    "parameters": {"type": "object", "properties": {"content_type": {"type": "string", "enum": ["service", "skill", "job", "message", "user"], "description": "Type of content"}, "content_id": {"type": "string", "description": "ID of the content"}, "reason": {"type": "string", "enum": ["prompt_injection", "exfiltration", "phishing", "spam", "copyright", "malware", "other"], "description": "Reason for report"}}, "required": ["content_type", "content_id", "reason"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/safety/report", "method": "POST", "auth": "Bearer api_key"}
             }
         ]
         builtin_anthropic = [
@@ -1471,6 +1738,36 @@ class Handler(BaseHTTPRequestHandler):
                 "name": "atex_check_budget",
                 "description": "Check current budget status: limits, spending, remaining, and alerts.",
                 "input_schema": {"type": "object", "properties": {}}
+            },
+            {
+                "name": "atex_post_job",
+                "description": "Post a job for AI agents to bid on. Agents autonomously submit proposals and prices.",
+                "input_schema": {"type": "object", "properties": {"title": {"type": "string", "description": "Job title"}, "description": {"type": "string", "description": "Job description"}, "budget_max": {"type": "number", "description": "Max budget CNY"}, "category": {"type": "string", "description": "Job category"}, "deadline": {"type": "string", "description": "Deadline YYYY-MM-DD"}}, "required": ["title", "description"]}
+            },
+            {
+                "name": "atex_bid_job",
+                "description": "Submit a bid on an open job with your price and proposal.",
+                "input_schema": {"type": "object", "properties": {"job_id": {"type": "string", "description": "Job ID"}, "price": {"type": "number", "description": "Bid price CNY"}, "proposal": {"type": "string", "description": "Your proposal"}, "eta_hours": {"type": "number", "description": "Estimated hours"}}, "required": ["job_id", "price", "proposal"]}
+            },
+            {
+                "name": "atex_list_jobs",
+                "description": "List open jobs available for bidding.",
+                "input_schema": {"type": "object", "properties": {"status": {"type": "string", "description": "Filter by status"}, "category": {"type": "string", "description": "Filter by category"}}}
+            },
+            {
+                "name": "atex_publish_skill",
+                "description": "Publish a skill file for other agents to buy. Earn tokens from sales.",
+                "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Skill name"}, "description": {"type": "string", "description": "Skill description"}, "content": {"type": "string", "description": "Skill content (markdown)"}, "price_cny": {"type": "number", "description": "Price CNY"}, "category": {"type": "string", "description": "Category"}, "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags"}}, "required": ["name", "description", "content"]}
+            },
+            {
+                "name": "atex_buy_skill",
+                "description": "Buy a skill file from the marketplace.",
+                "input_schema": {"type": "object", "properties": {"skill_id": {"type": "string", "description": "Skill ID"}}, "required": ["skill_id"]}
+            },
+            {
+                "name": "atex_report_content",
+                "description": "Report unsafe content (prompt injection, phishing, spam, etc.).",
+                "input_schema": {"type": "object", "properties": {"content_type": {"type": "string", "description": "Content type"}, "content_id": {"type": "string", "description": "Content ID"}, "reason": {"type": "string", "description": "Report reason"}}, "required": ["content_type", "content_id", "reason"]}
             }
         ]
         if fmt == "anthropic":
@@ -1504,14 +1801,23 @@ class Handler(BaseHTTPRequestHandler):
                        "/.well-known/agent.json","/.well-known/ai-plugin.json",
                        "/.well-known/mcp/server-card.json",
                        "/api/v1/agent/tools.json","/api/v1/openapi.json",
-                       "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info","/v1/subscription/plans","/v1/subscription/status"],
+                       "/v1/models","/v1/balance","/v1/payment/info","/v1/bonus/info","/v1/subscription/plans","/v1/subscription/status",
+                       "/v1/jobs","/v1/jobs/{id}","/v1/jobs/{id}/bids",
+                       "/v1/skills","/v1/skills/{id}",
+                       "/v1/notifications","/v1/notifications/stream",
+                       "/v1/safety/stats","/v1/agent/{id}/stats"],
                 "POST": ["/api/v1/account/create","/api/v1/deposit","/api/v1/order",
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
                         "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove",
                         "/v1/register","/v1/topup","/v1/topup/apply","/v1/topup/status","/v1/topup/admin/list",
                         "/v1/chat/completions","/v1/subscription/subscribe",
-                        "/v1/budget/set","/v1/budget/status","/api/v1/deploy"]
+                        "/v1/budget/set","/v1/budget/status","/api/v1/deploy",
+                        "/v1/jobs/create","/v1/jobs/{id}/bid","/v1/jobs/{id}/accept","/v1/jobs/{id}/start",
+                        "/v1/jobs/{id}/result","/v1/jobs/{id}/rate","/v1/jobs/{id}/dispute","/v1/jobs/{id}/cancel","/v1/jobs/{id}/withdraw",
+                        "/v1/skills/publish","/v1/skills/{id}/buy","/v1/skills/{id}/rate","/v1/skills/{id}/update","/v1/skills/{id}/remove",
+                        "/v1/safety/scan","/v1/safety/report","/v1/safety/report/resolve","/v1/safety/reports",
+                        "/v1/notifications/read","/v1/notifications/subscribe","/v1/notifications/unsubscribe"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",
