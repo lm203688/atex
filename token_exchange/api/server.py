@@ -89,6 +89,10 @@ def _deduct(uid, cost_cny, model, input_tokens, output_tokens):
                     return True
                 # 超出限额，按次扣费
     # 非订阅或超出限额：按次扣费
+    # 先检查预算限制
+    allowed, reason = _check_budget(uid, cost_cny)
+    if not allowed:
+        return False
     if user["balance_cny"] < cost_cny: return False
     user["balance_cny"] = round(user["balance_cny"] - cost_cny, 6)
     user["total_spent_cny"] = round(user.get("total_spent_cny", 0) + cost_cny, 6)
@@ -99,6 +103,7 @@ def _deduct(uid, cost_cny, model, input_tokens, output_tokens):
         "cost_cny": cost_cny, "time": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
     })
     if len(data["usage"]) > 10000: data["usage"] = data["usage"][-5000:]
+    _record_budget_spend(uid, cost_cny)
     _save_saas(data)
     return True
 
@@ -108,6 +113,64 @@ def _get_plan(plan_id):
         if p.get("id") == plan_id:
             return p
     return None
+
+# ── Agent预算管理 ──
+BUDGET_DATA = os.path.join(SAAS_DATA, "budgets.json")
+
+def _load_budgets():
+    if os.path.exists(BUDGET_DATA):
+        with open(BUDGET_DATA) as f: return json.load(f)
+    return {}
+
+def _save_budgets(data):
+    with open(BUDGET_DATA, "w") as f: json.dump(data, f, ensure_ascii=False, indent=2)
+
+def _check_budget(uid, cost_cny):
+    """检查用户预算是否允许此次消费。返回 (allowed, reason)"""
+    budgets = _load_budgets()
+    user_budget = budgets.get(uid)
+    if not user_budget:
+        return True, None  # 无预算限制，允许
+    now = datetime.now(TZ)
+    today = now.strftime("%Y-%m-%d")
+    month = now.strftime("%Y-%m")
+    # 检查每日预算
+    daily_limit = user_budget.get("daily_cny")
+    if daily_limit is not None:
+        daily_spent = user_budget.get("daily_spent", {}).get(today, 0)
+        if daily_spent + cost_cny > daily_limit:
+            return False, f"Daily budget exceeded: {daily_spent:.4f}/{daily_limit} CNY (this call: {cost_cny:.4f})"
+    # 检查每月预算
+    monthly_limit = user_budget.get("monthly_cny")
+    if monthly_limit is not None:
+        monthly_spent = user_budget.get("monthly_spent", {}).get(month, 0)
+        if monthly_spent + cost_cny > monthly_limit:
+            return False, f"Monthly budget exceeded: {monthly_spent:.4f}/{monthly_limit} CNY (this call: {cost_cny:.4f})"
+    # 检查单次上限
+    per_action_limit = user_budget.get("per_action_cny")
+    if per_action_limit is not None and cost_cny > per_action_limit:
+        return False, f"Per-action limit exceeded: {cost_cny:.4f} > {per_action_limit} CNY"
+    return True, None
+
+def _record_budget_spend(uid, cost_cny):
+    """记录消费到预算追踪"""
+    budgets = _load_budgets()
+    if uid not in budgets:
+        return
+    now = datetime.now(TZ)
+    today = now.strftime("%Y-%m-%d")
+    month = now.strftime("%Y-%m")
+    if "daily_spent" not in budgets[uid]: budgets[uid]["daily_spent"] = {}
+    budgets[uid]["daily_spent"][today] = round(budgets[uid]["daily_spent"].get(today, 0) + cost_cny, 6)
+    if "monthly_spent" not in budgets[uid]: budgets[uid]["monthly_spent"] = {}
+    budgets[uid]["monthly_spent"][month] = round(budgets[uid]["monthly_spent"].get(month, 0) + cost_cny, 6)
+    # 清理30天前的daily记录
+    cutoff = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    budgets[uid]["daily_spent"] = {k: v for k, v in budgets[uid]["daily_spent"].items() if k >= cutoff}
+    # 清理6个月前的monthly记录
+    month_cutoff = (now - timedelta(days=180)).strftime("%Y-%m")
+    budgets[uid]["monthly_spent"] = {k: v for k, v in budgets[uid]["monthly_spent"].items() if k >= month_cutoff}
+    _save_budgets(budgets)
 
 # ── SaaS定价 ──
 SAAS_PRICING = {
@@ -600,6 +663,64 @@ class Handler(BaseHTTPRequestHandler):
                 "bonus_atex": bonus,
                 "features": plan["features"],
                 "note": "订阅已激活。自动扣费功能开发中，当前需管理员确认付款。"
+            })
+
+        # ── Agent预算管理 ──
+        elif p == '/v1/budget/set':
+            uid, auth = d.get("user_id",""), self.headers.get("Authorization","").replace("Bearer ","")
+            if not uid and auth:
+                saas_data = _load_saas()
+                uid = saas_data["api_keys"].get(auth) or ""
+            if not uid: return self._json({"err": "user_id or Bearer token required"}, 400)
+            budgets = _load_budgets()
+            budgets[uid] = {
+                "daily_cny": d.get("daily_cny"),
+                "monthly_cny": d.get("monthly_cny"),
+                "per_action_cny": d.get("per_action_cny"),
+                "alert_cny": d.get("alert_cny"),
+                "daily_spent": budgets.get(uid, {}).get("daily_spent", {}),
+                "monthly_spent": budgets.get(uid, {}).get("monthly_spent", {}),
+                "updated_at": datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
+            }
+            _save_budgets(budgets)
+            self._json({"ok": True, "user_id": uid, "budget": {k:v for k,v in budgets[uid].items() if k not in ("daily_spent","monthly_spent")}})
+        elif p == '/v1/budget/status':
+            uid, auth = d.get("user_id",""), self.headers.get("Authorization","").replace("Bearer ","")
+            if not uid and auth:
+                saas_data = _load_saas()
+                uid = saas_data["api_keys"].get(auth) or ""
+            if not uid: return self._json({"err": "user_id or Bearer token required"}, 400)
+            budgets = _load_budgets()
+            user_budget = budgets.get(uid)
+            if not user_budget:
+                return self._json({"ok": True, "user_id": uid, "budget": None, "message": "No budget limits set. Set via POST /v1/budget/set"})
+            now = datetime.now(TZ)
+            today = now.strftime("%Y-%m-%d")
+            month = now.strftime("%Y-%m")
+            daily_spent = user_budget.get("daily_spent", {}).get(today, 0)
+            monthly_spent = user_budget.get("monthly_spent", {}).get(month, 0)
+            alerts = []
+            alert_threshold = user_budget.get("alert_cny")
+            if alert_threshold and daily_spent >= alert_threshold:
+                alerts.append(f"Daily spending ({daily_spent:.4f} CNY) exceeded alert threshold ({alert_threshold} CNY)")
+            self._json({
+                "ok": True, "user_id": uid,
+                "limits": {
+                    "daily_cny": user_budget.get("daily_cny"),
+                    "monthly_cny": user_budget.get("monthly_cny"),
+                    "per_action_cny": user_budget.get("per_action_cny"),
+                    "alert_cny": user_budget.get("alert_cny")
+                },
+                "spent": {
+                    "today_cny": round(daily_spent, 4),
+                    "this_month_cny": round(monthly_spent, 4)
+                },
+                "remaining": {
+                    "daily_cny": round(user_budget["daily_cny"] - daily_spent, 4) if user_budget.get("daily_cny") else None,
+                    "monthly_cny": round(user_budget["monthly_cny"] - monthly_spent, 4) if user_budget.get("monthly_cny") else None
+                },
+                "alerts": alerts,
+                "updated_at": user_budget.get("updated_at")
             })
 
         # ── 原ATEX路由 ──
@@ -1287,6 +1408,24 @@ class Handler(BaseHTTPRequestHandler):
                     "parameters": {"type": "object", "properties": {"name": {"type": "string", "description": "Agent name"}, "email": {"type": "string", "description": "Optional email"}}, "required": ["name"]}
                 },
                 "atex_meta": {"endpoint": f"{base}/v1/register", "method": "POST", "no_auth": True}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_set_budget",
+                    "description": "Set spending budget limits for your agent. Prevent cost overruns from retries and fanout.",
+                    "parameters": {"type": "object", "properties": {"daily_cny": {"type": "number", "description": "Daily spending limit in CNY (null=unlimited)"}, "monthly_cny": {"type": "number", "description": "Monthly spending limit in CNY (null=unlimited)"}, "per_action_cny": {"type": "number", "description": "Per-action spending limit in CNY (null=unlimited)"}, "alert_cny": {"type": "number", "description": "Alert threshold in CNY"}}, "required": []}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/budget/set", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_check_budget",
+                    "description": "Check current budget status: limits, spending today/this month, remaining, and alerts.",
+                    "parameters": {"type": "object", "properties": {}}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/budget/status", "method": "POST", "auth": "Bearer api_key"}
             }
         ]
         builtin_anthropic = [
@@ -1322,6 +1461,16 @@ class Handler(BaseHTTPRequestHandler):
                 "name": "atex_register",
                 "description": "Register a new ATEX account. Get API key + welcome credits.",
                 "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Agent name"}, "email": {"type": "string", "description": "Optional email"}}, "required": ["name"]}
+            },
+            {
+                "name": "atex_set_budget",
+                "description": "Set spending budget limits for your agent. Prevent cost overruns from retries and fanout.",
+                "input_schema": {"type": "object", "properties": {"daily_cny": {"type": "number", "description": "Daily spending limit in CNY"}, "monthly_cny": {"type": "number", "description": "Monthly spending limit in CNY"}, "per_action_cny": {"type": "number", "description": "Per-action limit in CNY"}, "alert_cny": {"type": "number", "description": "Alert threshold in CNY"}}}
+            },
+            {
+                "name": "atex_check_budget",
+                "description": "Check current budget status: limits, spending, remaining, and alerts.",
+                "input_schema": {"type": "object", "properties": {}}
             }
         ]
         if fmt == "anthropic":
@@ -1360,7 +1509,9 @@ class Handler(BaseHTTPRequestHandler):
                         "/api/v1/cancel","/api/v1/settle",
                         "/api/v1/services/register","/api/v1/services/buy",
                         "/api/v1/services/execute","/api/v1/services/update","/api/v1/services/remove",
-                        "/v1/register","/v1/topup","/v1/topup/apply","/v1/topup/status","/v1/topup/admin/list","/v1/chat/completions","/v1/subscription/subscribe","/api/v1/deploy"]
+                        "/v1/register","/v1/topup","/v1/topup/apply","/v1/topup/status","/v1/topup/admin/list",
+                        "/v1/chat/completions","/v1/subscription/subscribe",
+                        "/v1/budget/set","/v1/budget/status","/api/v1/deploy"]
             },
             "commission": {"maker":0.03,"taker":0.05},
             "matching": "price_time_priority",

@@ -2,14 +2,14 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "maintainers": ["lm203688"],
   "name": "ATEX AI Gateway",
-  "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude, Gemini, Llama, Qwen). Pay-per-use, compatible with OpenAI/Anthropic/MCP protocols. Web search at 5 ATEX/call.",
+  "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call. Agent self-discovery via /.well-known/agent.json. Budget management for agents.",
   "url": "https://github.com/lm203688/atex",
   "homepage": "https://lm203688.github.io/atex/",
   "category": "AI Gateway",
   "tools": [
     {
       "name": "chat",
-      "description": "Chat with 6+ AI models (DeepSeek, GPT-4o, Claude, Gemini, Llama, Qwen) via a single API key"
+      "description": "Chat with 6+ AI models (DeepSeek, GPT-4o, Claude) via a single API key"
     },
     {
       "name": "web_search",
@@ -17,7 +17,7 @@
     },
     {
       "name": "check_balance",
-      "description": "Check your ATEX token balance"
+      "description": "Check your ATEX token balance and usage"
     },
     {
       "name": "list_models",
@@ -25,9 +25,17 @@
     },
     {
       "name": "list_services",
-      "description": "Browse 54+ services across 11 categories in the ATEX marketplace"
+      "description": "Browse 40+ services in the ATEX marketplace"
+    },
+    {
+      "name": "set_budget",
+      "description": "Set spending budget limits for your agent (daily/per-action/monthly)"
+    },
+    {
+      "name": "check_budget",
+      "description": "Check current budget status and spending breakdown"
     }
   ],
   "transport": "streamable-http",
-  "endpoint": "https://lm203688.github.io/atex/mcp"
+  "endpoint": "http://150.158.119.19:8420/mcp"
 }
