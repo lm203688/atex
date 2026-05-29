@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-05-27",
+  "last_updated": "2026-05-30",
   "registrations": [
     {
       "directory": "Smithery",
@@ -8,7 +8,13 @@
       "page": "https://smithery.ai/server/lm203688/atex-ai-gateway",
       "method": "Website UI (GitHub OAuth)",
       "date": "2026-05-27",
-      "tools": ["chat", "web_search", "check_balance", "list_models", "list_services"],
+      "tools": [
+        "chat",
+        "web_search",
+        "check_balance",
+        "list_models",
+        "list_services"
+      ],
       "visibility": "public",
       "notes": "5 tools discovered, published successfully via Cloudflare tunnel HTTPS"
     },
@@ -19,7 +25,7 @@
       "pr_url": "https://github.com/punkpeye/awesome-mcp-servers/pull/6927",
       "method": "GitHub PR via API",
       "date": "2026-05-27",
-      "notes": "PR to Aggregators section. Awaiting review."
+      "notes": "PR to Aggregators section. Awaiting review. Still open as of 2026-05-30."
     },
     {
       "directory": "mcp.so",
@@ -28,7 +34,7 @@
       "issue_url": "https://github.com/chatmcp/mcpso/issues/2523",
       "method": "GitHub Issue via API",
       "date": "2026-05-27",
-      "notes": "Server submission issue. Awaiting review."
+      "notes": "Server submission issue. Awaiting review. Still open as of 2026-05-30."
     },
     {
       "directory": "modelcontextprotocol/servers",
@@ -37,7 +43,7 @@
       "issue_url": "https://github.com/modelcontextprotocol/servers/issues/4251",
       "method": "GitHub Issue via API",
       "date": "2026-05-27",
-      "notes": "Community server reference. Awaiting review."
+      "notes": "Community server reference. Awaiting review. Still open as of 2026-05-30."
     },
     {
       "directory": "GitHub Discussion",
@@ -58,10 +64,29 @@
     {
       "directory": "MCP Registry (official)",
       "url": "https://registry.modelcontextprotocol.io",
+      "status": "PUBLISHED",
+      "method": "API (GitHub PAT → JWT → Publish)",
+      "date": "2026-05-30",
+      "server_name": "io.github.lm203688/atex-ai-gateway",
+      "version": "4.3.0",
+      "notes": "Published via /v0/publish API. Status: active. Auth: GitHub PAT exchange for JWT."
+    },
+    {
+      "directory": "MCPMarket",
+      "url": "https://mcpmarket.com",
+      "status": "ISSUE_SUBMITTED",
+      "issue_url": "https://github.com/CherryHQ/mcpmarket/issues/39",
+      "method": "GitHub Issue via API",
+      "date": "2026-05-30",
+      "notes": "Server submission issue to CherryHQ/mcpmarket. Awaiting review."
+    },
+    {
+      "directory": "mcpservers.org",
+      "url": "https://mcpservers.org",
       "status": "NEEDS_MANUAL",
-      "method": "Website UI (GitHub OAuth)",
+      "method": "Web form (client-side SPA, no API)",
       "date": null,
-      "notes": "Login with GitHub, then Publish. server.json already in repo."
+      "notes": "Submit form at https://mcpservers.org/submit. TanStack Start SPA, no server-side API accessible. Fields: name, description, url, email, category. Free listing available."
     },
     {
       "directory": "cursor.directory",
@@ -70,6 +95,30 @@
       "method": "Website UI",
       "date": null,
       "notes": "Click 'Submit a Plugin', fill ATEX info."
+    },
+    {
+      "directory": "PulseMCP",
+      "url": "https://www.pulsemcp.com/servers",
+      "status": "AUTO_DISCOVER",
+      "method": "Auto-aggregates from npm/GitHub/MCP Registry",
+      "date": null,
+      "notes": "16330+ servers, daily-updated. Likely auto-discovers from MCP Registry now that we're published there."
+    },
+    {
+      "directory": "mcp.run",
+      "url": "https://mcp.run",
+      "status": "NOT_APPLICABLE",
+      "method": "N/A",
+      "date": null,
+      "notes": "Turbo MCP is a self-hosted MCP gateway platform, not a server directory. No submission process."
+    },
+    {
+      "directory": "GitHub Discussion #5",
+      "url": "https://github.com/lm203688/atex/discussions/5",
+      "status": "PUBLISHED",
+      "method": "GitHub GraphQL API",
+      "date": "2026-05-30",
+      "notes": "MCP Registry上线公告 + 目录覆盖总览"
     }
   ]
 }

@@ -308,13 +308,13 @@ def _content_audit(params, buyer):
     return {"audit": result}
 
 def _info_intelligence(params, buyer):
-    """svc_010: AI信息情报收集"""
+    """svc_010: AI情报与渠道管理 — 全球AI技术动态追踪、渠道审核与深度分析"""
     topic = params.get("topic", params.get("query", ""))
     if not topic:
         return {"err": "missing topic"}
     result = _chat(
-        f"收集关于'{topic}'的最新情报：\n1. 关键事件和时间线\n2. 主要参与者和动态\n3. 技术趋势\n4. 市场影响\n5. 未来展望",
-        system="你是AI情报分析师，擅长信息收集和分析。提供结构化、有深度的情报报告。",
+        f"收集关于'{topic}'的最新情报：\n1. 关键事件和时间线\n2. 主要参与者和动态（OpenAI/Google/Anthropic/Meta/字节/阿里/百度/腾讯等）\n3. 技术趋势（大模型/Agent协议/视频生成/编程AI等）\n4. 市场影响与融资动态\n5. 对Agent经济生态的影响\n6. 未来展望与行动建议",
+        system="你是AI情报分析师，擅长全球AI技术动态追踪和信息渠道管理。提供结构化、有深度的情报报告，覆盖国内外AI公司官方发布和主流科技媒体（TechCrunch/The Verge/机器之心/量子位/36氪等）的最新动态。",
         max_tokens=1500
     )
     return {"topic": topic, "intelligence": result}
