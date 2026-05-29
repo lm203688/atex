@@ -405,12 +405,22 @@ class Handler(BaseHTTPRequestHandler):
             self._json(list_jobs(filters))
         elif p.startswith('/v1/skills/'):
             skill_id = p.split('/')[3]
-            # ECC格式输出
-            qs = parse_qs(urlparse(self.path).query)
-            if qs.get("format", [""])[0] == "ecc":
-                self._json(get_skill_ecc_format(skill_id))
+            # Special GET routes (before skill_id matching)
+            if skill_id == 'defense' and p.endswith('/baseline'):
+                self._json({"ok": True, "baseline": PROMPT_DEFENSE_BASELINE})
+            elif skill_id == 'import' and p.endswith('/ecc'):
+                # GET version of import (list importable ECC skills)
+                self._json({"ok": True, "message": "Use POST to import ECC skills"})
+            elif skill_id == 'parse' and p.endswith('/ecc'):
+                # GET version of parse
+                self._json({"ok": True, "message": "Use POST to parse ECC content"})
             else:
-                self._json(get_skill(skill_id))
+                # ECC格式输出
+                qs = parse_qs(urlparse(self.path).query)
+                if qs.get("format", [""])[0] == "ecc":
+                    self._json(get_skill_ecc_format(skill_id))
+                else:
+                    self._json(get_skill(skill_id))
         # ── 通知 ──
         elif p == '/v1/notifications':
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
