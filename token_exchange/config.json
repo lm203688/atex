@@ -1,5 +1,5 @@
 {
-  "version": "5.15",
+  "version": "5.16",
   "name": "ATEX",
   "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
   "created": "2026-05-09",

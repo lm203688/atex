@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATEX AI Gateway — 一个API Key访问6个AI模型</title>
+    <meta name="description" content="一个API Key调用DeepSeek、GPT-4o、Claude等6个AI模型。按次计费，OpenAI兼容接口。支持MCP协议，Agent即插即用。Web搜索5 ATEX/次。">
+    <meta name="keywords" content="AI API, MCP Server, 多模型API, DeepSeek, GPT-4o, Claude, Agent, 按次计费, API聚合, OpenAI兼容, MCP协议">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --border: #1e1e2e;
+            --text: #e0e0e8;
+            --text-dim: #8888a0;
+            --accent: #6c5ce7;
+            --accent2: #00cec9;
+            --green: #00b894;
+            --orange: #e17055;
+            --red: #ff6b6b;
+            --gold: #fdcb6e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+
+        .hero { text-align: center; padding: 4rem 2rem 3rem; background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%); position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 30% 40%, rgba(108,92,231,0.08) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(0,206,201,0.06) 0%, transparent 50%); animation: pulse 8s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .hero h1 { font-size: 3.2rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; position: relative; }
+        .hero .tagline { font-size: 1.5rem; color: var(--text); margin-bottom: 0.5rem; position: relative; }
+        .hero .sub { font-size: 1rem; color: var(--text-dim); margin-bottom: 1.5rem; position: relative; }
+        .hero .badges { position: relative; }
+        .hero .badge { display: inline-block; padding: 0.3rem 1rem; border-radius: 20px; font-size: 0.85rem; margin: 0.2rem; }
+        .badge-mcp { background: rgba(108,92,231,0.15); color: var(--accent); border: 1px solid rgba(108,92,231,0.3); }
+        .badge-openai { background: rgba(0,206,201,0.15); color: var(--accent2); border: 1px solid rgba(0,206,201,0.3); }
+        .badge-cny { background: rgba(0,184,148,0.15); color: var(--green); border: 1px solid rgba(0,184,148,0.3); }
+
+        .container { max-width: 960px; margin: 0 auto; padding: 2rem; }
+        h2 { font-size: 1.8rem; margin: 2.5rem 0 1rem; color: var(--accent2); }
+        h3 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; color: var(--accent); }
+        p { margin: 0.5rem 0; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; transition: border-color 0.2s; }
+        .card:hover { border-color: var(--accent); }
+        .card h3 { margin-top: 0; }
+        .card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { padding: 0.6rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--accent); font-weight: 600; }
+        code { background: rgba(108,92,231,0.1); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+        pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; font-size: 0.85rem; }
+        .highlight { background: linear-gradient(135deg, rgba(108,92,231,0.1), rgba(0,206,201,0.1)); border: 1px solid rgba(108,92,231,0.2); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; }
+        .tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; margin: 0.2rem; }
+        .tag-green { background: rgba(0,184,148,0.15); color: var(--green); }
+        .tag-orange { background: rgba(225,112,85,0.15); color: var(--orange); }
+        .tag-gold { background: rgba(253,203,110,0.15); color: var(--gold); }
+        .tag-dim { background: rgba(136,136,160,0.15); color: var(--text-dim); }
+        .step { display: flex; align-items: flex-start; margin: 0.5rem 0; }
+        .step .num { background: var(--accent); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; margin-right: 0.75rem; flex-shrink: 0; margin-top: 0.2rem; }
+        .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
+        .compare .bad { border-left: 3px solid var(--red); padding-left: 1rem; }
+        .compare .good { border-left: 3px solid var(--green); padding-left: 1rem; }
+        .footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); margin-top: 3rem; }
+        .footer a { color: var(--accent2); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .cta { display: inline-block; padding: 0.8rem 2rem; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; font-weight: 600; text-decoration: none; margin: 1rem 0; font-size: 1.1rem; }
+        .cta:hover { opacity: 0.9; }
+        .killer { background: linear-gradient(135deg, rgba(253,203,110,0.1), rgba(0,206,201,0.1)); border: 2px solid rgba(253,203,110,0.3); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; text-align: center; }
+        .killer .price { font-size: 2.5rem; font-weight: 800; color: var(--gold); }
+        .killer .unit { font-size: 1rem; color: var(--text-dim); }
+        .model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+        .model-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+        .model-card .model-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem; }
+        .model-card .model-price { color: var(--accent2); font-size: 0.85rem; }
+        @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } .hero h1 { font-size: 2rem; } .model-grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+
+<body>
+
+<div class="hero">
+    <h1>ATEX AI Gateway</h1>
+    <p class="tagline">一个 API Key，访问 6 个 AI 模型</p>
+    <p class="sub">DeepSeek · GPT-4o · Claude — 按次计费，MCP 协议原生支持</p>
+    <div class="badges">
+        <span class="badge badge-mcp">MCP Server</span>
+        <span class="badge badge-openai">OpenAI 兼容</span>
+        <span class="badge badge-cny">人民币结算</span>
+        <span class="badge" style="background:rgba(253,203,110,0.15);color:var(--gold);border:1px solid rgba(253,203,110,0.3);">Agent 自发现</span>
+    </div>
+</div>
+
+<div class="container">
+
+<!-- 杀手级服务 -->
+<div class="killer">
+    <p style="color:var(--text-dim);margin-bottom:0.3rem;">🔥 杀手级服务</p>
+    <p class="price">5 ATEX<span class="unit"> / 次</span></p>
+    <p style="font-size:1.2rem;font-weight:600;">Web 搜索 + 深度阅读</p>
+    <p style="color:var(--text-dim);">Agent 用一条 MCP 指令，搜索全网 + 自动深度阅读关键页面</p>
+</div>
+
+<!-- 为什么需要 ATEX -->
+<h2>🤔 为什么需要 ATEX？</h2>
+
+<div class="compare">
+    <div class="bad">
+        <h3 style="color:var(--red);">❌ 传统方式</h3>
+        <p>每个 AI 平台分别注册</p>
+        <p>管理多个 API Key</p>
+        <p>分别充值、分别续费</p>
+        <p>不同接口格式、不同错误处理</p>
+        <p>月费套餐，用不完也扣钱</p>
+    </div>
+    <div class="good">
+        <h3 style="color:var(--green);">✅ ATEX 方式</h3>
+        <p>一个 API Key 调所有模型</p>
+        <p>统一 OpenAI 兼容接口</p>
+        <p>一次充值，6 个模型通用</p>
+        <p>余额永不过期</p>
+        <p>按次计费，1 分钱也能调</p>
+    </div>
+</div>
+
+<!-- 6个模型 -->
+<h2>🧠 6 个 AI 模型，一个 Key 全搞定</h2>
+
+<div class="model-grid">
+    <div class="model-card">
+        <div class="model-name">DeepSeek Chat</div>
+        <div class="model-price">¥0.001/1K → ¥0.002/1K</div>
+        <span class="tag tag-green">可用</span>
+    </div>
+    <div class="model-card">
+        <div class="model-name">DeepSeek Reasoner</div>
+        <div class="model-price">¥0.004/1K → ¥0.016/1K</div>
+        <span class="tag tag-green">可用</span>
+    </div>
+    <div class="model-card">
+        <div class="model-name">GPT-4o Mini</div>
+        <div class="model-price">¥0.01/1K → ¥0.03/1K</div>
+        <span class="tag tag-orange">即将上线</span>
+    </div>
+    <div class="model-card">
+        <div class="model-name">GPT-4o</div>
+        <div class="model-price">¥0.05/1K → ¥0.15/1K</div>
+        <span class="tag tag-orange">即将上线</span>
+    </div>
+    <div class="model-card">
+        <div class="model-name">Claude 3.5 Sonnet</div>
+        <div class="model-price">¥0.03/1K → ¥0.15/1K</div>
+        <span class="tag tag-orange">即将上线</span>
+    </div>
+    <div class="model-card">
+        <div class="model-name">Claude 3.5 Haiku</div>
+        <div class="model-price">¥0.008/1K → ¥0.04/1K</div>
+        <span class="tag tag-orange">即将上线</span>
+    </div>
+</div>
+
+<!-- Agent 自发现 -->
+<h2>🤖 Agent 自发现 — 零配置接入</h2>
+
+<p>任何 Agent 只需一条 HTTP 请求，即可自动发现 ATEX 的全部能力、注册账号、开始调用。支持 5 种主流发现协议，覆盖所有 Agent 框架。</p>
+
+<div class="highlight">
+    <p><strong>GET /.well-known/agent.json</strong> — Agent 自发现入口（JSON-LD 语义标注）</p>
+    <pre><code>curl http://150.158.119.19:8420/.well-known/agent.json
+
+# 返回：JSON-LD @context + 平台信息 + 认证方式 + 7种协议端点 + 能力清单 + 快速入门
+# 语义化标注，Agent 可理解 ATEX 是 AgentService + TokenExchange</code></pre>
+</div>
+
+<div class="highlight">
+    <p><strong>GET /api/v1/agent/tools.json</strong> — 完整工具清单（双格式输出）</p>
+    <pre><code># OpenAI Function Calling 格式（默认）
+curl http://150.158.119.19:8420/api/v1/agent/tools.json
+
+# Anthropic tool_use 格式
+curl http://150.158.119.19:8420/api/v1/agent/tools.json?format=anthropic
+
+# 返回：所有可用工具的 input_schema + atex_meta（端点/价格/调用方式）</code></pre>
+</div>
+
+<div class="highlight">
+    <p><strong>GET /api/v1/openapi.json</strong> — OpenAPI 3.1 规范</p>
+    <pre><code>curl http://150.158.119.19:8420/api/v1/openapi.json
+
+# 标准 OpenAPI 3.1 规范，Swagger UI 可视化，自动生成 SDK
+# 包含所有端点的请求/响应 schema、认证方式、标签分组</code></pre>
+</div>
+
+<div class="highlight">
+    <p><strong>GET /.well-known/ai-plugin.json</strong> — OpenAI Plugin 清单</p>
+    <pre><code>curl http://150.158.119.19:8420/.well-known/ai-plugin.json
+
+# ChatGPT Plugin 标准格式，指向 OpenAPI 规范
+# ChatGPT 可直接发现并接入 ATEX</code></pre>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <div class="icon">🔌</div>
+        <h3>OpenAI Function Calling</h3>
+        <p>tools.json 直接作为 tools 参数传入，改一行 base_url 即可。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🛠️</div>
+        <h3>Anthropic Tool Use</h3>
+        <p>?format=anthropic 切换输出，Claude 原生 tool_use 直接消费。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🔗</div>
+        <h3>MCP 协议</h3>
+        <p>ATEX 同时提供 MCP 端点 + Server Card，Smithery 可自动扫描发现。</p>
+    </div>
+    <div class="card">
+        <div class="icon">📖</div>
+        <h3>OpenAPI 3.1</h3>
+        <p>标准 REST API 规范，Swagger UI 可视化，自动生成多语言 SDK。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🧩</div>
+        <h3>OpenAI Plugin</h3>
+        <p>ChatGPT Plugin 清单格式，ChatGPT 直接发现并接入。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🏷️</div>
+        <h3>JSON-LD 语义</h3>
+        <p>agent.json 内嵌 @context 语义标注，机器可理解 ATEX 的类型和能力。</p>
+    </div>
+</div>
+
+<!-- MCP 协议 -->
+<h2>🔌 MCP 协议原生支持</h2>
+
+<p>ATEX 是一个标准的 <strong>MCP Server</strong>，任何支持 MCP 的 Agent 框架都能直接接入：</p>
+
+<div class="grid">
+    <div class="card">
+        <div class="icon">🤖</div>
+        <h3>Claude Desktop</h3>
+        <p>在 claude_desktop_config.json 中添加 ATEX MCP Server，Claude 即可调用 6 个模型 + Web 搜索。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🛠️</div>
+        <h3>Cursor / Windsurf</h3>
+        <p>IDE 内置 MCP 支持，配置 ATEX 后直接在编辑器中调用 AI 模型。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🔗</div>
+        <h3>OpenAI Agents SDK</h3>
+        <p>OpenAI Function Calling 协议兼容，改一行 base_url 即可接入。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🌐</div>
+        <h3>任何 HTTP 客户端</h3>
+        <p>REST API + JSON stdin 双模式，curl / Python / Node.js 均可调用。</p>
+    </div>
+</div>
+
+<div class="highlight">
+    <p><strong>MCP 配置示例（Claude Desktop）：</strong></p>
+<pre><code>{
+  "mcpServers": {
+    "atex": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://150.158.119.19:8420/mcp"]
+    }
+  }
+}</code></pre>
+</div>
+
+<!-- 3分钟接入 -->
+<h2>⚡ 3 分钟接入</h2>
+
+<div class="highlight">
+    <div class="step"><span class="num">1</span><span><strong>注册</strong> → 拿到 API Key（送 5 元体验金）</span></div>
+    <div class="step"><span class="num">2</span><span><strong>充值</strong> → 支付宝转账，备注 ATEX_{你的 user_id}</span></div>
+    <div class="step"><span class="num">3</span><span><strong>调用</strong> → 改一行代码，换一个 base_url</span></div>
+</div>
+
+<pre><code># 注册（送5元体验金）
+curl -X POST http://150.158.119.19:8420/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my_agent","email":"me@example.com"}'
+
+# 调用 — 和 OpenAI SDK 完全兼容！
+from openai import OpenAI
+client = OpenAI(
+    api_key="atex_sk_xxxx...",
+    base_url="http://150.158.119.19:8420/v1"
+)
+response = client.chat.completions.create(
+    model="deepseek-chat",
+    messages=[{"role": "user", "content": "你好"}]
+)
+print(response.choices[0].message.content)</code></pre>
+
+<!-- Web搜索服务 -->
+<h2>🔍 Web 搜索 — Agent 的眼睛</h2>
+
+<div class="killer">
+    <p style="font-size:1.3rem;font-weight:700;">5 ATEX / 次</p>
+    <p>搜索全网 + 自动深度阅读 Top 3 页面</p>
+    <p style="color:var(--text-dim);">比 SerpAPI 便宜 10 倍，比 Bing Search API 便宜 5 倍</p>
+</div>
+
+<pre><code># 通过 MCP 调用 Web 搜索
+curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "buyer": "my_agent",
+    "service_id": "svc_012",
+    "params": {"query": "2026年AI Agent最新进展"}
+  }'</code></pre>
+
+<!-- 订阅方案 -->
+<h2>💎 订阅方案</h2>
+
+<p style="color:var(--accent2);font-weight:600;">按月付费，API 随便用 · 注册送 3 天基础版试用</p>
+
+<table>
+    <tr><th>方案</th><th>月费</th><th>DeepSeek Chat</th><th>DeepSeek Reasoner</th><th>服务折扣</th></tr>
+    <tr><td>免费版</td><td>¥0</td><td>按次计费</td><td>按次计费</td><td>无</td></tr>
+    <tr><td>基础版 ⭐</td><td>¥49</td><td><strong>无限量</strong></td><td>1000次/月</td><td>9折</td></tr>
+    <tr><td>专业版 🔥</td><td>¥199</td><td><strong>无限量</strong></td><td><strong>无限量</strong></td><td>8折</td></tr>
+    <tr><td>企业版</td><td>¥999</td><td><strong>无限量</strong></td><td><strong>无限量</strong></td><td>7折</td></tr>
+</table>
+
+<div class="highlight">
+    <p><strong>🔥 专业版 ¥199/月</strong>：全部模型无限量 + 服务 8 折，性价比最高！</p>
+    <p style="color:var(--text-dim);">专业版/企业版包含即将上线的 GPT-4o 和 Claude 3.5，现在订阅锁定早鸟价</p>
+</div>
+
+<!-- 充值活动 -->
+<h2>🎁 充值优惠</h2>
+
+<table>
+    <tr><th>充值金额</th><th>赠送余额</th><th>实际到账</th></tr>
+    <tr><td>¥10</td><td>¥1</td><td>¥11</td></tr>
+    <tr><td>¥50</td><td>¥7.5</td><td>¥57.5</td></tr>
+    <tr><td>¥100</td><td>¥20</td><td>¥120</td></tr>
+    <tr><td>¥500</td><td>¥150</td><td>¥650</td></tr>
+    <tr><td>¥1000</td><td>¥400</td><td>¥1400</td></tr>
+</table>
+
+<!-- 安全 -->
+<h2>🛡️ 安全与可靠</h2>
+
+<div class="grid">
+    <div class="card">
+        <div class="icon">🔐</div>
+        <h3>API Key 安全</h3>
+        <p>Key 不存储明文，SHA256 校验。支持随时重新生成。</p>
+    </div>
+    <div class="card">
+        <div class="icon">⚡</div>
+        <h3>低延迟</h3>
+        <p>直连 AI 模型 API，无中间代理延迟。平均响应 &lt;2 秒。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🛡️</div>
+        <h3>按量计费</h3>
+        <p>只扣实际用量，余额永不过期。无月费无套餐。</p>
+    </div>
+    <div class="card">
+        <div class="icon">🔓</div>
+        <h3>开源透明</h3>
+        <p>完整源码开源（AGPL-3.0），可自部署。不黑箱。</p>
+    </div>
+</div>
+
+<!-- 立即开始 -->
+<h2>🚀 立即开始</h2>
+
+<div class="highlight" style="text-align: center;">
+    <p style="font-size: 1.2rem;"><strong>免费注册，5 元体验金，3 分钟接入</strong></p>
+    <pre style="text-align: left;"><code>curl -X POST http://150.158.119.19:8420/v1/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"your_agent","email":"you@example.com"}'</code></pre>
+    <p style="color:var(--text-dim);">💰 充值方式：支付宝转账，备注 ATEX_{你的 user_id}，到账后余额自动更新</p>
+</div>
+
+<!-- API端点 -->
+<h2>🔗 API 端点</h2>
+
+<pre><code>GET  /.well-known/agent.json       Agent 自发现（JSON-LD 语义标注）
+GET  /.well-known/ai-plugin.json   OpenAI Plugin 清单
+GET  /.well-known/mcp/server-card.json  MCP Server Card
+GET  /api/v1/agent/tools.json      工具清单（?format=openai|anthropic）
+GET  /api/v1/openapi.json          OpenAPI 3.1 规范
+POST /v1/register                  注册账号（送5元+3天基础版试用）
+POST /v1/chat/completions          聊天补全（OpenAI 兼容）
+GET  /v1/models                    查看可用模型
+GET  /v1/balance                   查询余额
+POST /api/v1/services/buy          购买服务（Web搜索等）
+GET  /v1/subscription/plans        查看订阅方案
+POST /v1/subscription/subscribe    订阅方案
+GET  /mcp                          MCP 协议端点</code></pre>
+
+</div>
+
+<div class="footer">
+    <p>ATEX v5.11 — AI API Gateway + MCP Server + Agent Discovery · <a href="https://github.com/lm203688/atex">GitHub</a> · AGPL-3.0 License</p>
+    <p style="margin-top:0.5rem;">6 个 AI 模型 · OpenAI 兼容 · MCP 协议 · Agent 自发现 · 人民币结算 · 余额永不过期</p>
+</div>
+
+</body>
+</html>
