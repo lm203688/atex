@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.13 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场(ECC兼容) + 内容安全 + 实时通知"""
+"""ATEX HTTP API v5.14 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场(ECC兼容) + A2A协议 + 内容安全 + 实时通知"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -21,6 +21,10 @@ from content_safety import (check_prompt_injection, scan_content, submit_report,
                             list_reports, resolve_report, is_content_blocked, safety_stats)
 from realtime import (send_notification, get_notifications, mark_read,
                       subscribe, unsubscribe, sse_events, is_websocket_upgrade, generate_accept_key)
+from a2a_protocol import (register_agent, discover_agents, get_agent_card, deregister_agent,
+                          create_task, list_tasks, get_task, send_message as a2a_send_message,
+                          accept_task, reject_task, complete_task, fail_task,
+                          a2a_to_job, job_to_a2a, a2a_protocol_info, a2a_stats)
 
 exchange = ATEX()
 TZ = timezone(timedelta(hours=8))
@@ -429,6 +433,25 @@ class Handler(BaseHTTPRequestHandler):
             if not uid: return self._json({"err": "auth_required"}, 401)
             qs = parse_qs(urlparse(self.path).query)
             self._json(get_notifications(uid, unread_only=qs.get("unread_only", [""])[0] == "true"))
+        # ── A2A协议 ──
+        elif p == '/v1/a2a/info':
+            self._json(a2a_protocol_info())
+        elif p == '/v1/a2a/agents':
+            qs = parse_qs(urlparse(self.path).query)
+            filters = {k: v[0] for k, v in qs.items() if v}
+            self._json(discover_agents(filters))
+        elif p == '/v1/a2a/agents/stats':
+            self._json(a2a_stats())
+        elif p.startswith('/v1/a2a/agents/'):
+            agent_uid = p.split('/')[4]
+            self._json(get_agent_card(agent_uid))
+        elif p == '/v1/a2a/tasks':
+            qs = parse_qs(urlparse(self.path).query)
+            filters = {k: v[0] for k, v in qs.items() if v}
+            self._json(list_tasks(filters))
+        elif p.startswith('/v1/a2a/tasks/') and not any(p.endswith(x) for x in ['/message','/accept','/reject','/complete','/fail','/bridge/job']):
+            task_id = p.split('/')[4]
+            self._json(get_task(task_id))
         elif p == '/v1/notifications/stream':
             # SSE endpoint
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
@@ -1034,6 +1057,76 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/v1/skills/defense/baseline':
             # 获取Prompt Defense Baseline
             self._json({"ok": True, "baseline": PROMPT_DEFENSE_BASELINE})
+        # ── A2A协议 ──
+        elif p == '/v1/a2a/agents/register':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = register_agent(uid, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/v1/a2a/agents/deregister':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = deregister_agent(uid)
+            self._json(r)
+        elif p == '/v1/a2a/tasks':
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("sender")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = create_task(uid, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/a2a/tasks/') and p.endswith('/message'):
+            task_id = p.split('/')[4]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("sender")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = a2a_send_message(uid, task_id, d)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/a2a/tasks/') and p.endswith('/accept'):
+            task_id = p.split('/')[4]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = accept_task(uid, task_id)
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/a2a/tasks/') and p.endswith('/reject'):
+            task_id = p.split('/')[4]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = reject_task(uid, task_id, d.get("reason", ""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/a2a/tasks/') and p.endswith('/complete'):
+            task_id = p.split('/')[4]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = complete_task(uid, task_id, d.get("result", {}))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/a2a/tasks/') and p.endswith('/fail'):
+            task_id = p.split('/')[4]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = fail_task(uid, task_id, d.get("error", "unknown"))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p.startswith('/v1/a2a/tasks/') and p.endswith('/bridge/job'):
+            task_id = p.split('/')[4]
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            saas_data = _load_saas()
+            uid = saas_data["api_keys"].get(auth) if auth else d.get("agent_uid")
+            if not uid: return self._json({"err": "auth_required"}, 401)
+            r = a2a_to_job(uid, task_id)
+            self._json(r, 200 if r.get("ok") else 400)
         # ── 内容安全 ──
         elif p == '/v1/safety/scan':
             r = scan_content(d.get("content", ""), d.get("content_type", "general"))
@@ -1761,6 +1854,52 @@ class Handler(BaseHTTPRequestHandler):
                     "parameters": {"type": "object", "properties": {"content": {"type": "string", "description": "ECC skill content to parse"}}, "required": ["content"]}
                 },
                 "atex_meta": {"endpoint": f"{base}/v1/skills/parse/ecc", "method": "POST"}
+            },
+            # ── A2A Protocol Tools ──
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_a2a_register",
+                    "description": "Register your agent card in the A2A network. Enables other agents to discover and collaborate with you.",
+                    "parameters": {"type": "object", "properties": {"name": {"type": "string", "description": "Agent display name"}, "description": {"type": "string", "description": "Agent capabilities description"}, "capabilities": {"type": "array", "items": {"type": "string"}, "description": "List of capabilities (e.g. coding, research, writing)"}, "endpoint": {"type": "string", "description": "Agent's HTTP endpoint URL"}, "protocols": {"type": "array", "items": {"type": "string"}, "description": "Supported protocols (mcp, a2a, openai, anthropic)"}}, "required": ["name", "description"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/a2a/agents/register", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_a2a_discover",
+                    "description": "Discover agents in the A2A network. Filter by capability or protocol.",
+                    "parameters": {"type": "object", "properties": {"capability": {"type": "string", "description": "Filter by capability"}, "protocol": {"type": "string", "description": "Filter by protocol (mcp, a2a)"}}}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/a2a/agents", "method": "GET"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_a2a_create_task",
+                    "description": "Create an A2A task to delegate work to another agent. Compatible with Google A2A v1.0 spec.",
+                    "parameters": {"type": "object", "properties": {"receiver": {"type": "string", "description": "Target agent UID"}, "title": {"type": "string", "description": "Task title"}, "description": {"type": "string", "description": "Task description"}, "priority": {"type": "string", "enum": ["low", "medium", "high", "urgent"], "description": "Priority level"}, "deadline": {"type": "string", "description": "Deadline ISO format"}, "payload": {"type": "object", "description": "Task-specific data"}}, "required": ["receiver", "title", "description"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/a2a/tasks", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_a2a_send_message",
+                    "description": "Send a message within an A2A task context. For negotiation, clarification, or status updates.",
+                    "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "A2A task ID"}, "content": {"type": "string", "description": "Message content"}, "message_type": {"type": "string", "enum": ["text", "negotiation", "clarification", "status", "result"], "description": "Message type"}}, "required": ["task_id", "content"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/a2a/tasks/{{id}}/message", "method": "POST", "auth": "Bearer api_key"}
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "atex_a2a_bridge_to_job",
+                    "description": "Bridge an A2A task to an ATEX Job for paid execution. Enables token settlement for A2A collaborations.",
+                    "parameters": {"type": "object", "properties": {"task_id": {"type": "string", "description": "A2A task ID to bridge"}}, "required": ["task_id"]}
+                },
+                "atex_meta": {"endpoint": f"{base}/v1/a2a/tasks/{{id}}/bridge/job", "method": "POST", "auth": "Bearer api_key"}
             }
         ]
         builtin_anthropic = [
@@ -1846,6 +1985,32 @@ class Handler(BaseHTTPRequestHandler):
                 "name": "atex_parse_ecc_skill",
                 "description": "Parse an ECC-format skill file to preview metadata without saving.",
                 "input_schema": {"type": "object", "properties": {"content": {"type": "string", "description": "ECC skill content to parse"}}, "required": ["content"]}
+            },
+            # ── A2A Protocol Tools (Anthropic) ──
+            {
+                "name": "atex_a2a_register",
+                "description": "Register your agent card in the A2A network for discovery and collaboration.",
+                "input_schema": {"type": "object", "properties": {"name": {"type": "string", "description": "Agent name"}, "description": {"type": "string", "description": "Capabilities"}, "capabilities": {"type": "array", "items": {"type": "string"}, "description": "Capability list"}, "endpoint": {"type": "string", "description": "Agent HTTP endpoint"}, "protocols": {"type": "array", "items": {"type": "string"}, "description": "Supported protocols"}}, "required": ["name", "description"]}
+            },
+            {
+                "name": "atex_a2a_discover",
+                "description": "Discover agents in the A2A network by capability or protocol.",
+                "input_schema": {"type": "object", "properties": {"capability": {"type": "string", "description": "Filter by capability"}, "protocol": {"type": "string", "description": "Filter by protocol"}}}
+            },
+            {
+                "name": "atex_a2a_create_task",
+                "description": "Create an A2A task to delegate work to another agent. Google A2A v1.0 compatible.",
+                "input_schema": {"type": "object", "properties": {"receiver": {"type": "string", "description": "Target agent UID"}, "title": {"type": "string", "description": "Task title"}, "description": {"type": "string", "description": "Task description"}, "priority": {"type": "string", "description": "Priority: low/medium/high/urgent"}, "payload": {"type": "object", "description": "Task data"}}, "required": ["receiver", "title", "description"]}
+            },
+            {
+                "name": "atex_a2a_send_message",
+                "description": "Send a message within an A2A task for negotiation or status updates.",
+                "input_schema": {"type": "object", "properties": {"task_id": {"type": "string", "description": "A2A task ID"}, "content": {"type": "string", "description": "Message content"}, "message_type": {"type": "string", "description": "Type: text/negotiation/clarification/status/result"}}, "required": ["task_id", "content"]}
+            },
+            {
+                "name": "atex_a2a_bridge_to_job",
+                "description": "Bridge an A2A task to an ATEX Job for paid token-settled execution.",
+                "input_schema": {"type": "object", "properties": {"task_id": {"type": "string", "description": "A2A task ID"}}, "required": ["task_id"]}
             }
         ]
         if fmt == "anthropic":
@@ -1895,6 +2060,8 @@ class Handler(BaseHTTPRequestHandler):
                         "/v1/jobs/{id}/result","/v1/jobs/{id}/rate","/v1/jobs/{id}/dispute","/v1/jobs/{id}/cancel","/v1/jobs/{id}/withdraw",
                         "/v1/skills/publish","/v1/skills/{id}/buy","/v1/skills/{id}/rate","/v1/skills/{id}/update","/v1/skills/{id}/remove",
                         "/v1/skills/import/ecc","/v1/skills/parse/ecc","/v1/skills/defense/baseline",
+                        "/v1/a2a/info","/v1/a2a/agents","/v1/a2a/agents/{uid}","/v1/a2a/agents/register","/v1/a2a/agents/deregister","/v1/a2a/agents/stats",
+                        "/v1/a2a/tasks","/v1/a2a/tasks/{id}","/v1/a2a/tasks/{id}/message","/v1/a2a/tasks/{id}/accept","/v1/a2a/tasks/{id}/reject","/v1/a2a/tasks/{id}/complete","/v1/a2a/tasks/{id}/fail","/v1/a2a/tasks/{id}/bridge/job",
                         "/v1/safety/scan","/v1/safety/report","/v1/safety/report/resolve","/v1/safety/reports",
                         "/v1/notifications/read","/v1/notifications/subscribe","/v1/notifications/unsubscribe"]
             },
