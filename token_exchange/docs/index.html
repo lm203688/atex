@@ -384,6 +384,52 @@ curl -X POST http://150.158.119.19:8420/api/v1/discover \
 </div>
 
 <!-- 充值活动 -->
+
+<!-- 支付闭环 -->
+
+<h2>💳 充值 & 提现 — 全球支付闭环</h2>
+
+<div class="grid">
+    <div class="card">
+        <h3>🪙 Crypto充值</h3>
+        <p>USDT/USDC (TRC20/ERC20)，NOWPayments自动确认</p>
+        <p><strong>1 USD = 100 ATEX Credits</strong></p>
+    </div>
+    <div class="card">
+        <h3>📱 支付宝充值</h3>
+        <p>扫码即充，秒到账，适合国内用户</p>
+        <p><strong>1 CNY = 14 ATEX Credits</strong></p>
+    </div>
+    <div class="card">
+        <h3>💸 收益提现</h3>
+        <p>服务提供方可提现至 PayPal / 万里汇</p>
+        <p><strong>最低 500 ATEX，T+7 结算</strong></p>
+    </div>
+    <div class="card">
+        <h3>📈 积分可浮动</h3>
+        <p>ATEX Credits 价值随平台成长自然提升</p>
+        <p><strong>早期用户享受更优汇率</strong></p>
+    </div>
+</div>
+
+<pre><code># Crypto充值（USDT TRC20）
+curl -X POST http://150.158.119.19:8420/v1/pay/crypto \
+  -H "Authorization: Bearer atex_sk_xxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"amount_usd": 10, "pay_currency": "usdttrc20"}'
+
+# 支付宝充值
+curl -X POST http://150.158.119.19:8420/v1/pay/alipay \
+  -H "Authorization: Bearer atex_sk_xxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"amount_cny": 100}'
+
+# 服务收益提现
+curl -X POST http://150.158.119.19:8420/v1/withdraw \
+  -H "Authorization: Bearer atex_sk_xxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"amount_atex": 500, "method": "paypal", "destination": "your@email.com"}'</code></pre>
+
 <h2>🎁 充值优惠</h2>
 
 <table>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.14 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场(ECC兼容) + A2A协议 + 内容安全 + 实时通知"""
+"""ATEX HTTP API v5.16 — 多AI API按次收费SaaS + Agent服务交易市场 + 订阅制 + Agent自发现 + Job市场 + Skill市场(ECC兼容) + A2A协议 + 内容安全 + 实时通知 + 支付闭环"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -10,6 +10,12 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 from atex import ATEX, validate_account_id, safe_json_loads, MAX_INPUT_SIZE
 from service_executor import execute_service, execute_api_proxy
+from payment.gateway import (
+    nowpayments_create_order, nowpayments_ipn_callback,
+    xunhupay_create_order, xunhupay_callback,
+    request_withdrawal, approve_withdrawal,
+    get_exchange_rates, update_exchange_rate
+)
 from job_market import (create_job, list_jobs, get_job, update_job, cancel_job,
                         submit_bid, accept_bid, withdraw_bid,
                         start_job, submit_result, rate_job, dispute_job, agent_stats)
@@ -741,6 +747,73 @@ class Handler(BaseHTTPRequestHandler):
                 "completed_count": len(req_data["completed"]),
                 "recent_completed": req_data["completed"][-10:],
             })
+
+        # ── v5.16: 支付闭环 — 自动充值 + 提现 ──
+        elif p == '/v1/pay/crypto':
+            # Crypto支付：NOWPayments创建订单
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
+            amount_usd = d.get("amount_usd", 0)
+            pay_currency = d.get("pay_currency", "usdttrc20")  # usdttrc20/usdterc20/usdc/etc
+            if amount_usd < 1: return self._json({"err": "min_1_usd"}, 400)
+            r = nowpayments_create_order(user["user_id"], amount_usd, pay_currency)
+            self._json(r, 200 if r.get("ok") else 400)
+
+        elif p == '/v1/pay/crypto/callback':
+            # NOWPayments IPN回调（NOWPayments服务器调用）
+            r = nowpayments_ipn_callback(d)
+            self._json(r)
+
+        elif p == '/v1/pay/alipay':
+            # 支付宝扫码：虎皮椒创建订单
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
+            amount_cny = d.get("amount_cny", 0)
+            if amount_cny < 10: return self._json({"err": "min_10_cny"}, 400)
+            r = xunhupay_create_order(user["user_id"], amount_cny)
+            self._json(r, 200 if r.get("ok") else 400)
+
+        elif p == '/v1/pay/alipay/callback':
+            # 虎皮椒回调
+            r = xunhupay_callback(d)
+            self._json(r)
+
+        elif p == '/v1/pay/rates':
+            # 查询当前ATEX汇率
+            self._json(get_exchange_rates())
+
+        elif p == '/v1/pay/rates/update':
+            # 管理员调整汇率（浮动机制）
+            r = update_exchange_rate(
+                usd_to_atex=d.get("usd_to_atex"),
+                cny_to_atex=d.get("cny_to_atex"),
+                admin_token=d.get("admin_token", "")
+            )
+            self._json(r, 200 if r.get("ok") else 403)
+
+        elif p == '/v1/withdraw':
+            # 提现申请（服务提供方）
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "invalid_api_key"}, 401)
+            r = request_withdrawal(
+                user_id=user["user_id"],
+                amount_atex=d.get("amount_atex", 0),
+                method=d.get("method", "paypal"),  # paypal | worldfirst
+                destination=d.get("destination", "")  # PayPal邮箱 或 万里汇账号
+            )
+            self._json(r, 200 if r.get("ok") else 400)
+
+        elif p == '/v1/withdraw/approve':
+            # 管理员审批提现
+            r = approve_withdrawal(
+                withdrawal_id=d.get("withdrawal_id", ""),
+                admin_token=d.get("admin_token", ""),
+                action=d.get("action", "approve")  # approve | reject
+            )
+            self._json(r, 200 if r.get("ok") else 400)
 
         elif p == '/v1/subscription/subscribe':
             # 订阅（管理接口，后续接支付宝自动扣款）
