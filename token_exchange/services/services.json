@@ -64,7 +64,7 @@
       "id": "svc_010",
       "name": "AI信息情报收集",
       "provider": "platform",
-      "description": "全球AI技术动态实时追踪与深度分析。覆盖OpenAI/Google/Anthropic/Meta/百度/阿里/腾讯/字节等核心厂商，MCP/A2A等Agent协议，AI芯片/算力/融资/监管等关键赛道。每日更新，提供技术解读+行业影响评估+ATEX服务关联建议。最新动态(5/31)：Claude Opus 4.8发布+Anthropic $65B Series H融资($965B估值)、Gemini 3.5 Flash免费发布+Google I/O全产品Gemini化、A2A协议突破150组织+六大Agent协议生态成型(MCP/A2A/AGUI/A2UI/AP2/X42)、自定义AI芯片增速首超NVIDIA GPU、Q1 2026 AI融资$3000亿+AI占80%、OpenAI Sora关停+视频生成市场洗牌、Microsoft Copilot集成Claude Opus 4.8+Computer-Using Agents、中国AI智能体5月密集迭代(字节1600亿投入)、DeepSeek V4+Qwen 3.7 Max开源追平闭源。",
+      "description": "全球AI技术动态实时追踪与深度分析。覆盖OpenAI/Google/Anthropic/Meta/百度/阿里/腾讯/字节等核心厂商，MCP/A2A等Agent协议，AI芯片/算力/融资/监管等关键赛道。每日更新，提供技术解读+行业影响评估+ATEX服务关联建议。",
       "price": 15.0,
       "unit": "次",
       "category": "信息情报",
@@ -375,8 +375,41 @@
       "category": "数据采集",
       "service_type": "rule",
       "total_sold": 0
+    },
+    {
+      "id": "svc_043",
+      "name": "AI设计工具集成",
+      "provider": "platform",
+      "description": "基于Claude Design等AI设计工具，为Agent提供UI/UX原型生成、设计规范输出、交互流程设计。输入需求描述，输出设计稿+标注+组件规范。Claude Design标志着AI从对话扩展到专业设计领域，Agent可借此快速生成产品原型。",
+      "price": 8.0,
+      "unit": "次",
+      "category": "工具调用",
+      "service_type": "default",
+      "total_sold": 0
+    },
+    {
+      "id": "svc_044",
+      "name": "AI能力跃迁预警",
+      "provider": "platform",
+      "description": "监控LLM能力非线性突破信号，提前预警Agent需适配的新能力。Morgan Stanley预测2026年4-6月LLM能力将出现非线性跳跃。本服务追踪模型能力基准变化、新能力涌现报告、行业预警信号，输出影响评估+适配建议。帮助Agent在能力跃迁时快速响应。",
+      "price": 5.0,
+      "unit": "次",
+      "category": "信息情报",
+      "service_type": "default",
+      "total_sold": 0
+    },
+    {
+      "id": "svc_045",
+      "name": "AI健康使用监控",
+      "provider": "platform",
+      "description": "基于哈佛AI认知过载研究（14%用户受影响，高强度AI使用使决策失误增33%），为Agent提供用户AI使用健康度监控。追踪使用时长、决策依赖度、认知负荷指标，输出健康报告+使用建议。适用于Agent开发者优化用户体验，避免AI过度依赖。",
+      "price": 5.0,
+      "unit": "次",
+      "category": "运营分析",
+      "service_type": "default",
+      "total_sold": 0
     }
   ],
   "orders": [],
-  "next_service_id": 43
+  "next_service_id": 46
 }
