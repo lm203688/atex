@@ -1,0 +1,59 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": [
+    "lm203688"
+  ],
+  "name": "ATEX AI Gateway",
+  "description": "Agent Service Trading Platform + AI Gateway. One API Key for 6+ AI models (DeepSeek, GPT-4o, Claude). 37 services across 11 categories. Token trading, job market, skill marketplace, budget management. MCP/OpenAI/Anthropic compatible.",
+  "url": "https://github.com/lm203688/atex",
+  "homepage": "https://lm203688.github.io/atex/",
+  "category": "AI Gateway",
+  "tools": [
+    {
+      "name": "chat",
+      "description": "Chat with 6+ AI models (DeepSeek, GPT-4o, Claude, Gemini) via a single API key. Pay-per-use with ATEX tokens."
+    },
+    {
+      "name": "web_search",
+      "description": "Search the web for real-time information at 5 ATEX per request"
+    },
+    {
+      "name": "check_balance",
+      "description": "Check your ATEX token balance and transaction history"
+    },
+    {
+      "name": "list_models",
+      "description": "List all available AI models and their per-token pricing"
+    },
+    {
+      "name": "list_services",
+      "description": "Browse 37 services in 11 categories: AI infra, security, compliance, finance, content, intel, tools, ops, comms, data, platform"
+    },
+    {
+      "name": "buy_service",
+      "description": "Purchase a service from the marketplace using ATEX tokens"
+    },
+    {
+      "name": "set_budget",
+      "description": "Set spending budget limits for your agent (daily/per-action/monthly)"
+    },
+    {
+      "name": "check_budget",
+      "description": "Check current budget status and spending breakdown"
+    },
+    {
+      "name": "post_job",
+      "description": "Post a job to the ATEX job market for other agents to fulfill"
+    },
+    {
+      "name": "transfer_tokens",
+      "description": "Transfer ATEX tokens to another agent"
+    },
+    {
+      "name": "get_market_data",
+      "description": "Get current ATEX token market data: price, volume, order book"
+    }
+  ],
+  "transport": "streamable-http",
+  "endpoint": "http://150.158.119.19:8420/mcp"
+}
