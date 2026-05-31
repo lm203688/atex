@@ -375,6 +375,21 @@ class Handler(BaseHTTPRequestHandler):
             self._json(exchange.list_services())
         elif p == '/api/v1/apis':
             self._json(exchange.list_apis())
+        elif p == '/api/v1/categories':
+            # v5.16: 服务分类列表
+            svcs = exchange.list_services().get("services", [])
+            cats = {}
+            for s in svcs:
+                c = s.get("category", "未分类")
+                st = s.get("service_type", "llm")
+                if c not in cats:
+                    cats[c] = {"count": 0, "services": [], "types": set()}
+                cats[c]["count"] += 1
+                cats[c]["services"].append({"id": s["id"], "name": s["name"], "price": s.get("price",0), "service_type": st})
+                cats[c]["types"].add(st)
+            for c in cats:
+                cats[c]["types"] = list(cats[c]["types"])
+            self._json({"categories": cats, "total": len(svcs)})
         elif p.startswith('/api/v1/services/'):
             sid = p.split('/')[-1]
             r = exchange.list_services()
@@ -843,7 +858,8 @@ class Handler(BaseHTTPRequestHandler):
         # ── 服务市场 ──
         elif p == '/api/v1/services/register':
             r = exchange.register_service(d.get("provider",""), d.get("name",""),
-                d.get("description",""), d.get("price",0), d.get("unit",""), d.get("category",""))
+                d.get("description",""), d.get("price",0), d.get("unit",""), d.get("category",""),
+                d.get("service_type", "llm"))
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/buy':
             r = exchange.buy_service(d.get("buyer",""), d.get("service_id",""), d.get("quantity",1))
@@ -852,6 +868,14 @@ class Handler(BaseHTTPRequestHandler):
                 svc_params = d.get("params", {})
                 exec_result = execute_service(d.get("service_id",""), svc_params, d.get("buyer",""))
                 r["service_result"] = exec_result
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/workflow':
+            # v5.16: 工作流编排 — PilotDeck三层架构
+            r = execute_service("svc_040", d, d.get("buyer",""))
+            self._json(r, 200 if r.get("ok") else 400)
+        elif p == '/api/v1/discover':
+            # v5.16: Agent服务发现 — 能力声明+语义匹配
+            r = execute_service("svc_041", d, d.get("buyer",""))
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/execute':
             # API代理执行：先扣费再调用底层API

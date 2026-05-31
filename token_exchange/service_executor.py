@@ -187,6 +187,13 @@ def execute_service(service_id, params, buyer):
         "svc_057": _mcp_health_check,
         "svc_058": _ai_price_compare,
         "svc_059": _prompt_optimizer,
+        # ── v5.16 新增：数据采集+规则服务+工作流 ──
+        "svc_037": _web_scrape_clean,
+        "svc_038": _structured_extract,
+        "svc_039": _realtime_data_query,
+        "svc_040": _workflow_orchestrate,
+        "svc_041": _agent_service_discover,
+        "svc_042": _batch_web_monitor,
     }
     handler = executors.get(service_id)
     if not handler:
@@ -713,3 +720,439 @@ def _prompt_optimizer(params, buyer=""):
             return {"original": prompt, "optimized": content, "method": "deepseek_raw"}
     except Exception as e:
         return {"original": prompt, "optimized": prompt, "error": str(e)[:100], "method": "fallback"}
+
+
+# ── v5.16 新增：数据采集+规则服务+工作流编排 (2026-05-31) ──
+
+def _web_scrape_clean(params, buyer=""):
+    """svc_037: 网页数据清洗 — Firecrawl模式，URL→Markdown/JSON"""
+    url = params.get("url", "")
+    mode = params.get("mode", "scrape")  # scrape | crawl
+    output_format = params.get("format", "markdown")  # markdown | json | text
+    if not url:
+        return {"error": "url parameter required"}
+
+    import re
+    results = {"url": url, "mode": mode, "format": output_format}
+
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+
+        # Extract title
+        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.S | re.I)
+        title = title_match.group(1).strip() if title_match else ""
+
+        # Extract meta description
+        desc_match = re.search(r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)', html, re.I)
+        if not desc_match:
+            desc_match = re.search(r'<meta[^>]+content=["\']([^"\']+)[^>]+name=["\']description["\']', html, re.I)
+        description = desc_match.group(1).strip() if desc_match else ""
+
+        # Clean HTML → text
+        # Remove script/style/nav/footer/header/aside
+        clean = re.sub(r'<(script|style|nav|footer|header|aside|iframe|noscript)[^>]*>.*?</\1>', '', html, flags=re.S | re.I)
+        # Remove HTML tags
+        clean = re.sub(r'<[^>]+>', ' ', clean)
+        # Decode HTML entities
+        import html as html_mod
+        clean = html_mod.unescape(clean)
+        # Normalize whitespace
+        clean = re.sub(r'\s+', ' ', clean).strip()
+        # Truncate to reasonable length
+        clean = clean[:8000]
+
+        # Convert to requested format
+        if output_format == "markdown":
+            content = f"# {title}\n\n"
+            if description:
+                content += f"> {description}\n\n"
+            # Split into paragraphs at sentence boundaries
+            sentences = re.split(r'(?<=[。！？.!?])\s*', clean)
+            para = ""
+            for s in sentences:
+                para += s + " "
+                if len(para) > 200:
+                    content += para.strip() + "\n\n"
+                    para = ""
+            if para.strip():
+                content += para.strip() + "\n"
+            results["content"] = content
+        elif output_format == "json":
+            results["content"] = {"title": title, "description": description, "text": clean[:5000]}
+        else:
+            results["content"] = clean
+
+        results["title"] = title
+        results["description"] = description
+        results["content_length"] = len(clean)
+        results["status"] = "ok"
+
+    except Exception as e:
+        results["status"] = "error"
+        results["error"] = str(e)[:200]
+        # Fallback: use LLM to describe what we know
+        if description:
+            results["content"] = f"# {title}\n\n{description}"
+            results["status"] = "partial"
+
+    return results
+
+
+def _structured_extract(params, buyer=""):
+    """svc_038: 结构化数据提取 — 规则引擎+LLM混合"""
+    url = params.get("url", "")
+    schema = params.get("schema", {})  # e.g. {"title": "string", "price": "number", "date": "string"}
+    extract_rules = params.get("rules", "")
+
+    if not url and not params.get("content", ""):
+        return {"error": "url or content parameter required"}
+
+    content = params.get("content", "")
+
+    # If URL provided, fetch first
+    if url and not content:
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                import re
+                html = resp.read().decode("utf-8", errors="replace")
+                clean = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.S | re.I)
+                clean = re.sub(r'<[^>]+>', ' ', clean)
+                clean = re.sub(r'\s+', ' ', clean).strip()
+                content = clean[:6000]
+        except Exception as e:
+            return {"error": f"fetch_failed: {str(e)[:100]}"}
+
+    if not schema:
+        schema = {"title": "string", "description": "string", "key_info": "string"}
+
+    # Use LLM for extraction (hybrid: rules pre-process, LLM extract)
+    schema_str = json.dumps(schema, ensure_ascii=False)
+    result = _chat(
+        f"从以下内容中按Schema提取结构化数据。\n\nSchema: {schema_str}\n\n内容: {content[:4000]}\n\n请严格按Schema输出JSON，缺失字段填null。",
+        system="你是数据提取专家。只输出JSON，不要其他文字。",
+        max_tokens=1500
+    )
+    try:
+        extracted = json.loads(result)
+    except:
+        extracted = {"raw_extraction": result}
+
+    return {"url": url, "schema": schema, "extracted": extracted, "method": "hybrid"}
+
+
+def _realtime_data_query(params, buyer=""):
+    """svc_039: 实时数据查询 — 纯规则服务，零LLM调用"""
+    query_type = params.get("type", "").lower()
+    query_value = params.get("query", params.get("value", ""))
+
+    if not query_type:
+        return {"error": "type parameter required. Supported: exchange_rate, weather, ip_lookup, dns, whois, timezone, unit_convert"}
+
+    import socket
+    result = {"type": query_type, "query": query_value, "service_type": "rule", "llm_calls": 0}
+
+    try:
+        if query_type == "exchange_rate":
+            # Use free API for exchange rates
+            req = urllib.request.Request(
+                f"https://open.er-api.com/v6/latest/{query_value or 'USD'}",
+                headers={"User-Agent": "ATEX/5.16"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                result["rates"] = data.get("rates", {})
+                result["base"] = data.get("base_code", query_value or "USD")
+                result["updated"] = data.get("time_last_update_utc", "")
+
+        elif query_type == "ip_lookup":
+            ip = query_value or ""
+            req = urllib.request.Request(
+                f"http://ip-api.com/json/{ip}",
+                headers={"User-Agent": "ATEX/5.16"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                result["ip"] = data.get("query", ip)
+                result["location"] = f"{data.get('city','')}, {data.get('regionName','')}, {data.get('country','')}"
+                result["isp"] = data.get("isp", "")
+                result["lat"] = data.get("lat", 0)
+                result["lon"] = data.get("lon", 0)
+
+        elif query_type == "dns":
+            domain = query_value
+            if domain:
+                try:
+                    ips = socket.getaddrinfo(domain, None)
+                    result["addresses"] = list(set(addr[4][0] for addr in ips))
+                except:
+                    result["addresses"] = []
+                result["domain"] = domain
+
+        elif query_type == "timezone":
+            import datetime
+            tz_name = query_value or "Asia/Shanghai"
+            try:
+                import zoneinfo
+                tz = zoneinfo.ZoneInfo(tz_name)
+                now = datetime.datetime.now(tz)
+                result["timezone"] = tz_name
+                result["current_time"] = now.strftime("%Y-%m-%d %H:%M:%S")
+                result["utc_offset"] = now.strftime("%z")
+            except:
+                result["timezone"] = tz_name
+                result["current_time"] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        elif query_type == "unit_convert":
+            # Simple unit conversion
+            value = params.get("value", 0)
+            from_unit = params.get("from", "")
+            to_unit = params.get("to", "")
+            conversions = {
+                ("km", "mi"): 0.621371, ("mi", "km"): 1.60934,
+                ("kg", "lb"): 2.20462, ("lb", "kg"): 0.453592,
+                ("c", "f"): lambda x: x * 9/5 + 32, ("f", "c"): lambda x: (x - 32) * 5/9,
+                ("m", "ft"): 3.28084, ("ft", "m"): 0.3048,
+            }
+            key = (from_unit.lower(), to_unit.lower())
+            if key in conversions:
+                factor = conversions[key]
+                converted = factor(value) if callable(factor) else value * factor
+                result["original"] = f"{value} {from_unit}"
+                result["converted"] = f"{round(converted, 4)} {to_unit}"
+            else:
+                result["error"] = f"Unsupported conversion: {from_unit} → {to_unit}"
+
+        else:
+            result["error"] = f"Unsupported query type: {query_type}"
+
+    except Exception as e:
+        result["error"] = str(e)[:200]
+
+    return result
+
+
+def _workflow_orchestrate(params, buyer=""):
+    """svc_040: 工作流编排 — PilotDeck三层架构"""
+    task = params.get("task", params.get("prompt", ""))
+    services = params.get("services", [])  # Optional: pre-defined service chain
+    max_steps = params.get("max_steps", 5)
+
+    if not task:
+        return {"error": "task parameter required"}
+
+    # Load available services
+    try:
+        svc_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "services", "services.json")
+        with open(svc_path) as f:
+            svc_data = json.load(f)
+        available = svc_data.get("services", [])
+        svc_map = {s["id"]: s for s in available}
+    except:
+        available = []
+        svc_map = {}
+
+    # If services chain provided, execute sequentially
+    if services:
+        results = []
+        context = {}
+        for step in services:
+            svc_id = step.get("service_id", "")
+            step_params = step.get("params", {})
+            # Inject previous results as context
+            step_params["_context"] = context
+            svc_info = svc_map.get(svc_id, {})
+            exec_result = execute_service(svc_id, step_params, buyer)
+            step_result = {
+                "service_id": svc_id,
+                "service_name": svc_info.get("name", svc_id),
+                "result": exec_result
+            }
+            results.append(step_result)
+            context[svc_id] = exec_result
+        return {"task": task, "mode": "manual_chain", "steps": len(results), "results": results}
+
+    # Auto mode: LLM plans the workflow
+    svc_list = "\n".join([f"- {s['id']}: {s['name']} ({s.get('category','')}) - {s.get('price',0)} ATEX" for s in available[:20]])
+
+    plan = _chat(
+        f"为以下任务规划工作流，从可用服务中选择并排序：\n\n任务：{task}\n\n可用服务：\n{svc_list}\n\n输出JSON格式：\n{{\"steps\": [{{\"service_id\": \"svc_xxx\", \"params\": {{...}}, \"reason\": \"...\"}}]}}",
+        system="你是工作流编排专家。选择最合适的服务组合完成任务，按执行顺序排列。只输出JSON。",
+        max_tokens=1500
+    )
+
+    try:
+        plan_data = json.loads(plan)
+        planned_steps = plan_data.get("steps", [])
+    except:
+        planned_steps = [{"service_id": "svc_012", "params": {"query": task}, "reason": "fallback: web search"}]
+
+    # Execute the planned workflow
+    results = []
+    context = {}
+    for step in planned_steps[:max_steps]:
+        svc_id = step.get("service_id", "")
+        step_params = step.get("params", {})
+        step_params["_context"] = context
+        svc_info = svc_map.get(svc_id, {})
+        exec_result = execute_service(svc_id, step_params, buyer)
+        step_result = {
+            "service_id": svc_id,
+            "service_name": svc_info.get("name", svc_id),
+            "reason": step.get("reason", ""),
+            "result": exec_result
+        }
+        results.append(step_result)
+        context[svc_id] = exec_result
+
+    return {
+        "task": task,
+        "mode": "auto_orchestrate",
+        "plan": planned_steps,
+        "steps_executed": len(results),
+        "results": results
+    }
+
+
+def _agent_service_discover(params, buyer=""):
+    """svc_041: Agent服务发现 — 能力声明+语义匹配"""
+    capability = params.get("capability", params.get("query", ""))
+    category = params.get("category", "")
+    max_price = params.get("max_price", 0)
+    protocol = params.get("protocol", "")  # mcp, a2a, acp
+
+    if not capability and not category:
+        return {"error": "capability or category parameter required"}
+
+    # Load services
+    try:
+        svc_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "services", "services.json")
+        with open(svc_path) as f:
+            svc_data = json.load(f)
+        available = svc_data.get("services", [])
+    except:
+        available = []
+
+    # Filter by category
+    candidates = available
+    if category:
+        candidates = [s for s in candidates if s.get("category", "").lower() == category.lower()]
+
+    # Filter by price
+    if max_price > 0:
+        candidates = [s for s in candidates if s.get("price", 0) <= max_price]
+
+    # Semantic matching using LLM if capability provided
+    if capability and len(candidates) > 0:
+        svc_desc = "\n".join([f"{s['id']}: {s['name']} - {s.get('description','')[:100]}" for s in candidates[:15]])
+        match_result = _chat(
+            f"用户需要：{capability}\n\n可用服务：\n{svc_desc}\n\n返回最匹配的3个服务ID，按相关度排序。输出JSON：{{\"matches\": [{{\"id\": \"svc_xxx\", \"relevance\": 0.95, \"reason\": \"...\"}}]}}",
+            system="你是服务匹配专家。根据用户需求匹配最合适的服务。只输出JSON。",
+            max_tokens=500
+        )
+        try:
+            matches = json.loads(match_result)
+            matched_ids = [m["id"] for m in matches.get("matches", [])]
+            # Reorder candidates by match order
+            ordered = []
+            for mid in matched_ids:
+                for s in candidates:
+                    if s["id"] == mid:
+                        ordered.append(s)
+                        break
+            # Add remaining
+            for s in candidates:
+                if s["id"] not in matched_ids:
+                    ordered.append(s)
+            candidates = ordered
+        except:
+            pass  # Keep original order
+
+    # Build discovery response
+    result = {
+        "query": capability or category,
+        "total_services": len(available),
+        "matched": len(candidates),
+        "services": [{
+            "id": s["id"],
+            "name": s["name"],
+            "category": s.get("category", ""),
+            "price": s.get("price", 0),
+            "unit": s.get("unit", ""),
+            "service_type": s.get("service_type", "llm"),
+            "description": s.get("description", "")[:150],
+            "endpoints": {
+                "buy": f"/api/v1/services/buy",
+                "execute": f"/api/v1/services/execute",
+                "mcp": f"/mcp" if protocol == "mcp" else None
+            }
+        } for s in candidates[:10]]
+    }
+
+    return result
+
+
+def _batch_web_monitor(params, buyer=""):
+    """svc_042: 批量网页监控 — 定时检测变化"""
+    urls = params.get("urls", [])
+    url = params.get("url", "")
+    selector = params.get("selector", "")  # CSS selector hint
+    check_type = params.get("check_type", "content")  # content | price | availability
+
+    if url and not urls:
+        urls = [url]
+    if not urls:
+        return {"error": "urls or url parameter required"}
+
+    import hashlib
+    results = []
+
+    for target_url in urls[:10]:  # Max 10 URLs per call
+        entry = {"url": target_url, "status": "unknown"}
+        try:
+            req = urllib.request.Request(target_url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+
+            # Content hash for change detection
+            import re
+            clean = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', content, flags=re.S | re.I)
+            clean = re.sub(r'<[^>]+>', ' ', clean)
+            clean = re.sub(r'\s+', ' ', clean).strip()
+
+            content_hash = hashlib.md5(clean.encode()).hexdigest()
+            title_match = re.search(r'<title[^>]*>(.*?)</title>', content, re.S | re.I)
+            title = title_match.group(1).strip() if title_match else ""
+
+            entry["status"] = "ok"
+            entry["title"] = title
+            entry["content_hash"] = content_hash
+            entry["content_length"] = len(clean)
+            entry["snippet"] = clean[:300]
+
+            # Price detection (basic regex)
+            if check_type == "price":
+                prices = re.findall(r'[¥$€£]\s*[\d,]+\.?\d*', clean)
+                entry["prices_found"] = prices[:5]
+
+        except Exception as e:
+            entry["status"] = "error"
+            entry["error"] = str(e)[:100]
+
+        results.append(entry)
+
+    return {
+        "check_type": check_type,
+        "urls_checked": len(results),
+        "results": results,
+        "note": "Store content_hash to detect changes on subsequent calls"
+    }

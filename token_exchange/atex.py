@@ -403,7 +403,7 @@ class ATEX:
 
     # ── 服务市场 ──
 
-    def register_service(self, provider_id, name, description, price, unit, category):
+    def register_service(self, provider_id, name, description, price, unit, category, service_type="llm"):
         """Agent注册服务到市场"""
         valid, err = validate_account_id(provider_id)
         if not valid:
@@ -427,6 +427,7 @@ class ATEX:
             "id": svc_id, "name": name, "provider": provider_id,
             "description": description, "price": round(float(price), 2),
             "unit": unit, "category": category or "其他",
+            "service_type": service_type,  # v5.16: llm | rule | hybrid
             "status": "active", "created": now_str(),
             "total_sold": 0, "total_revenue": 0
         }

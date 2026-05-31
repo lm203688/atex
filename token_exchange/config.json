@@ -3,7 +3,7 @@
   "name": "ATEX",
   "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
   "created": "2026-05-09",
-  "updated": "2026-05-30",
+  "updated": "2026-05-31",
   "api_url": "http://150.158.119.19:8420",
   "public_endpoint": "http://150.158.119.19:8420/api/v1",
   "commission_rate": {
@@ -324,5 +324,35 @@
     "active": true,
     "trial_days": 3,
     "trial_plan": "basic"
-  }
+  },
+  "service_types": {
+    "llm": {
+      "description": "LLM驱动服务",
+      "cost_level": "high",
+      "min_price": 3
+    },
+    "rule": {
+      "description": "纯规则服务，零LLM调用",
+      "cost_level": "low",
+      "min_price": 0.5
+    },
+    "hybrid": {
+      "description": "规则+LLM混合",
+      "cost_level": "medium",
+      "min_price": 2
+    }
+  },
+  "categories": [
+    "AI基础设施",
+    "安全",
+    "合规",
+    "通信",
+    "金融",
+    "内容",
+    "信息情报",
+    "工具调用",
+    "运营分析",
+    "平台开发",
+    "数据采集"
+  ]
 }

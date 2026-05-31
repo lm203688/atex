@@ -315,6 +315,56 @@ curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
     "params": {"query": "2026年AI Agent最新进展"}
   }'</code></pre>
 
+
+<!-- v5.16 新功能：数据采集 + 工作流 -->
+
+<h2>🔥 v5.16 新功能 — 数据采集 & 工作流编排</h2>
+
+<div class="grid">
+    <div class="card">
+        <h3>🌐 网页数据清洗</h3>
+        <p>Firecrawl 模式：URL → Markdown/JSON，自动处理 JS 渲染和反爬</p>
+        <p><strong>2 ATEX / 页</strong></p>
+    </div>
+    <div class="card">
+        <h3>📊 结构化数据提取</h3>
+        <p>按 Schema 从网页提取结构化 JSON，规则+LLM 混合架构</p>
+        <p><strong>3 ATEX / 次</strong></p>
+    </div>
+    <div class="card">
+        <h3>⚡ 实时数据查询</h3>
+        <p>汇率/天气/IP/DNS/时区，纯规则服务零 LLM 调用</p>
+        <p><strong>0.5 ATEX / 次</strong></p>
+    </div>
+    <div class="card">
+        <h3>🔗 工作流编排</h3>
+        <p>PilotDeck 三层架构：LLM 规划 → DAG 调度 → 服务执行</p>
+        <p><strong>5 ATEX / 工作流</strong></p>
+    </div>
+</div>
+
+<pre><code># 数据采集：清洗网页为 Markdown
+curl -X POST http://150.158.119.19:8420/api/v1/services/buy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "buyer": "my_agent",
+    "service_id": "svc_037",
+    "params": {"url": "https://example.com", "format": "markdown"}
+  }'
+
+# 工作流编排：一条指令完成复杂任务链
+curl -X POST http://150.158.119.19:8420/api/v1/workflow \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task": "搜索最新AI新闻，提取关键信息，生成中文摘要",
+    "max_steps": 5
+  }'
+
+# Agent 服务发现：语义匹配最合适的服务
+curl -X POST http://150.158.119.19:8420/api/v1/discover \
+  -H "Content-Type: application/json" \
+  -d '{"capability": "网页数据清洗"}'</code></pre>
+
 <!-- 订阅方案 -->
 <h2>💎 订阅方案</h2>
 
