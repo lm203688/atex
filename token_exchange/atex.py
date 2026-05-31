@@ -111,6 +111,13 @@ class ATEX:
         self.config = load_json(f"{BASE}/config.json")
         self.accounts = load_json(f"{BASE}/accounts/accounts.json")
         self.ob = load_json(f"{BASE}/orders/orderbook.json")
+        # Ensure orderbook has required fields
+        for key, default in [("bids", []), ("asks", []), ("trades", []),
+                             ("total_commission_earned", 0), ("last_price", None),
+                             ("daily_volume", 0), ("daily_high", None), ("daily_low", None),
+                             ("last_trade_time", "")]:
+            if key not in self.ob:
+                self.ob[key] = default
         self.svc = load_json(f"{BASE}/services/services.json")
         self.fob = load_json(f"{BASE}/orders/fiat_orderbook.json") if os.path.exists(f"{BASE}/orders/fiat_orderbook.json") else {"trades": []}
         self.commission_maker = self.config["commission_rate"]["maker"]
@@ -664,7 +671,7 @@ class ATEX:
     # ── 查询 ──
 
     def status(self):
-        active_services = sum(1 for s in self.svc["services"] if s["status"] == "active")
+        active_services = sum(1 for s in self.svc["services"] if s.get("status", "active") == "active")
         total_service_orders = len(self.svc.get("orders", []))
         return {
             "exchange": self.config["name"],
