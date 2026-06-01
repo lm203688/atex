@@ -1195,28 +1195,43 @@ def _cn_geo_visibility_check(params, buyer=""):
     """svc_047: 中国AI搜索引擎可见度检测 — 调用SCF API"""
     brand = params.get("brand", params.get("query", ""))
     competitors = params.get("competitors", [])
-    keywords = params.get("keywords", [])
+    keyword = params.get("keyword", params.get("keywords", ""))
+    if isinstance(keyword, list):
+        keyword = keyword[0] if keyword else ""
     if not brand:
         return {"error": "missing brand or query parameter"}
     result = _call_scf_api(
         "https://1341839497-1w5tkesfb0.ap-shanghai.tencentscf.com/api/check",
-        {"brand": brand, "competitors": competitors, "keywords": keywords}
+        {"brand": brand, "keyword": keyword}
     )
     return {"service": "中国AI搜索引擎可见度检测", "brand": brand, "result": result}
 
 
 def _cn_global_compliance_check(params, buyer=""):
-    """svc_048: 中国产品出海合规评估 — 调用SCF API"""
-    product_type = params.get("product_type", params.get("product", ""))
-    target_markets = params.get("markets", params.get("target_markets", []))
-    data_categories = params.get("data_categories", [])
-    if not product_type:
-        return {"error": "missing product_type parameter"}
+    """svc_048: 中国产品出海合规评估 — 调用SCF API（问卷式评估）"""
+    # Support both direct answers and auto-mapping from product info
+    answers = params.get("answers", {})
+    if not answers:
+        # Auto-map from product_type/markets to questionnaire answers
+        product_type = params.get("product_type", params.get("product", "SaaS"))
+        markets = params.get("markets", params.get("target_markets", []))
+        data_categories = params.get("data_categories", [])
+        has_sensitive = any(k in str(data_categories).lower() for k in ["生物", "金融", "健康", "宗教", "sensitive", "biometric", "financial", "health"])
+        is_large = any(k in str(markets) for k in ["美国", "欧盟", "EU", "US"])
+        answers = {
+            "q1": "sensitive" if has_sensitive else "general",
+            "q2": "10k_100k",
+            "q3": "unsure",
+            "q4": "no",
+            "q5": "contract",
+            "q6": "adequate" if any(k in str(markets) for k in ["欧盟", "EU", "英国"]) else "general",
+            "q7": "basic"
+        }
     result = _call_scf_api(
-        "https://1341839497-2yuxt6z58d.ap-guangzhou.tencentscf.com/api/check",
-        {"product_type": product_type, "markets": target_markets, "data_categories": data_categories}
+        "https://1341839497-2yuxt6z58d.ap-guangzhou.tencentscf.com/api/assess",
+        {"answers": answers}
     )
-    return {"service": "中国产品出海合规评估", "product_type": product_type, "result": result}
+    return {"service": "中国产品出海合规评估", "result": result}
 
 
 def _cn_seo_compliance_check(params, buyer=""):
