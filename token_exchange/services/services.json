@@ -408,6 +408,58 @@
       "category": "运营分析",
       "service_type": "default",
       "total_sold": 0
+    },
+    {
+      "id": "svc_046",
+      "provider": "cn-compliance",
+      "name": "中文违禁词检测+SEO合规",
+      "description": "广告法违禁词扫描+SEO合规检测+安全替换建议。覆盖百度/小红书/抖音/淘宝/京东5大平台，200+违禁词库。API后端真实AI检测非规则匹配。",
+      "price": 0.1,
+      "unit": "次",
+      "category": "合规",
+      "service_type": "api",
+      "status": "active",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_047",
+      "provider": "cn-compliance",
+      "name": "中国AI搜索引擎可见度检测",
+      "description": "检测品牌在DeepSeek/Kimi/豆包/通义/文心5大国产AI搜索引擎中的引用情况。每引擎独立引用逻辑分析+竞品对比+内容优化建议。唯一专注中国AI引擎的GEO工具。",
+      "price": 0.5,
+      "unit": "次",
+      "category": "合规",
+      "service_type": "api",
+      "status": "active",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_048",
+      "provider": "cn-compliance",
+      "name": "中国产品出海合规评估",
+      "description": "GDPR/CCPA/数据本地化/跨境传输/支付牌照/内容审核/AI Act合规检查。覆盖7大市场(美/欧/英/日/东南亚/中东/澳洲)。含数据出境自评。",
+      "price": 1.0,
+      "unit": "次",
+      "category": "合规",
+      "service_type": "api",
+      "status": "active",
+      "total_sold": 0,
+      "total_revenue": 0
+    },
+    {
+      "id": "svc_049",
+      "provider": "cn-compliance",
+      "name": "中文SEO合规+违禁词扫描(6平台)",
+      "description": "200+违禁词+6平台SEO合规(百度/抖音/小红书/淘宝/微信/B站)。实战验证：3个审核员漏掉的23个违规全部检出。含百度SEO专项。",
+      "price": 0.2,
+      "unit": "次",
+      "category": "合规",
+      "service_type": "api",
+      "status": "active",
+      "total_sold": 0,
+      "total_revenue": 0
     }
   ],
   "orders": [],
