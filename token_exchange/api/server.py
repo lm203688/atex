@@ -249,11 +249,6 @@ class Handler(BaseHTTPRequestHandler):
 
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
-        # v5.18: Deprecated routes
-        if p in ('/api/v1/orderbook', '/api/v1/trades',
-                 '/v1/jobs', '/v1/a2a/info', '/v1/a2a/agents', '/v1/a2a/agents/stats', '/v1/a2a/tasks') or p.startswith('/v1/jobs/') or p.startswith('/v1/a2a/'):
-            self._json({"ok": False, "err": "deprecated", "message": "Removed in v5.18. Focus: AI Gateway + Compliance Tools + Skill Market."}, 410)
-            return
 
         # ── SaaS路由（OpenAI兼容）──
         if p == '/v1/models':
@@ -505,11 +500,6 @@ class Handler(BaseHTTPRequestHandler):
 
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
-        # v5.18: Deprecated routes
-        if p in ('/api/v1/order', '/api/v1/settle', '/api/v1/deposit',
-                 '/v1/jobs/create', '/v1/a2a/agents/register', '/v1/a2a/agents/deregister', '/v1/a2a/tasks') or p.startswith('/v1/jobs/') or p.startswith('/v1/a2a/'):
-            self._json({"ok": False, "err": "deprecated", "message": "Removed in v5.18. Focus: AI Gateway + Compliance Tools + Skill Market."}, 410)
-            return
         d = self._read()
         if not d: return self._json({"err":"invalid_body"}, 400)
 
