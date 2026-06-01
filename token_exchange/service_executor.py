@@ -194,6 +194,11 @@ def execute_service(service_id, params, buyer):
         "svc_040": _workflow_orchestrate,
         "svc_041": _agent_service_discover,
         "svc_042": _batch_web_monitor,
+        # ── v5.18 融合：中国合规工具（SCF API后端） ──
+        "svc_046": _cn_banned_word_check,
+        "svc_047": _cn_geo_visibility_check,
+        "svc_048": _cn_global_compliance_check,
+        "svc_049": _cn_seo_compliance_check,
     }
     handler = executors.get(service_id)
     if not handler:
@@ -1156,3 +1161,72 @@ def _batch_web_monitor(params, buyer=""):
         "results": results,
         "note": "Store content_hash to detect changes on subsequent calls"
     }
+
+
+# ── v5.18 融合：中国合规工具执行器（调用SCF API后端） ──
+
+def _call_scf_api(url, payload, timeout=30):
+    """调用腾讯云SCF函数URL"""
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "err": f"scf_api_error:{e.code}", "detail": e.read().decode()[:500]}
+    except Exception as e:
+        return {"ok": False, "err": f"scf_call_failed:{str(e)}"}
+
+
+def _cn_banned_word_check(params, buyer=""):
+    """svc_046: 中文违禁词检测+SEO合规 — 调用SCF API"""
+    text = params.get("text", params.get("content", ""))
+    platform = params.get("platform", "all")
+    if not text:
+        return {"error": "missing text or content parameter"}
+    result = _call_scf_api(
+        "https://1341839497-jv04655vcs.ap-shanghai.tencentscf.com/check",
+        {"text": text, "platform": platform}
+    )
+    return {"service": "中文违禁词检测+SEO合规", "platform": platform, "result": result}
+
+
+def _cn_geo_visibility_check(params, buyer=""):
+    """svc_047: 中国AI搜索引擎可见度检测 — 调用SCF API"""
+    brand = params.get("brand", params.get("query", ""))
+    competitors = params.get("competitors", [])
+    keywords = params.get("keywords", [])
+    if not brand:
+        return {"error": "missing brand or query parameter"}
+    result = _call_scf_api(
+        "https://1341839497-1w5tkesfb0.ap-shanghai.tencentscf.com/check",
+        {"brand": brand, "competitors": competitors, "keywords": keywords}
+    )
+    return {"service": "中国AI搜索引擎可见度检测", "brand": brand, "result": result}
+
+
+def _cn_global_compliance_check(params, buyer=""):
+    """svc_048: 中国产品出海合规评估 — 调用SCF API"""
+    product_type = params.get("product_type", params.get("product", ""))
+    target_markets = params.get("markets", params.get("target_markets", []))
+    data_categories = params.get("data_categories", [])
+    if not product_type:
+        return {"error": "missing product_type parameter"}
+    result = _call_scf_api(
+        "https://1341839497-2yuxt6z58d.ap-guangzhou.tencentscf.com/check",
+        {"product_type": product_type, "markets": target_markets, "data_categories": data_categories}
+    )
+    return {"service": "中国产品出海合规评估", "product_type": product_type, "result": result}
+
+
+def _cn_seo_compliance_check(params, buyer=""):
+    """svc_049: 中文SEO合规+违禁词扫描(6平台) — 调用SCF API"""
+    text = params.get("text", params.get("content", ""))
+    platform = params.get("platform", "all")
+    if not text:
+        return {"error": "missing text or content parameter"}
+    result = _call_scf_api(
+        "https://1341839497-jv04655vcs.ap-shanghai.tencentscf.com/check",
+        {"text": text, "platform": platform}
+    )
+    return {"service": "中文SEO合规+违禁词扫描(6平台)", "platform": platform, "result": result}
