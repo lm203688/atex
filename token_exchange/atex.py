@@ -465,7 +465,7 @@ class ATEX:
         """浏览服务市场"""
         result = []
         for s in self.svc["services"]:
-            if s["status"] != "active":
+            if s.get("status", "active") != "active":
                 continue
             if category and s.get("category") != category:
                 continue
@@ -496,7 +496,7 @@ class ATEX:
         # 找服务
         service = None
         for s in self.svc["services"]:
-            if s["id"] == service_id and s["status"] == "active":
+            if s["id"] == service_id and s.get("status", "active") == "active":
                 service = s
                 break
         if not service:
