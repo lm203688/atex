@@ -16,10 +16,9 @@ from payment.gateway import (
     request_withdrawal, approve_withdrawal,
     get_exchange_rates, update_exchange_rate
 )
-# DEPRECATED: Job market removed in v5.18 fusion
-# from job_market import (create_job, list_jobs, get_job, update_job, cancel_job,
-#                         submit_bid, accept_bid, withdraw_bid,
-#                         start_job, submit_result, rate_job, dispute_job, agent_stats)
+from job_market import (create_job, list_jobs, get_job, update_job, cancel_job,
+                        submit_bid, accept_bid, withdraw_bid,
+                        start_job, submit_result, rate_job, dispute_job, agent_stats)
 from skill_market import (publish_skill, list_skills, get_skill, buy_skill,
                           rate_skill as rate_skill_file, update_skill, remove_skill,
                           import_ecc_skills, get_skill_ecc_format, is_ecc_format,
@@ -28,11 +27,10 @@ from content_safety import (check_prompt_injection, scan_content, submit_report,
                             list_reports, resolve_report, is_content_blocked, safety_stats)
 from realtime import (send_notification, get_notifications, mark_read,
                       subscribe, unsubscribe, sse_events, is_websocket_upgrade, generate_accept_key)
-# DEPRECATED: A2A protocol removed in v5.18 fusion
-# from a2a_protocol import (register_agent, discover_agents, get_agent_card, deregister_agent,
-#                           create_task, list_tasks, get_task, send_message as a2a_send_message,
-#                           accept_task, reject_task, complete_task, fail_task,
-#                           a2a_to_job, job_to_a2a, a2a_protocol_info, a2a_stats)
+from a2a_protocol import (register_agent, discover_agents, get_agent_card, deregister_agent,
+                          create_task, list_tasks, get_task, send_message as a2a_send_message,
+                          accept_task, reject_task, complete_task, fail_task,
+                          a2a_to_job, job_to_a2a, a2a_protocol_info, a2a_stats)
 
 exchange = ATEX()
 TZ = timezone(timedelta(hours=8))
@@ -249,14 +247,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self): self._json({}, 204)
     def do_GET(self):
 
-        # v5.18: Deprecated routes
-        deprecated_get = ['/api/v1/orderbook', '/api/v1/trades',
-                         '/v1/jobs', '/v1/a2a/info', '/v1/a2a/agents', '/v1/a2a/agents/stats', '/v1/a2a/tasks']
-        if p in deprecated_get or p.startswith('/v1/jobs/') or p.startswith('/v1/a2a/'):
-            self._json({"ok": False, "err": "deprecated", "message": "This feature has been removed in v5.18. ATEX now focuses on: AI Gateway + Compliance Tools + Skill Market."}, 410)
-            return
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
+        # v5.18: Deprecated routes
+        if p in ('/api/v1/orderbook', '/api/v1/trades',
+                 '/v1/jobs', '/v1/a2a/info', '/v1/a2a/agents', '/v1/a2a/agents/stats', '/v1/a2a/tasks') or p.startswith('/v1/jobs/') or p.startswith('/v1/a2a/'):
+            self._json({"ok": False, "err": "deprecated", "message": "Removed in v5.18. Focus: AI Gateway + Compliance Tools + Skill Market."}, 410)
+            return
 
         # ── SaaS路由（OpenAI兼容）──
         if p == '/v1/models':
@@ -506,14 +503,13 @@ class Handler(BaseHTTPRequestHandler):
         else: self._json({"err":"not_found"}, 404)
     def do_POST(self):
 
-        # v5.18: Deprecated routes
-        deprecated_paths = ['/api/v1/order', '/api/v1/settle', '/api/v1/deposit',
-                          '/v1/jobs/create', '/v1/a2a/agents/register', '/v1/a2a/agents/deregister', '/v1/a2a/tasks']
-        if p in deprecated_paths or p.startswith('/v1/jobs/') or p.startswith('/v1/a2a/'):
-            self._json({"ok": False, "err": "deprecated", "message": "This feature has been removed in v5.18. ATEX now focuses on: AI Gateway + Compliance Tools + Skill Market."}, 410)
-            return
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
+        # v5.18: Deprecated routes
+        if p in ('/api/v1/order', '/api/v1/settle', '/api/v1/deposit',
+                 '/v1/jobs/create', '/v1/a2a/agents/register', '/v1/a2a/agents/deregister', '/v1/a2a/tasks') or p.startswith('/v1/jobs/') or p.startswith('/v1/a2a/'):
+            self._json({"ok": False, "err": "deprecated", "message": "Removed in v5.18. Focus: AI Gateway + Compliance Tools + Skill Market."}, 410)
+            return
         d = self._read()
         if not d: return self._json({"err":"invalid_body"}, 400)
 
