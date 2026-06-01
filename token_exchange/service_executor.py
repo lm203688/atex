@@ -1185,7 +1185,7 @@ def _cn_banned_word_check(params, buyer=""):
     if not text:
         return {"error": "missing text or content parameter"}
     result = _call_scf_api(
-        "https://1341839497-jv04655vcs.ap-shanghai.tencentscf.com/check",
+        "https://1341839497-jv04655vcs.ap-shanghai.tencentscf.com/api/check",
         {"text": text, "platform": platform}
     )
     return {"service": "中文违禁词检测+SEO合规", "platform": platform, "result": result}
@@ -1199,7 +1199,7 @@ def _cn_geo_visibility_check(params, buyer=""):
     if not brand:
         return {"error": "missing brand or query parameter"}
     result = _call_scf_api(
-        "https://1341839497-1w5tkesfb0.ap-shanghai.tencentscf.com/check",
+        "https://1341839497-1w5tkesfb0.ap-shanghai.tencentscf.com/api/check",
         {"brand": brand, "competitors": competitors, "keywords": keywords}
     )
     return {"service": "中国AI搜索引擎可见度检测", "brand": brand, "result": result}
@@ -1213,7 +1213,7 @@ def _cn_global_compliance_check(params, buyer=""):
     if not product_type:
         return {"error": "missing product_type parameter"}
     result = _call_scf_api(
-        "https://1341839497-2yuxt6z58d.ap-guangzhou.tencentscf.com/check",
+        "https://1341839497-2yuxt6z58d.ap-guangzhou.tencentscf.com/api/check",
         {"product_type": product_type, "markets": target_markets, "data_categories": data_categories}
     )
     return {"service": "中国产品出海合规评估", "product_type": product_type, "result": result}
@@ -1226,7 +1226,7 @@ def _cn_seo_compliance_check(params, buyer=""):
     if not text:
         return {"error": "missing text or content parameter"}
     result = _call_scf_api(
-        "https://1341839497-jv04655vcs.ap-shanghai.tencentscf.com/check",
+        "https://1341839497-jv04655vcs.ap-shanghai.tencentscf.com/api/check",
         {"text": text, "platform": platform}
     )
     return {"service": "中文SEO合规+违禁词扫描(6平台)", "platform": platform, "result": result}
