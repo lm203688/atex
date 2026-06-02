@@ -240,6 +240,44 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         except (ConnectionResetError, BrokenPipeError):
             pass
+
+    def _landing_page(self):
+        """Serve the ATEX landing page."""
+        svcs = exchange.list_services().get("services", [])
+        compliance_svcs = [s for s in svcs if s.get("category") == "合规工具"]
+        svc_cards = ""
+        for s in compliance_svcs:
+            svc_cards += f'''<div class="card"><h3>{s["name"]}</h3><p>{s.get("description","")}</p><div class="price">¥{s.get("price",0)}/{s.get("unit","次")}</div><a href="https://lm203688.github.io/atex/" class="btn">立即使用</a></div>'''
+        html = f'''<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ATEX - AI服务市场 | 合规工具</title>
+<meta name="description" content="ATEX AI服务市场：免费违禁词检测、AI搜索可见度检测、数据出境合规评估、AIGC内容检测。符合广告法与数据出境法规。">
+<meta name="keywords" content="违禁词检测,AI搜索优化,数据出境合规,AIGC检测,广告法合规,SEO合规">
+<style>*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0}}
+.hero{{text-align:center;padding:80px 20px 40px;background:linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95)}}
+.hero h1{{font-size:2.5em;margin-bottom:16px;background:linear-gradient(90deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
+.hero p{{font-size:1.2em;color:#a5b4fc;max-width:600px;margin:0 auto 30px}}
+.hero .cta{{display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:12px;text-decoration:none;font-size:1.1em;font-weight:600}}
+.tools{{max-width:1000px;margin:40px auto;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}}
+.card{{background:#1e293b;border-radius:16px;padding:28px;border:1px solid #334155;transition:transform .2s}}
+.card:hover{{transform:translateY(-4px);border-color:#6366f1}}
+.card h3{{font-size:1.2em;color:#c7d2fe;margin-bottom:10px}}
+.card p{{color:#94a3b8;font-size:.9em;line-height:1.6;margin-bottom:16px;min-height:48px}}
+.card .price{{color:#a78bfa;font-size:1.1em;font-weight:600;margin-bottom:16px}}
+.btn{{display:inline-block;padding:10px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-size:.9em}}
+.stats{{text-align:center;padding:40px 20px;color:#64748b;font-size:.9em}}
+.stats span{{color:#a78bfa;font-weight:600}}
+.footer{{text-align:center;padding:30px;color:#475569;font-size:.8em;border-top:1px solid #1e293b}}
+</style></head><body>
+<div class="hero"><h1>ATEX AI服务市场</h1><p>免费合规检测工具：违禁词·AI搜索可见度·数据出境评估·AIGC检测</p><a href="https://lm203688.github.io/atex/" class="cta">开始使用</a></div>
+<div class="tools">{svc_cards}</div>
+<div class="stats">已注册 <span>{len(svcs)}</span> 个服务 · <span>{exchange.accounts.__len__() if hasattr(exchange.accounts,'__len__') else '?'}</span> 个用户</div>
+<div class="footer">© 2026 ATEX · AI服务市场 · 符合《广告法》《数据出境安全评估办法》《人工智能生成合成内容标识办法》</div>
+</body></html>'''
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(html.encode("utf-8"))
+
     def _read(self):
         l = int(self.headers.get('Content-Length', 0))
         if l > MAX_INPUT_SIZE: return None
@@ -249,6 +287,11 @@ class Handler(BaseHTTPRequestHandler):
 
         if not ip_limiter.check(self._ip()): return self._json({"err":"rate_limited"}, 429)
         p = urlparse(self.path).path
+
+        # ── Landing Page ──
+        if p == '/' or p == '/index.html':
+            self._landing_page()
+            return
 
         # ── SaaS路由（OpenAI兼容）──
         if p == '/v1/models':
