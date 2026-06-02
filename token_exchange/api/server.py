@@ -962,6 +962,62 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/api/v1/deposit':
             r = exchange.deposit(d.get("account",""), d.get("amount",0))
             self._json(r, 200 if r.get("ok") else 400)
+        # ── 支付配置 ──
+        elif p == '/api/v1/payment/config':
+            from payment.gateway import _load_config, _save_config
+            cfg = _load_config()
+            if http_method == "GET":
+                # Mask secrets for security
+                safe_cfg = dict(cfg)
+                if "xunhupay" in safe_cfg:
+                    safe_cfg["xunhupay"] = dict(safe_cfg["xunhupay"])
+                    if safe_cfg["xunhupay"].get("app_secret"):
+                        safe_cfg["xunhupay"]["app_secret"] = safe_cfg["xunhupay"]["app_secret"][:4] + "****"
+                if "nowpayments" in safe_cfg:
+                    safe_cfg["nowpayments"] = dict(safe_cfg["nowpayments"])
+                    if safe_cfg["nowpayments"].get("api_key"):
+                        safe_cfg["nowpayments"]["api_key"] = safe_cfg["nowpayments"]["api_key"][:4] + "****"
+                self._json({"ok": True, "config": safe_cfg})
+            elif http_method == "POST":
+                # Update config
+                setup_token = d.get("setup_token", "")
+                if setup_token != "atex_setup_2026":
+                    return self._json({"err": "invalid_setup_token"}, 403)
+                if "xunhupay" in d:
+                    cfg["xunhupay"] = {
+                        "app_id": d["xunhupay"].get("app_id", cfg.get("xunhupay",{}).get("app_id","")),
+                        "app_secret": d["xunhupay"].get("app_secret", cfg.get("xunhupay",{}).get("app_secret","")),
+                        "notify_url": d["xunhupay"].get("notify_url", f"http://{self.headers.get('Host','150.158.119.19:8420')}/v1/pay/alipay/callback"),
+                        "return_url": d["xunhupay"].get("return_url", "https://lm203688.github.io/atex/"),
+                        "enabled": d["xunhupay"].get("enabled", True)
+                    }
+                if "nowpayments" in d:
+                    cfg["nowpayments"] = {**cfg.get("nowpayments",{}), **d["nowpayments"]}
+                _save_config(cfg)
+                self._json({"ok": True, "msg": "Payment config updated"})
+        # ── 充值下单（虎皮椒）──
+        elif p == '/api/v1/payment/create':
+            from payment.gateway import xunhupay_create_order
+            r = xunhupay_create_order(d.get("account",""), d.get("amount_cny",0))
+            self._json(r, 200 if r.get("ok") else 400)
+        # ── 虎皮椒回调 ──
+        elif p == '/v1/pay/alipay/callback':
+            from payment.gateway import xunhupay_callback
+            r = xunhupay_callback(d)
+            if r.get("ok"):
+                # Auto-deposit ATEX credits
+                order_id = d.get("trade_order_id", "")
+                # Find the deposit record
+                from payment.gateway import _load_records
+                rec = _load_records()
+                for dep in rec.get("deposits", []):
+                    if dep.get("order_id") == order_id and dep.get("status") == "pending":
+                        exchange.deposit(dep.get("user_id",""), dep.get("atex_amount",0))
+                        dep["status"] = "completed"
+                        from payment.gateway import _save_records
+                        _save_records(rec)
+                        break
+            self._json(r)
         # ── Token交易（订单簿撮合）──
         elif p == '/api/v1/order':
             o = d.get("order",{})
