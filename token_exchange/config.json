@@ -1,9 +1,9 @@
 {
-  "version": "5.17",
+  "version": "6.0",
   "name": "ATEX",
-  "description": "Agent服务交易市场 + 通用API信用Token（外部可自由交易）+ 订阅制",
+  "description": "合规工具 + AI能力平台 — 违禁词检测/AI搜索可见度/出海合规/SEO合规 + TTS/ASR/VLM/图片/视频/搜索",
   "created": "2026-05-09",
-  "updated": "2026-05-31",
+  "updated": "2026-06-06",
   "api_url": "http://150.158.119.19:8420",
   "public_endpoint": "http://150.158.119.19:8420/api/v1",
   "commission_rate": {

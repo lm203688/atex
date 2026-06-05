@@ -1,161 +1,307 @@
 {
   "services": [
     {
-      "id": "svc_001",
-      "name": "多模型路由与成本优化",
-      "provider": "platform",
-      "description": "智能分析任务特征，自动匹配最优模型和推理强度。支持GPT/Claude/Gemini/Qwen3.5/DeepSeek v4/GLM-5/Llama 4/Kimi K2.6等主流模型。2026年5月开源模型性能追平闭源，中国模型价格战白热化（豆包降价97%、文心5.1训练成本仅6%、DeepSeek v4极致性价比），企业AI调用成本降低50-80%。新增Llama 4和Kimi K2.6路由支持。",
-      "price": 10.0,
-      "unit": "次",
-      "category": "AI基础设施",
-      "total_sold": 2
+      "id": "svc_046",
+      "name": "中文违禁词检测",
+      "description": "检测中文内容中的违禁词、敏感词，返回法律条文+罚款金额+替换建议。支持6大平台（抖音/小红书/微信/微博/B站/快手）",
+      "category": "合规工具",
+      "subcategory": "内容安全",
+      "provider": "atex_official",
+      "price": 0.1,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🛡️",
+      "tags": ["违禁词", "敏感词", "内容审核", "合规", "广告法"],
+      "params": {
+        "text": {"type": "string", "required": true, "description": "待检测文本"},
+        "platform": {"type": "string", "required": false, "description": "平台: douyin/xiaohongshu/wechat/weibo/bilibili/kuaishou/all", "default": "all"}
+      },
+      "api_endpoint": "/api/v1/services/buy",
+      "scf_backend": true
     },
     {
-      "id": "svc_002",
-      "name": "AI安全攻防服务",
-      "provider": "platform",
-      "description": "基于GPT-5.5-Cyber等安全模型，提供自动化渗透测试和漏洞评估。覆盖OWASP Top 10 + AI特有漏洞。Claude Mythos安全争议表明AI安全评估需求激增，本服务提供轻量级安全扫描+漏洞报告。适用于Agent上线前安全检查、API安全评估、Prompt注入检测。",
-      "price": 20.0,
-      "unit": "次",
-      "category": "安全",
-      "total_sold": 0
+      "id": "svc_047",
+      "name": "AI搜索可见度检测",
+      "description": "检测品牌在DeepSeek/Kimi/豆包等AI搜索引擎中的排名和可见度，发现品牌在AI时代的曝光缺口",
+      "category": "合规工具",
+      "subcategory": "品牌监测",
+      "provider": "atex_official",
+      "price": 2.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🔍",
+      "tags": ["AI搜索", "品牌监测", "SEO", "DeepSeek", "Kimi"],
+      "params": {
+        "brand": {"type": "string", "required": true, "description": "品牌名称"},
+        "keyword": {"type": "string", "required": false, "description": "关键词"},
+        "competitors": {"type": "array", "required": false, "description": "竞品列表"}
+      },
+      "api_endpoint": "/api/v1/services/buy",
+      "scf_backend": true
     },
     {
-      "id": "svc_003",
-      "name": "AI法律合规与政策追踪",
-      "provider": "platform",
-      "description": "实时监控全球AI法规变化（白宫国家AI政策框架、联邦vs州级监管权、EU AI Act等），快速查询合规要求，生成合规检查清单。覆盖50+国家/地区AI法规数据库。轻量版：单次查询一个法规领域，输出合规要点+行动建议。",
-      "price": 15.0,
-      "unit": "次",
-      "category": "合规",
-      "total_sold": 0
-    },
-    {
-      "id": "svc_004",
-      "name": "实时语音翻译",
-      "provider": "platform",
-      "description": "基于GPT-Realtime-2（GPT-5级推理驱动），提供会议/客服/跨国沟通实时翻译。支持70种语言，延迟<3秒，情感理解+复杂任务执行能力。",
+      "id": "svc_048",
+      "name": "出海合规评估",
+      "description": "7维度问卷式评估产品出海合规风险（数据隐私/内容审核/支付合规/知识产权/税务/本地化/安全），生成详细合规报告",
+      "category": "合规工具",
+      "subcategory": "出海合规",
+      "provider": "atex_official",
       "price": 8.0,
-      "unit": "小时",
-      "category": "通信",
-      "total_sold": 0
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🌍",
+      "tags": ["出海", "合规评估", "GDPR", "数据隐私", "跨境"],
+      "params": {
+        "product_type": {"type": "string", "required": false, "description": "产品类型: SaaS/App/硬件/内容", "default": "SaaS"},
+        "markets": {"type": "array", "required": false, "description": "目标市场: US/EU/JP/SEA等"},
+        "data_categories": {"type": "array", "required": false, "description": "数据类别: 用户数据/支付数据/内容数据等"},
+        "answers": {"type": "object", "required": false, "description": "问卷答案(7维度)"}
+      },
+      "api_endpoint": "/api/v1/services/buy",
+      "scf_backend": true
     },
     {
-      "id": "svc_005",
-      "name": "金融投研分析",
-      "provider": "platform",
-      "description": "集成Claude Financial Services和GPT-5.5 Instant，多源金融数据采集，投研分析框架（基本面+技术面+情绪面）。轻量版：单次分析一个标的，输出简要投研摘要+关键指标+风险提示。",
-      "price": 20.0,
-      "unit": "次",
-      "category": "金融",
-      "total_sold": 0
+      "id": "svc_049",
+      "name": "SEO合规检测",
+      "description": "检测网页/内容的SEO合规性，包括关键词堆砌、隐藏文本、虚假描述等违规行为，避免搜索引擎惩罚",
+      "category": "合规工具",
+      "subcategory": "SEO合规",
+      "provider": "atex_official",
+      "price": 1.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "📊",
+      "tags": ["SEO", "合规", "搜索引擎", "关键词"],
+      "params": {
+        "text": {"type": "string", "required": true, "description": "待检测文本或URL"},
+        "platform": {"type": "string", "required": false, "description": "平台", "default": "all"}
+      },
+      "api_endpoint": "/api/v1/services/buy",
+      "scf_backend": true
     },
     {
-      "id": "svc_006",
-      "name": "内容质量审核",
-      "provider": "platform",
-      "description": "规则引擎预处理+AI边界案例审核。支持文本/图片/视频，批量处理，审核吞吐量1000+条/分钟。针对AI生成内容专项优化（AI短剧/深度伪造检测）。",
-      "price": 5.0,
-      "unit": "百条",
-      "category": "内容",
-      "total_sold": 0
-    },
-    {
-      "id": "svc_010",
-      "name": "AI信息情报收集",
-      "provider": "platform",
-      "description": "全球AI技术动态实时追踪与深度分析。覆盖OpenAI/Google/Anthropic/Meta/百度/阿里/腾讯/字节等核心厂商，MCP/A2A等Agent协议，AI芯片/算力/融资/监管等关键赛道。每日更新，提供技术解读+行业影响评估+ATEX服务关联建议。",
-      "price": 15.0,
-      "unit": "次",
-      "category": "信息情报",
-      "total_sold": 0
-    },
-    {
-      "id": "svc_011",
-      "name": "信息渠道健康审核",
-      "provider": "platform",
-      "description": "对信息源进行可达性、内容质量、时效性三维度审核。逐一验证渠道状态，标记失效/降质源，推荐替换方案。当前监控20+渠道：CNBC✅/Bloomberg✅/Wired✅/The Verge✅/36氪✅/搜狐科技⚠️(搜索命中率低)/掘金✅/机器之心✅/量子位✅/dentro.de✅(已恢复)/AIToolsRecap✅(已恢复)/OpenAI Blog✅/Google DeepMind✅/Anthropic✅/NVIDIA✅/Microsoft Blog✅/TechCrunch✅/Ars Technica✅/The Information✅/Semianalysis✅/MIT Tech Review✅/VentureBeat✅。输出渠道健康报告。",
-      "price": 8.0,
-      "unit": "次",
-      "category": "信息情报",
-      "total_sold": 0
-    },
-    {
-      "id": "svc_012",
-      "name": "Web搜索与深度阅读",
-      "provider": "platform",
-      "description": "多源并行Web搜索+深度页面内容提取。支持关键词搜索、定向URL阅读、结构化数据提取。自动处理429限频，分批并行策略。输出搜索结果摘要或完整页面内容。",
-      "price": 5,
-      "unit": "次",
-      "category": "工具调用",
-      "total_sold": 5
-    },
-    {
-      "id": "svc_013",
-      "name": "网页自动化操作",
-      "provider": "platform",
-      "description": "无头浏览器自动化：页面导航、点击、输入、截图、表单提交、数据抓取。支持复杂交互流程（登录、翻页、动态加载）。适用于需要JavaScript渲染的网站。",
-      "price": 5.0,
-      "unit": "次",
-      "category": "工具调用",
-      "total_sold": 0
-    },
-    {
-      "id": "svc_038",
-      "name": "结构化数据提取",
-      "provider": "platform",
-      "description": "从网页/文档中按Schema提取结构化数据。输入URL+提取规则，输出JSON。适用于：商品信息采集、新闻元数据提取、API文档解析、竞品数据监控。支持自定义提取模板，批量处理。比纯LLM提取成本低80%，规则引擎+LLM混合架构。",
-      "price": 3.0,
-      "unit": "次",
-      "category": "数据采集",
-      "service_type": "hybrid",
-      "total_sold": 0
-    },
-    {
-      "id": "svc_039",
-      "name": "实时数据查询",
-      "provider": "platform",
-      "description": "纯规则服务，零LLM调用。实时查询：汇率/天气/IP归属/DNS/Whois/域名可用性/邮编/时区/单位换算。毫秒级响应，成本极低。PilotDeck规则层理念：不需要LLM的任务用规则执行，Token成本降70%。",
+      "id": "svc_022",
+      "name": "AI对话(DeepSeek)",
+      "description": "基于DeepSeek大模型的智能对话服务，支持多轮对话、知识问答、文本生成。按token计费，输入¥0.001/千token，输出¥0.002/千token。",
+      "category": "AI能力",
+      "subcategory": "对话",
+      "provider": "atex_official",
       "price": 0.5,
-      "unit": "次",
-      "category": "工具调用",
-      "service_type": "rule",
-      "total_sold": 0
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "💬",
+      "tags": ["对话", "DeepSeek", "LLM", "问答"],
+      "params": {
+        "prompt": {"type": "string", "required": true, "description": "用户输入/提问"},
+        "system": {"type": "string", "required": false, "description": "系统提示词", "default": "你是一个有用的AI助手。"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     },
     {
-      "id": "svc_040",
-      "name": "工作流编排",
-      "provider": "platform",
-      "description": "PilotDeck三层架构：LLM层(规划)→工作流层(DAG调度)→服务层(执行)。一次请求组合多个ATEX服务，自动编排执行顺序。示例：数据采集→内容审核→报告生成，或：搜索→提取→翻译→存储。支持并行/串行/条件分支，自动重试和错误处理。Agent无需逐个调用服务，一条指令完成复杂任务链。",
+      "id": "svc_057",
+      "name": "MCP Server健康检查",
+      "description": "检测MCP Server端点可用性，包括server-card、initialize握手、tools/list三项检查，给出健康评分。",
+      "category": "AI能力",
+      "subcategory": "开发者工具",
+      "provider": "atex_official",
+      "price": 0.5,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🏥",
+      "tags": ["MCP", "健康检查", "监控", "开发者"],
+      "params": {
+        "url": {"type": "string", "required": true, "description": "MCP Server端点URL"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_058",
+      "name": "AI模型价格对比",
+      "description": "实时对比DeepSeek/OpenAI/Anthropic/Google等主流AI模型API定价，推荐最优性价比方案。",
+      "category": "AI能力",
+      "subcategory": "开发者工具",
+      "provider": "atex_official",
+      "price": 0.5,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "💰",
+      "tags": ["价格对比", "AI模型", "成本优化", "开发者"],
+      "params": {
+        "query": {"type": "string", "required": false, "description": "查询关键词"},
+        "task": {"type": "string", "required": false, "description": "任务类型: general/coding/creative", "default": "general"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_059",
+      "name": "Prompt优化器",
+      "description": "优化用户Prompt获得更好AI输出。分析原始Prompt不足，重写为结构化高效版本，并解释优化理由。",
+      "category": "AI能力",
+      "subcategory": "开发者工具",
+      "provider": "atex_official",
+      "price": 0.5,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "✨",
+      "tags": ["Prompt", "优化", "开发者", "效率"],
+      "params": {
+        "prompt": {"type": "string", "required": true, "description": "待优化的Prompt"},
+        "language": {"type": "string", "required": false, "description": "语言: zh/en/auto", "default": "auto"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_101",
+      "name": "语音合成(TTS)",
+      "description": "将文本转换为自然流畅的语音。支持多语种、多音色，输出WAV/MP3格式音频。适用于口播视频、有声读物、客服语音等场景。",
+      "category": "AI能力",
+      "subcategory": "语音",
+      "provider": "atex_official",
+      "price": 2.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🎙️",
+      "tags": ["TTS", "语音合成", "口播", "配音"],
+      "params": {
+        "text": {"type": "string", "required": true, "description": "待合成文本（最长5000字）"},
+        "voice": {"type": "string", "required": false, "description": "音色: tongtong/xiaochen/yunyang等", "default": "tongtong"},
+        "speed": {"type": "number", "required": false, "description": "语速 0.5-2.0", "default": 1.0},
+        "format": {"type": "string", "required": false, "description": "输出格式: wav/mp3", "default": "wav"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_102",
+      "name": "语音识别(ASR)",
+      "description": "将音频文件转换为文字。支持WAV/MP3等常见格式，自动识别语种。适用于会议记录、字幕生成、语音指令等场景。",
+      "category": "AI能力",
+      "subcategory": "语音",
+      "provider": "atex_official",
+      "price": 2.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🎤",
+      "tags": ["ASR", "语音识别", "转写", "字幕"],
+      "params": {
+        "audio_base64": {"type": "string", "required": false, "description": "音频Base64编码（与audio_file二选一）"},
+        "audio_file": {"type": "string", "required": false, "description": "音频文件路径（与audio_base64二选一）"},
+        "language": {"type": "string", "required": false, "description": "语言: zh/en/auto", "default": "auto"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_103",
+      "name": "图像理解(VLM)",
+      "description": "分析图片内容，支持OCR文字识别、物体检测、场景描述、视觉问答。适用于内容审核、图片标注、文档解析等场景。",
+      "category": "AI能力",
+      "subcategory": "视觉",
+      "provider": "atex_official",
+      "price": 3.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "👁️",
+      "tags": ["VLM", "图像理解", "OCR", "视觉问答"],
+      "params": {
+        "image_base64": {"type": "string", "required": false, "description": "图片Base64编码（与image_url二选一）"},
+        "image_url": {"type": "string", "required": false, "description": "图片URL（与image_base64二选一）"},
+        "prompt": {"type": "string", "required": false, "description": "提问/指令", "default": "请描述这张图片的内容"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_104",
+      "name": "AI图片生成",
+      "description": "根据文字描述生成图片。支持多种风格和尺寸，适用于营销素材、社交媒体配图、创意设计等场景。",
+      "category": "AI能力",
+      "subcategory": "视觉",
+      "provider": "atex_official",
       "price": 5.0,
-      "unit": "工作流",
-      "category": "AI基础设施",
-      "service_type": "hybrid",
-      "total_sold": 0
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🎨",
+      "tags": ["图片生成", "文生图", "AI绘画", "素材"],
+      "params": {
+        "prompt": {"type": "string", "required": true, "description": "图片描述/提示词"},
+        "size": {"type": "string", "required": false, "description": "尺寸: 1024x1024/1344x768等", "default": "1024x1024"},
+        "style": {"type": "string", "required": false, "description": "风格: natural/vivid/anime等", "default": "natural"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     },
     {
-      "id": "svc_041",
-      "name": "Agent服务发现",
-      "provider": "platform",
-      "description": "Agent注册时声明能力+价格，其他Agent自动发现和调用。基于/.well-known/agent.json扩展，支持能力语义搜索（如'需要翻译服务'→自动匹配svc_004）。PilotDeck规则层Agent注册理念：每个Agent声明自己能做什么，平台负责匹配和调度。支持MCP/A2A/ACP多协议发现。",
-      "price": 1.0,
-      "unit": "次",
-      "category": "AI基础设施",
-      "service_type": "rule",
-      "total_sold": 0
+      "id": "svc_105",
+      "name": "AI图片编辑",
+      "description": "对现有图片进行AI编辑，支持风格迁移、局部修改、背景替换等。适用于图片优化、品牌适配、创意变体等场景。",
+      "category": "AI能力",
+      "subcategory": "视觉",
+      "provider": "atex_official",
+      "price": 5.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "✏️",
+      "tags": ["图片编辑", "风格迁移", "背景替换", "AI修图"],
+      "params": {
+        "image_base64": {"type": "string", "required": true, "description": "原始图片Base64编码"},
+        "prompt": {"type": "string", "required": true, "description": "编辑指令/描述"},
+        "size": {"type": "string", "required": false, "description": "输出尺寸", "default": "1024x1024"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     },
     {
-      "id": "svc_042",
-      "name": "批量网页监控",
-      "provider": "platform",
-      "description": "定时监控网页变化：价格变动、内容更新、新文章发布、竞品动态。输入URL列表+监控规则，变化时自动推送通知。支持CSS选择器精准定位、相似度对比、结构化变更提取。适用于：竞品价格监控、新闻源追踪、API变更检测、合规信息更新。",
-      "price": 1.0,
-      "unit": "URL/天",
-      "category": "数据采集",
-      "service_type": "rule",
-      "total_sold": 0
+      "id": "svc_106",
+      "name": "AI视频生成",
+      "description": "根据文字描述或图片生成视频片段（5秒/片段）。异步任务，需轮询获取结果。适用于短视频创作、广告素材、动态内容等场景。",
+      "category": "AI能力",
+      "subcategory": "视频",
+      "provider": "atex_official",
+      "price": 10.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🎬",
+      "tags": ["视频生成", "文生视频", "短视频", "广告素材"],
+      "params": {
+        "prompt": {"type": "string", "required": true, "description": "视频描述/提示词"},
+        "image_base64": {"type": "string", "required": false, "description": "参考图片Base64（可选）"},
+        "size": {"type": "string", "required": false, "description": "尺寸: 1344x768等", "default": "1344x768"},
+        "duration": {"type": "number", "required": false, "description": "时长(秒)", "default": 5}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_107",
+      "name": "Web搜索",
+      "description": "搜索全网实时信息，返回结构化搜索结果（标题、摘要、URL）。适用于信息检索、竞品调研、新闻追踪等场景。",
+      "category": "AI能力",
+      "subcategory": "信息检索",
+      "provider": "atex_official",
+      "price": 5.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🔎",
+      "tags": ["搜索", "信息检索", "实时数据", "调研"],
+      "params": {
+        "query": {"type": "string", "required": true, "description": "搜索关键词/查询"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_108",
+      "name": "网页阅读",
+      "description": "提取网页正文内容，自动去除广告/导航/侧边栏等噪音，返回干净的HTML或纯文本。适用于内容采集、文章分析、数据提取等场景。",
+      "category": "AI能力",
+      "subcategory": "信息检索",
+      "provider": "atex_official",
+      "price": 3.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "📖",
+      "tags": ["网页提取", "内容清洗", "阅读模式", "数据采集"],
+      "params": {
+        "url": {"type": "string", "required": true, "description": "网页URL"},
+        "format": {"type": "string", "required": false, "description": "输出格式: html/text", "default": "text"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     }
   ],
   "orders": [],
-  "next_service_id": 46
+  "next_service_id": 109
 }

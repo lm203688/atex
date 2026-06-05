@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-ATEX Service Executor v3 — API信用Token执行层
-服务交付 + 通用API代理，ATEX作为API信用Token
+ATEX Service Executor v6.0 — 合规工具 + AI能力 + 交易变现
+合规工具(SCF API) + AI能力(z-ai-web-dev-sdk) + LLM对话(DeepSeek)
 """
-import json, os, tempfile, base64, time, urllib.request, urllib.error
+import json, os, tempfile, base64, time, subprocess, urllib.request, urllib.error
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-db4c943047934a6bbd1640a3efd98e6b")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE = "https://api.deepseek.com/v1"
 
 
@@ -14,14 +14,14 @@ def execute_api_proxy(api_name, params):
     proxy_handlers = {
         "deepseek_chat": _proxy_deepseek_chat,
         "deepseek_reasoner": _proxy_deepseek_reasoner,
-        "openai_gpt4o_mini": _proxy_openai_chat,
-        "openai_gpt4o": _proxy_openai_chat,
-        "claude_haiku": _proxy_claude_chat,
-        "claude_sonnet": _proxy_claude_chat,
-        "tts": _proxy_tts,
-        "asr": _proxy_asr,
+        "openai_gpt4o_mini": _sdk_chat,
+        "openai_gpt4o": _sdk_chat,
+        "claude_haiku": _sdk_chat,
+        "claude_sonnet": _sdk_chat,
+        "tts": _sdk_tts_proxy,
+        "asr": _sdk_asr_proxy,
         "embedding": _proxy_embedding,
-        "web_search": _proxy_web_search,
+        "web_search": _sdk_web_search_proxy,
     }
     handler = proxy_handlers.get(api_name)
     if not handler:
@@ -61,6 +61,8 @@ def _proxy_deepseek_reasoner(params):
 
 def _call_deepseek(model, messages, max_tokens=2000):
     """调用DeepSeek API"""
+    if not DEEPSEEK_API_KEY:
+        return {"err": "deepseek_api_key_missing", "hint": "请设置环境变量 DEEPSEEK_API_KEY"}
     payload = json.dumps({
         "model": model,
         "messages": messages,
@@ -89,54 +91,141 @@ def _call_deepseek(model, messages, max_tokens=2000):
         return {"err": f"deepseek_call_failed:{str(e)}"}
 
 
-def _proxy_openai_chat(params):
-    """OpenAI Chat API代理（通过DeepSeek中转或直接调用）"""
-    # 当前用DeepSeek作为后端，后续可切换
-    messages = params.get("messages", [])
-    if not messages:
-        prompt = params.get("prompt", params.get("message", ""))
-        if not prompt:
-            return {"err": "missing prompt or messages"}
-        messages = [{"role": "user", "content": prompt}]
+# ═══════════════════════════════════════════════════════════════
+# z-ai-web-dev-sdk 执行层 — 真实AI能力
+# ═══════════════════════════════════════════════════════════════
+
+def _run_zai(args, timeout=120):
+    """调用z-ai CLI，返回JSON结果或错误"""
+    try:
+        result = subprocess.run(
+            ["z-ai"] + args,
+            capture_output=True, text=True, timeout=timeout,
+            env={**os.environ, "NODE_PATH": "/home/z/.bun/install/global/node_modules"}
+        )
+        output = result.stdout.strip()
+        if not output and result.stderr:
+            return {"ok": False, "err": f"zai_cli_error", "detail": result.stderr[:500]}
+        # Try to parse JSON output
+        try:
+            return {"ok": True, "data": json.loads(output)}
+        except json.JSONDecodeError:
+            return {"ok": True, "data": output}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "err": "zai_timeout", "detail": f"Command timed out after {timeout}s"}
+    except FileNotFoundError:
+        return {"ok": False, "err": "zai_not_installed", "detail": "z-ai CLI not found"}
+    except Exception as e:
+        return {"ok": False, "err": f"zai_error:{str(e)}"}
+
+
+def _sdk_chat(params):
+    """SDK LLM对话 — z-ai chat"""
+    prompt = params.get("prompt", params.get("message", ""))
     system = params.get("system", "")
-    if system:
-        messages = [{"role": "system", "content": system}] + messages
-    max_tokens = params.get("max_tokens", 2000)
-    return _call_deepseek("deepseek-chat", messages, max_tokens)
-
-
-def _proxy_claude_chat(params):
-    """Claude API代理（通过DeepSeek中转）"""
-    messages = params.get("messages", [])
-    if not messages:
-        prompt = params.get("prompt", params.get("message", ""))
+    thinking = params.get("thinking", False)
+    if not prompt:
+        messages = params.get("messages", [])
+        if messages:
+            prompt = messages[-1].get("content", "")
         if not prompt:
-            return {"err": "missing prompt or messages"}
-        messages = [{"role": "user", "content": prompt}]
-    system = params.get("system", "")
+            return {"err": "missing prompt or message"}
+    args = ["chat", "--prompt", prompt]
     if system:
-        messages = [{"role": "system", "content": system}] + messages
-    max_tokens = params.get("max_tokens", 2000)
-    return _call_deepseek("deepseek-chat", messages, max_tokens)
+        args += ["--system", system]
+    if thinking:
+        args.append("--thinking")
+    result = _run_zai(args, timeout=60)
+    if not result.get("ok"):
+        # Fallback to DeepSeek
+        return _proxy_deepseek_chat(params)
+    data = result.get("data", {})
+    if isinstance(data, dict):
+        return data
+    return {"content": str(data), "model": "z-ai-sdk"}
 
 
-def _proxy_tts(params):
-    """TTS代理（当前用DeepSeek生成文本描述）"""
+def _sdk_tts_proxy(params):
+    """SDK TTS代理 — z-ai tts"""
     text = params.get("text", params.get("input", ""))
     if not text:
         return {"err": "missing text"}
-    result = _chat(f"将以下文本转换为语音描述格式（含语速、音色、情感标注）：\n{text[:2000]}",
-                   system="你是语音合成专家。", max_tokens=500)
-    return {"audio_description": result, "note": "Full TTS requires OpenAI API key"}
+    voice = params.get("voice", "tongtong")
+    speed = params.get("speed", 1.0)
+    fmt = params.get("format", "wav")
+    outpath = os.path.join(tempfile.gettempdir(), f"atex_tts_{int(time.time())}.{fmt}")
+    args = ["tts", "--input", text, "--output", outpath, "--voice", voice,
+            "--speed", str(speed), "--format", fmt]
+    result = _run_zai(args, timeout=60)
+    if not result.get("ok"):
+        return {"err": "tts_failed", "detail": result.get("detail", "")}
+    if os.path.exists(outpath):
+        with open(outpath, "rb") as f:
+            audio_b64 = base64.b64encode(f.read()).decode()
+        os.unlink(outpath)
+        return {"audio_base64": audio_b64, "format": fmt, "voice": voice}
+    return {"err": "tts_no_output_file"}
 
 
-def _proxy_asr(params):
-    """ASR代理"""
-    return {"note": "ASR requires audio input. Use service svc_016 for full ASR."}
+def _sdk_asr_proxy(params):
+    """SDK ASR代理 — z-ai asr"""
+    audio_b64 = params.get("audio_base64", params.get("audio", ""))
+    audio_file = params.get("audio_file", "")
+    if audio_b64:
+        # Decode base64 to temp file
+        try:
+            audio_bytes = base64.b64decode(audio_b64)
+            tmppath = os.path.join(tempfile.gettempdir(), f"atex_asr_{int(time.time())}.wav")
+            with open(tmppath, "wb") as f:
+                f.write(audio_bytes)
+            audio_file = tmppath
+        except Exception as e:
+            return {"err": f"audio_decode_failed:{str(e)}"}
+    if not audio_file:
+        return {"err": "missing audio_base64 or audio_file"}
+    args = ["asr", "--file", audio_file]
+    result = _run_zai(args, timeout=60)
+    # Cleanup temp file
+    if audio_b64 and os.path.exists(audio_file):
+        os.unlink(audio_file)
+    if not result.get("ok"):
+        return {"err": "asr_failed", "detail": result.get("detail", "")}
+    data = result.get("data", {})
+    if isinstance(data, dict):
+        return data
+    return {"transcript": str(data)}
+
+
+def _sdk_web_search_proxy(params):
+    """SDK Web搜索代理 — z-ai function web_search"""
+    query = params.get("query", params.get("q", ""))
+    if not query:
+        return {"err": "missing query"}
+    num = params.get("num", 5)
+    args = ["function", "--name", "web_search",
+            "--args", json.dumps({"query": query, "num": num})]
+    result = _run_zai(args, timeout=30)
+    if not result.get("ok"):
+        # Fallback to DeepSeek chat
+        return _proxy_web_search_fallback(params)
+    data = result.get("data", {})
+    if isinstance(data, dict):
+        return data
+    return {"search_result": str(data), "query": query}
+
+
+def _proxy_web_search_fallback(params):
+    """Web搜索fallback — 用DeepSeek知识"""
+    query = params.get("query", params.get("q", ""))
+    if not query:
+        return {"err": "missing query"}
+    result = _chat(f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。",
+                   system="你是信息检索专家，提供准确的事实信息。", max_tokens=1000)
+    return {"search_result": result, "query": query, "source": "deepseek_knowledge"}
 
 
 def _proxy_embedding(params):
-    """Embedding代理"""
+    """Embedding代理（DeepSeek知识摘要）"""
     text = params.get("text", params.get("input", ""))
     if not text:
         return {"err": "missing text"}
@@ -145,60 +234,226 @@ def _proxy_embedding(params):
     return {"semantic_summary": result, "note": "Full embedding requires OpenAI API key"}
 
 
-def _proxy_web_search(params):
-    """Web搜索代理"""
+# ═══════════════════════════════════════════════════════════════
+# AI能力层服务函数 (svc_101-108) — z-ai-web-dev-sdk真实后端
+# ═══════════════════════════════════════════════════════════════
+
+def _svc_tts(params, buyer=""):
+    """svc_101: 语音合成(TTS) — z-ai tts"""
+    text = params.get("text", params.get("input", ""))
+    if not text:
+        return {"error": "missing text parameter"}
+    voice = params.get("voice", "tongtong")
+    speed = params.get("speed", 1.0)
+    fmt = params.get("format", "wav")
+    outpath = os.path.join(tempfile.gettempdir(), f"atex_svc101_{int(time.time())}.{fmt}")
+    args = ["tts", "--input", text[:5000], "--output", outpath,
+            "--voice", voice, "--speed", str(speed), "--format", fmt]
+    result = _run_zai(args, timeout=60)
+    if not result.get("ok"):
+        return {"error": "tts_generation_failed", "detail": result.get("detail", "")}
+    if os.path.exists(outpath):
+        with open(outpath, "rb") as f:
+            audio_b64 = base64.b64encode(f.read()).decode()
+        os.unlink(outpath)
+        return {"service": "语音合成(TTS)", "audio_base64": audio_b64,
+                "format": fmt, "voice": voice, "text_length": len(text)}
+    return {"error": "tts_no_output_file"}
+
+
+def _svc_asr(params, buyer=""):
+    """svc_102: 语音识别(ASR) — z-ai asr"""
+    audio_b64 = params.get("audio_base64", params.get("audio", ""))
+    audio_file = params.get("audio_file", "")
+    if audio_b64:
+        try:
+            audio_bytes = base64.b64decode(audio_b64)
+            tmppath = os.path.join(tempfile.gettempdir(), f"atex_svc102_{int(time.time())}.wav")
+            with open(tmppath, "wb") as f:
+                f.write(audio_bytes)
+            audio_file = tmppath
+        except Exception as e:
+            return {"error": f"audio_decode_failed:{str(e)}"}
+    if not audio_file:
+        return {"error": "missing audio_base64 or audio_file parameter"}
+    args = ["asr", "--file", audio_file]
+    result = _run_zai(args, timeout=60)
+    if audio_b64 and os.path.exists(audio_file):
+        os.unlink(audio_file)
+    if not result.get("ok"):
+        return {"error": "asr_failed", "detail": result.get("detail", "")}
+    data = result.get("data", {})
+    transcript = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
+    return {"service": "语音识别(ASR)", "transcript": transcript}
+
+
+def _svc_vlm(params, buyer=""):
+    """svc_103: 图片理解(VLM) — z-ai vision"""
+    prompt = params.get("prompt", params.get("question", "请描述这张图片"))
+    image_url = params.get("image_url", params.get("image", ""))
+    image_b64 = params.get("image_base64", "")
+    if not image_url and not image_b64:
+        return {"error": "missing image_url or image_base64 parameter"}
+    # If base64, save to temp file
+    if image_b64 and not image_url:
+        try:
+            img_bytes = base64.b64decode(image_b64)
+            tmppath = os.path.join(tempfile.gettempdir(), f"atex_svc103_{int(time.time())}.png")
+            with open(tmppath, "wb") as f:
+                f.write(img_bytes)
+            image_url = tmppath
+        except Exception as e:
+            return {"error": f"image_decode_failed:{str(e)}"}
+    args = ["vision", "--prompt", prompt, "--image", image_url]
+    result = _run_zai(args, timeout=60)
+    # Cleanup temp file
+    if image_b64 and os.path.exists(image_url):
+        os.unlink(image_url)
+    if not result.get("ok"):
+        return {"error": "vlm_failed", "detail": result.get("detail", "")}
+    data = result.get("data", {})
+    content = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
+    return {"service": "图片理解(VLM)", "analysis": content}
+
+
+def _svc_image_gen(params, buyer=""):
+    """svc_104: 图片生成 — z-ai image"""
+    prompt = params.get("prompt", params.get("description", ""))
+    if not prompt:
+        return {"error": "missing prompt parameter"}
+    size = params.get("size", "1024x1024")
+    outpath = os.path.join(tempfile.gettempdir(), f"atex_svc104_{int(time.time())}.png")
+    args = ["image", "--prompt", prompt, "--output", outpath, "--size", size]
+    result = _run_zai(args, timeout=120)
+    if not result.get("ok"):
+        return {"error": "image_gen_failed", "detail": result.get("detail", "")}
+    if os.path.exists(outpath):
+        with open(outpath, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        os.unlink(outpath)
+        return {"service": "图片生成", "image_base64": img_b64, "size": size, "prompt": prompt[:100]}
+    return {"error": "image_gen_no_output_file"}
+
+
+def _svc_image_edit(params, buyer=""):
+    """svc_105: 图片编辑 — z-ai image-edit"""
+    prompt = params.get("prompt", params.get("instruction", ""))
+    image_url = params.get("image_url", params.get("image", ""))
+    image_b64 = params.get("image_base64", "")
+    if not prompt:
+        return {"error": "missing prompt parameter"}
+    if not image_url and not image_b64:
+        return {"error": "missing image_url or image_base64 parameter"}
+    if image_b64 and not image_url:
+        try:
+            img_bytes = base64.b64decode(image_b64)
+            tmppath = os.path.join(tempfile.gettempdir(), f"atex_svc105_input_{int(time.time())}.png")
+            with open(tmppath, "wb") as f:
+                f.write(img_bytes)
+            image_url = tmppath
+        except Exception as e:
+            return {"error": f"image_decode_failed:{str(e)}"}
+    size = params.get("size", "1024x1024")
+    outpath = os.path.join(tempfile.gettempdir(), f"atex_svc105_output_{int(time.time())}.png")
+    args = ["image-edit", "--prompt", prompt, "--image", image_url, "--output", outpath, "--size", size]
+    result = _run_zai(args, timeout=120)
+    if image_b64 and os.path.exists(image_url):
+        os.unlink(image_url)
+    if not result.get("ok"):
+        return {"error": "image_edit_failed", "detail": result.get("detail", "")}
+    if os.path.exists(outpath):
+        with open(outpath, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        os.unlink(outpath)
+        return {"service": "图片编辑", "image_base64": img_b64, "size": size}
+    return {"error": "image_edit_no_output_file"}
+
+
+def _svc_video_gen(params, buyer=""):
+    """svc_106: 视频生成 — z-ai video (异步，返回task_id)"""
+    prompt = params.get("prompt", "")
+    image_url = params.get("image_url", "")
+    if not prompt and not image_url:
+        return {"error": "missing prompt or image_url parameter"}
+    args = ["video", "--poll", "--poll-interval", "10", "--max-polls", "60"]
+    if prompt:
+        args += ["--prompt", prompt]
+    if image_url:
+        args += ["--image-url", image_url]
+    size = params.get("size", "1344x768")
+    args += ["--size", size]
+    duration = params.get("duration", 5)
+    args += ["--duration", str(duration)]
+    outpath = os.path.join(tempfile.gettempdir(), f"atex_svc106_{int(time.time())}.json")
+    args += ["--output", outpath]
+    result = _run_zai(args, timeout=600)
+    if not result.get("ok"):
+        return {"error": "video_gen_failed", "detail": result.get("detail", ""),
+                "note": "Video generation is async and may take 2-3 minutes"}
+    if os.path.exists(outpath):
+        with open(outpath) as f:
+            data = json.load(f)
+        os.unlink(outpath)
+        return {"service": "视频生成", "result": data}
+    data = result.get("data", {})
+    return {"service": "视频生成", "result": data if isinstance(data, dict) else str(data)}
+
+
+def _svc_web_search(params, buyer=""):
+    """svc_107: Web搜索 — z-ai function web_search"""
     query = params.get("query", params.get("q", ""))
     if not query:
-        return {"err": "missing query"}
-    result = _chat(f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。",
-                   system="你是信息检索专家，提供准确的事实信息。", max_tokens=1000)
-    return {"search_result": result, "query": query}
+        return {"error": "missing query parameter"}
+    num = params.get("num", 5)
+    args = ["function", "--name", "web_search",
+            "--args", json.dumps({"query": query, "num": num})]
+    result = _run_zai(args, timeout=30)
+    if not result.get("ok"):
+        # Fallback to DeepSeek
+        fallback = _chat(f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。",
+                         system="你是信息检索专家，提供准确的事实信息。", max_tokens=1000)
+        return {"service": "Web搜索", "results": fallback, "query": query, "source": "deepseek_fallback"}
+    data = result.get("data", {})
+    return {"service": "Web搜索", "results": data if isinstance(data, (dict, list)) else str(data),
+            "query": query, "source": "z-ai-sdk"}
+
+
+def _svc_web_reader(params, buyer=""):
+    """svc_108: Web阅读 — z-ai function web_reader"""
+    url = params.get("url", "")
+    if not url:
+        return {"error": "missing url parameter"}
+    args = ["function", "--name", "web_reader",
+            "--args", json.dumps({"url": url})]
+    result = _run_zai(args, timeout=30)
+    if not result.get("ok"):
+        return {"error": "web_reader_failed", "detail": result.get("detail", "")}
+    data = result.get("data", {})
+    return {"service": "Web阅读", "content": data if isinstance(data, dict) else str(data), "url": url}
 
 
 def execute_service(service_id, params, buyer):
     """根据service_id执行对应服务，返回结果"""
     executors = {
-        "svc_001": _llm_chat,
-        "svc_002": _llm_chat,
-        "svc_003": _web_search_and_analyze,
-        "svc_004": _speech_translate,
-        "svc_005": _finance_analysis,
-        "svc_006": _content_audit,
-        "svc_010": _info_intelligence,
-        "svc_011": _channel_audit,
-        "svc_012": _web_search_deep,
-        "svc_013": _web_automation,
-        "svc_014": _file_generation,
-        "svc_015": _image_gen_edit,
-        "svc_016": _tts_asr,
-        "svc_017": _video_service,
-        "svc_018": _ops_analysis,
-        "svc_019": _platform_dev,
-        "svc_020": _promo_content,
-        "svc_021": _agent_governance,
-        "svc_022": _llm_chat,
-        "svc_023": _coding_assistant,
-        "svc_024": _startup_advisor,
-        "svc_025": _long_doc_analysis,
-        "svc_026": _multimodal_understand,
-        "svc_028": _protocol_adapter,
-        "svc_029": _spatial_intelligence,
-        "svc_030": _compute_optimizer,
-        "svc_057": _mcp_health_check,
-        "svc_058": _ai_price_compare,
-        "svc_059": _prompt_optimizer,
-        # ── v5.16 新增：数据采集+规则服务+工作流 ──
-        "svc_037": _web_scrape_clean,
-        "svc_038": _structured_extract,
-        "svc_039": _realtime_data_query,
-        "svc_040": _workflow_orchestrate,
-        "svc_041": _agent_service_discover,
-        "svc_042": _batch_web_monitor,
-        # ── v5.18 融合：中国合规工具（SCF API后端） ──
+        # ── v6.0 合规工具（SCF API后端） ──
         "svc_046": _cn_banned_word_check,
         "svc_047": _cn_geo_visibility_check,
         "svc_048": _cn_global_compliance_check,
         "svc_049": _cn_seo_compliance_check,
+        # ── v6.0 AI能力层（z-ai-web-dev-sdk真实后端） ──
+        "svc_101": _svc_tts,
+        "svc_102": _svc_asr,
+        "svc_103": _svc_vlm,
+        "svc_104": _svc_image_gen,
+        "svc_105": _svc_image_edit,
+        "svc_106": _svc_video_gen,
+        "svc_107": _svc_web_search,
+        "svc_108": _svc_web_reader,
+        # ── v6.0 LLM对话（DeepSeek后端） ──
+        "svc_022": _llm_chat,
+        "svc_057": _mcp_health_check,
+        "svc_058": _ai_price_compare,
+        "svc_059": _prompt_optimizer,
     }
     handler = executors.get(service_id)
     if not handler:
@@ -247,19 +502,6 @@ def _chat(prompt, system="", max_tokens=2000):
 
 # ── 具体服务实现 ──
 
-def _web_search_deep(params, buyer):
-    """svc_012: Web搜索与深度阅读"""
-    query = params.get("query", "")
-    if not query:
-        return {"err": "missing query"}
-    # Use DeepSeek's built-in search capability or generate based on knowledge
-    result = _chat(
-        f"基于你的知识，回答以下搜索查询，提供详细、准确的信息：\n\n查询：{query}\n\n请提供：\n1. 关键信息摘要\n2. 最新趋势和动态\n3. 相关数据或案例\n4. 信息来源建议",
-        system="你是一个专业的信息搜索和分析助手。提供准确、全面、有深度的信息。如果信息可能过时，请说明。",
-        max_tokens=1500
-    )
-    return {"query": query, "results": result}
-
 def _llm_chat(params, buyer):
     """svc_001/002/022: LLM对话"""
     prompt = params.get("prompt", params.get("message", ""))
@@ -268,292 +510,6 @@ def _llm_chat(params, buyer):
     system = params.get("system", "你是一个有用的AI助手。")
     response = _chat(prompt, system=system, max_tokens=2000)
     return {"response": response}
-
-def _web_search_and_analyze(params, buyer):
-    """svc_003: AI法律合规与政策追踪"""
-    topic = params.get("topic", params.get("query", ""))
-    if not topic:
-        return {"err": "missing topic"}
-    analysis = _chat(
-        f"分析'{topic}'相关的AI法律合规要点：\n1. 主要法规和政策\n2. 合规风险\n3. 最佳实践建议\n4. 近期政策变化趋势",
-        system="你是AI法律合规专家，熟悉全球AI法规。提供专业、可操作的建议。",
-        max_tokens=1500
-    )
-    return {"topic": topic, "analysis": analysis}
-
-def _speech_translate(params, buyer):
-    """svc_004: 实时语音翻译"""
-    text = params.get("text", "")
-    source_lang = params.get("source_lang", "auto")
-    target_lang = params.get("target_lang", "zh")
-    if not text:
-        return {"err": "missing text"}
-    result = _chat(
-        f"将以下文本从{source_lang}翻译为{target_lang}，保持语义准确和自然流畅：\n\n{text}",
-        system="你是专业翻译，精通多语言。翻译准确、自然、符合目标语言习惯。",
-        max_tokens=2000
-    )
-    return {"translation": result, "source_lang": source_lang, "target_lang": target_lang}
-
-def _finance_analysis(params, buyer):
-    """svc_005: 金融投研分析"""
-    symbol = params.get("symbol", params.get("query", ""))
-    if not symbol:
-        return {"err": "missing symbol or query"}
-    analysis = _chat(
-        f"对'{symbol}'进行投资分析：\n1. 行业地位和竞争格局\n2. 财务指标分析\n3. 增长前景\n4. 风险因素\n5. 投资建议",
-        system="你是资深金融分析师，提供专业、客观的投资分析。注意声明这不构成投资建议。",
-        max_tokens=1500
-    )
-    return {"symbol": symbol, "analysis": analysis}
-
-def _content_audit(params, buyer):
-    """svc_006: 内容质量审核"""
-    content = params.get("content", "")
-    if not content:
-        return {"err": "missing content"}
-    result = _chat(
-        f"审核以下内容的质量、安全性和合规性：\n\n{content[:3000]}\n\n请给出：\n1. 质量评分(1-10)\n2. 安全性评估\n3. 合规性评估\n4. 具体修改建议",
-        system="你是内容审核专家，严格评估内容质量、安全性和合规性。",
-        max_tokens=1000
-    )
-    return {"audit": result}
-
-def _info_intelligence(params, buyer):
-    """svc_010: AI情报与渠道管理 — 全球AI技术动态追踪、渠道审核与深度分析"""
-    topic = params.get("topic", params.get("query", ""))
-    if not topic:
-        return {"err": "missing topic"}
-    result = _chat(
-        f"收集关于'{topic}'的最新情报：\n1. 关键事件和时间线\n2. 主要参与者和动态（OpenAI/Google/Anthropic/Meta/字节/阿里/百度/腾讯等）\n3. 技术趋势（大模型/Agent协议/视频生成/编程AI等）\n4. 市场影响与融资动态\n5. 对Agent经济生态的影响\n6. 未来展望与行动建议",
-        system="你是AI情报分析师，擅长全球AI技术动态追踪和信息渠道管理。提供结构化、有深度的情报报告，覆盖国内外AI公司官方发布和主流科技媒体（TechCrunch/The Verge/机器之心/量子位/36氪等）的最新动态。",
-        max_tokens=1500
-    )
-    return {"topic": topic, "intelligence": result}
-
-def _channel_audit(params, buyer):
-    """svc_011: 信息渠道健康审核"""
-    url = params.get("url", "")
-    criteria = params.get("criteria", "可靠性、时效性、准确性")
-    result = _chat(
-        f"评估信息渠道'{url}'的质量：\n评估标准：{criteria}\n请给出评分和改进建议。",
-        system="你是信息质量评估专家。",
-        max_tokens=800
-    )
-    return {"url": url, "audit": result}
-
-def _web_automation(params, buyer):
-    """svc_013: 网页自动化操作"""
-    url = params.get("url", "")
-    action = params.get("action", "snapshot")
-    result = _chat(
-        f"为以下网页自动化任务设计方案：\nURL: {url}\n操作: {action}\n\n提供：1.操作步骤 2.注意事项 3.预期结果",
-        system="你是网页自动化专家，熟悉浏览器自动化和网页抓取。",
-        max_tokens=1000
-    )
-    return {"plan": result, "url": url, "action": action}
-
-def _file_generation(params, buyer):
-    """svc_014: 文件生成与处理"""
-    file_type = params.get("type", "xlsx")
-    content = params.get("content", params.get("data", ""))
-    result = _chat(
-        f"生成{file_type}格式的文件内容：\n{content[:2000]}\n\n提供完整的文件结构和内容。",
-        system=f"你是文件生成专家，擅长生成{file_type}格式的内容。",
-        max_tokens=2000
-    )
-    return {"content": result, "type": file_type}
-
-def _image_gen_edit(params, buyer):
-    """svc_015: AI图像生成与编辑"""
-    action = params.get("action", "generate")
-    prompt = params.get("prompt", "")
-    if not prompt:
-        return {"err": "missing prompt"}
-    if action == "generate":
-        result = _chat(
-            f"为以下图像生成需求创建详细的图像描述prompt：\n{prompt}\n\n输出英文prompt，包含：主体、风格、光照、构图、细节描述。",
-            system="你是图像生成prompt专家，创建精确、详细的图像描述。",
-            max_tokens=500
-        )
-        return {"image_prompt": result, "original_prompt": prompt, "note": "Use this prompt with any image generation API"}
-    elif action == "edit":
-        result = _chat(
-            f"为以下图像编辑需求创建编辑指令：\n原始描述：{params.get('image_description','')}\n编辑要求：{prompt}\n\n输出详细的编辑步骤和参数。",
-            system="你是图像编辑专家。",
-            max_tokens=500
-        )
-        return {"edit_instructions": result}
-
-def _tts_asr(params, buyer):
-    """svc_016: 语音合成与识别"""
-    action = params.get("action", "tts")
-    text = params.get("text", "")
-    if not text:
-        return {"err": "missing text"}
-    if action == "tts":
-        result = _chat(
-            f"将以下文本转换为适合语音合成的格式（标注停顿、重音、语调）：\n{text}",
-            system="你是语音合成文本预处理专家。",
-            max_tokens=1000
-        )
-        return {"tts_text": result}
-    else:
-        result = _chat(
-            f"对以下语音识别结果进行纠错和格式化：\n{text}",
-            system="你是语音识别后处理专家。",
-            max_tokens=1000
-        )
-        return {"corrected_text": result}
-
-def _video_service(params, buyer):
-    """svc_017: 视频理解与生成"""
-    action = params.get("action", "understand")
-    description = params.get("description", params.get("prompt", ""))
-    if not description:
-        return {"err": "missing description or prompt"}
-    result = _chat(
-        f"分析以下视频内容：\n{description[:2000]}\n\n提供：1.内容摘要 2.关键场景 3.情感分析 4.标签分类",
-        system="你是视频内容分析专家。",
-        max_tokens=1000
-    )
-    return {"analysis": result}
-
-def _ops_analysis(params, buyer):
-    """svc_018: 运营数据分析与报告"""
-    query = params.get("query", "")
-    data = params.get("data", "")
-    result = _chat(
-        f"分析以下运营数据并生成报告：\n查询：{query}\n数据：{str(data)[:2000]}",
-        system="你是运营数据分析专家，擅长从数据中提取洞察。",
-        max_tokens=1500
-    )
-    return {"report": result}
-
-def _platform_dev(params, buyer):
-    """svc_019: 平台功能开发"""
-    requirement = params.get("requirement", params.get("prompt", ""))
-    if not requirement:
-        return {"err": "missing requirement"}
-    result = _chat(
-        f"设计以下平台功能的实现方案：\n{requirement}\n\n提供：1.架构设计 2.技术选型 3.接口设计 4.实现步骤 5.测试方案",
-        system="你是平台架构师和全栈开发专家。",
-        max_tokens=2000
-    )
-    return {"design": result}
-
-def _promo_content(params, buyer):
-    """svc_020: 推广内容生成"""
-    topic = params.get("topic", "")
-    style = params.get("style", "technical")
-    if not topic:
-        return {"err": "missing topic"}
-    result = _chat(
-        f"为'{topic}'生成{style}风格的推广内容，包括：标题、正文、CTA、标签。",
-        system="你是技术营销专家，擅长写有说服力的推广内容。",
-        max_tokens=1000
-    )
-    return {"content": result}
-
-def _agent_governance(params, buyer):
-    """svc_021: 企业Agent治理平台"""
-    query = params.get("query", "")
-    if not query:
-        return {"err": "missing query"}
-    result = _chat(
-        f"作为Agent治理专家，回答：{query}\n\n提供：1.治理框架 2.安全策略 3.监控方案 4.合规建议",
-        system="你是企业AI Agent治理专家，熟悉Agent安全、监控和合规。",
-        max_tokens=1500
-    )
-    return {"advice": result}
-
-def _coding_assistant(params, buyer):
-    """svc_023: AI编程助手"""
-    prompt = params.get("prompt", params.get("code", ""))
-    language = params.get("language", "Python")
-    if not prompt:
-        return {"err": "missing prompt"}
-    result = _chat(
-        prompt,
-        system=f"You are an expert {language} programmer. Write clean, efficient, well-documented code. Respond in the same language as the user's question.",
-        max_tokens=2000
-    )
-    return {"code": result}
-
-def _startup_advisor(params, buyer):
-    """svc_024: AI创业融资顾问"""
-    query = params.get("query", "")
-    if not query:
-        return {"err": "missing query"}
-    result = _chat(
-        f"为'{query}'提供融资建议：\n1.市场分析 2.竞争格局 3.融资策略 4.估值建议 5.投资人匹配",
-        system="你是AI创业融资顾问，熟悉全球AI投资趋势。",
-        max_tokens=1500
-    )
-    return {"analysis": result}
-
-def _long_doc_analysis(params, buyer):
-    """svc_025: 长文档深度分析"""
-    content = params.get("content", params.get("text", ""))
-    focus = params.get("focus", "summary")
-    if not content:
-        return {"err": "missing content"}
-    result = _chat(
-        f"深度分析以下文档，重点关注{focus}：\n\n{content[:6000]}",
-        system="你是文档分析专家，擅长提取关键信息和深度分析。",
-        max_tokens=2000
-    )
-    return {"analysis": result}
-
-def _multimodal_understand(params, buyer):
-    """svc_026: 多模态内容理解"""
-    description = params.get("image_description", params.get("description", ""))
-    prompt = params.get("prompt", "描述这张图片的内容")
-    if not description:
-        return {"err": "missing image_description"}
-    result = _chat(
-        f"基于以下图像描述，回答问题：\n图像描述：{description}\n问题：{prompt}",
-        system="你是多模态内容理解专家。",
-        max_tokens=1000
-    )
-    return {"understanding": result}
-
-def _protocol_adapter(params, buyer):
-    """svc_028: Agent协议适配器"""
-    source = params.get("source_protocol", "openai")
-    target = params.get("target_protocol", "mcp")
-    data = params.get("data", {})
-    result = _chat(
-        f"将以下{source}格式的数据转换为{target}格式：\n{json.dumps(data, ensure_ascii=False)[:2000]}\n\n提供完整的转换结果和使用说明。",
-        system=f"你是AI协议专家，精通OpenAI Function Calling、Anthropic Tool Use、MCP、A2A等协议。",
-        max_tokens=1500
-    )
-    return {"converted": result, "source": source, "target": target}
-
-def _spatial_intelligence(params, buyer):
-    """svc_029: 空间智能与3D内容生成"""
-    prompt = params.get("prompt", "")
-    if not prompt:
-        return {"err": "missing prompt"}
-    result = _chat(
-        f"为以下3D场景需求生成详细描述和实现方案：\n{prompt}\n\n提供：1.场景描述 2.3D建模方案 3.技术实现 4.渲染参数",
-        system="你是3D建模和空间智能专家。",
-        max_tokens=1000
-    )
-    return {"design": result}
-
-def _compute_optimizer(params, buyer):
-    """svc_030: Agent算力成本优化"""
-    requirement = params.get("requirement", params.get("query", ""))
-    if not requirement:
-        return {"err": "missing requirement"}
-    result = _chat(
-        f"为'{requirement}'提供算力成本优化方案：\n1.当前主流算力平台价格对比 2.按需vs预留实例建议 3.成本优化策略 4.推荐配置",
-        system="你是云计算和算力成本优化专家，熟悉AWS/GCP/Azure/阿里云/腾讯云定价。",
-        max_tokens=1500
-    )
-    return {"recommendation": result}
-
 
 # ── 新增MCP生态服务 (2026-05-27) ──
 
@@ -728,440 +684,6 @@ def _prompt_optimizer(params, buyer=""):
 
 
 # ── v5.16 新增：数据采集+规则服务+工作流编排 (2026-05-31) ──
-
-def _web_scrape_clean(params, buyer=""):
-    """svc_037: 网页数据清洗 — Firecrawl模式，URL→Markdown/JSON"""
-    url = params.get("url", "")
-    mode = params.get("mode", "scrape")  # scrape | crawl
-    output_format = params.get("format", "markdown")  # markdown | json | text
-    if not url:
-        return {"error": "url parameter required"}
-
-    import re
-    results = {"url": url, "mode": mode, "format": output_format}
-
-    try:
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        })
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html = resp.read().decode("utf-8", errors="replace")
-
-        # Extract title
-        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.S | re.I)
-        title = title_match.group(1).strip() if title_match else ""
-
-        # Extract meta description
-        desc_match = re.search(r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)', html, re.I)
-        if not desc_match:
-            desc_match = re.search(r'<meta[^>]+content=["\']([^"\']+)[^>]+name=["\']description["\']', html, re.I)
-        description = desc_match.group(1).strip() if desc_match else ""
-
-        # Clean HTML → text
-        # Remove script/style/nav/footer/header/aside
-        clean = re.sub(r'<(script|style|nav|footer|header|aside|iframe|noscript)[^>]*>.*?</\1>', '', html, flags=re.S | re.I)
-        # Remove HTML tags
-        clean = re.sub(r'<[^>]+>', ' ', clean)
-        # Decode HTML entities
-        import html as html_mod
-        clean = html_mod.unescape(clean)
-        # Normalize whitespace
-        clean = re.sub(r'\s+', ' ', clean).strip()
-        # Truncate to reasonable length
-        clean = clean[:8000]
-
-        # Convert to requested format
-        if output_format == "markdown":
-            content = f"# {title}\n\n"
-            if description:
-                content += f"> {description}\n\n"
-            # Split into paragraphs at sentence boundaries
-            sentences = re.split(r'(?<=[。！？.!?])\s*', clean)
-            para = ""
-            for s in sentences:
-                para += s + " "
-                if len(para) > 200:
-                    content += para.strip() + "\n\n"
-                    para = ""
-            if para.strip():
-                content += para.strip() + "\n"
-            results["content"] = content
-        elif output_format == "json":
-            results["content"] = {"title": title, "description": description, "text": clean[:5000]}
-        else:
-            results["content"] = clean
-
-        results["title"] = title
-        results["description"] = description
-        results["content_length"] = len(clean)
-        results["status"] = "ok"
-
-    except Exception as e:
-        results["status"] = "error"
-        results["error"] = str(e)[:200]
-        # Fallback: use LLM to describe what we know
-        if description:
-            results["content"] = f"# {title}\n\n{description}"
-            results["status"] = "partial"
-
-    return results
-
-
-def _structured_extract(params, buyer=""):
-    """svc_038: 结构化数据提取 — 规则引擎+LLM混合"""
-    url = params.get("url", "")
-    schema = params.get("schema", {})  # e.g. {"title": "string", "price": "number", "date": "string"}
-    extract_rules = params.get("rules", "")
-
-    if not url and not params.get("content", ""):
-        return {"error": "url or content parameter required"}
-
-    content = params.get("content", "")
-
-    # If URL provided, fetch first
-    if url and not content:
-        try:
-            req = urllib.request.Request(url, headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            })
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                import re
-                html = resp.read().decode("utf-8", errors="replace")
-                clean = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.S | re.I)
-                clean = re.sub(r'<[^>]+>', ' ', clean)
-                clean = re.sub(r'\s+', ' ', clean).strip()
-                content = clean[:6000]
-        except Exception as e:
-            return {"error": f"fetch_failed: {str(e)[:100]}"}
-
-    if not schema:
-        schema = {"title": "string", "description": "string", "key_info": "string"}
-
-    # Use LLM for extraction (hybrid: rules pre-process, LLM extract)
-    schema_str = json.dumps(schema, ensure_ascii=False)
-    result = _chat(
-        f"从以下内容中按Schema提取结构化数据。\n\nSchema: {schema_str}\n\n内容: {content[:4000]}\n\n请严格按Schema输出JSON，缺失字段填null。",
-        system="你是数据提取专家。只输出JSON，不要其他文字。",
-        max_tokens=1500
-    )
-    try:
-        extracted = json.loads(result)
-    except:
-        extracted = {"raw_extraction": result}
-
-    return {"url": url, "schema": schema, "extracted": extracted, "method": "hybrid"}
-
-
-def _realtime_data_query(params, buyer=""):
-    """svc_039: 实时数据查询 — 纯规则服务，零LLM调用"""
-    query_type = params.get("type", "").lower()
-    query_value = params.get("query", params.get("value", ""))
-
-    if not query_type:
-        return {"error": "type parameter required. Supported: exchange_rate, weather, ip_lookup, dns, whois, timezone, unit_convert"}
-
-    import socket
-    result = {"type": query_type, "query": query_value, "service_type": "rule", "llm_calls": 0}
-
-    try:
-        if query_type == "exchange_rate":
-            # Use free API for exchange rates
-            req = urllib.request.Request(
-                f"https://open.er-api.com/v6/latest/{query_value or 'USD'}",
-                headers={"User-Agent": "ATEX/5.16"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read())
-                result["rates"] = data.get("rates", {})
-                result["base"] = data.get("base_code", query_value or "USD")
-                result["updated"] = data.get("time_last_update_utc", "")
-
-        elif query_type == "ip_lookup":
-            ip = query_value or ""
-            req = urllib.request.Request(
-                f"http://ip-api.com/json/{ip}",
-                headers={"User-Agent": "ATEX/5.16"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read())
-                result["ip"] = data.get("query", ip)
-                result["location"] = f"{data.get('city','')}, {data.get('regionName','')}, {data.get('country','')}"
-                result["isp"] = data.get("isp", "")
-                result["lat"] = data.get("lat", 0)
-                result["lon"] = data.get("lon", 0)
-
-        elif query_type == "dns":
-            domain = query_value
-            if domain:
-                try:
-                    ips = socket.getaddrinfo(domain, None)
-                    result["addresses"] = list(set(addr[4][0] for addr in ips))
-                except:
-                    result["addresses"] = []
-                result["domain"] = domain
-
-        elif query_type == "timezone":
-            import datetime
-            tz_name = query_value or "Asia/Shanghai"
-            try:
-                import zoneinfo
-                tz = zoneinfo.ZoneInfo(tz_name)
-                now = datetime.datetime.now(tz)
-                result["timezone"] = tz_name
-                result["current_time"] = now.strftime("%Y-%m-%d %H:%M:%S")
-                result["utc_offset"] = now.strftime("%z")
-            except:
-                result["timezone"] = tz_name
-                result["current_time"] = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-
-        elif query_type == "unit_convert":
-            # Simple unit conversion
-            value = params.get("value", 0)
-            from_unit = params.get("from", "")
-            to_unit = params.get("to", "")
-            conversions = {
-                ("km", "mi"): 0.621371, ("mi", "km"): 1.60934,
-                ("kg", "lb"): 2.20462, ("lb", "kg"): 0.453592,
-                ("c", "f"): lambda x: x * 9/5 + 32, ("f", "c"): lambda x: (x - 32) * 5/9,
-                ("m", "ft"): 3.28084, ("ft", "m"): 0.3048,
-            }
-            key = (from_unit.lower(), to_unit.lower())
-            if key in conversions:
-                factor = conversions[key]
-                converted = factor(value) if callable(factor) else value * factor
-                result["original"] = f"{value} {from_unit}"
-                result["converted"] = f"{round(converted, 4)} {to_unit}"
-            else:
-                result["error"] = f"Unsupported conversion: {from_unit} → {to_unit}"
-
-        else:
-            result["error"] = f"Unsupported query type: {query_type}"
-
-    except Exception as e:
-        result["error"] = str(e)[:200]
-
-    return result
-
-
-def _workflow_orchestrate(params, buyer=""):
-    """svc_040: 工作流编排 — PilotDeck三层架构"""
-    task = params.get("task", params.get("prompt", ""))
-    services = params.get("services", [])  # Optional: pre-defined service chain
-    max_steps = params.get("max_steps", 5)
-
-    if not task:
-        return {"error": "task parameter required"}
-
-    # Load available services
-    try:
-        svc_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "services", "services.json")
-        with open(svc_path) as f:
-            svc_data = json.load(f)
-        available = svc_data.get("services", [])
-        svc_map = {s["id"]: s for s in available}
-    except:
-        available = []
-        svc_map = {}
-
-    # If services chain provided, execute sequentially
-    if services:
-        results = []
-        context = {}
-        for step in services:
-            svc_id = step.get("service_id", "")
-            step_params = step.get("params", {})
-            # Inject previous results as context
-            step_params["_context"] = context
-            svc_info = svc_map.get(svc_id, {})
-            exec_result = execute_service(svc_id, step_params, buyer)
-            step_result = {
-                "service_id": svc_id,
-                "service_name": svc_info.get("name", svc_id),
-                "result": exec_result
-            }
-            results.append(step_result)
-            context[svc_id] = exec_result
-        return {"task": task, "mode": "manual_chain", "steps": len(results), "results": results}
-
-    # Auto mode: LLM plans the workflow
-    svc_list = "\n".join([f"- {s['id']}: {s['name']} ({s.get('category','')}) - {s.get('price',0)} ATEX" for s in available[:20]])
-
-    plan = _chat(
-        f"为以下任务规划工作流，从可用服务中选择并排序：\n\n任务：{task}\n\n可用服务：\n{svc_list}\n\n输出JSON格式：\n{{\"steps\": [{{\"service_id\": \"svc_xxx\", \"params\": {{...}}, \"reason\": \"...\"}}]}}",
-        system="你是工作流编排专家。选择最合适的服务组合完成任务，按执行顺序排列。只输出JSON。",
-        max_tokens=1500
-    )
-
-    try:
-        plan_data = json.loads(plan)
-        planned_steps = plan_data.get("steps", [])
-    except:
-        planned_steps = [{"service_id": "svc_012", "params": {"query": task}, "reason": "fallback: web search"}]
-
-    # Execute the planned workflow
-    results = []
-    context = {}
-    for step in planned_steps[:max_steps]:
-        svc_id = step.get("service_id", "")
-        step_params = step.get("params", {})
-        step_params["_context"] = context
-        svc_info = svc_map.get(svc_id, {})
-        exec_result = execute_service(svc_id, step_params, buyer)
-        step_result = {
-            "service_id": svc_id,
-            "service_name": svc_info.get("name", svc_id),
-            "reason": step.get("reason", ""),
-            "result": exec_result
-        }
-        results.append(step_result)
-        context[svc_id] = exec_result
-
-    return {
-        "task": task,
-        "mode": "auto_orchestrate",
-        "plan": planned_steps,
-        "steps_executed": len(results),
-        "results": results
-    }
-
-
-def _agent_service_discover(params, buyer=""):
-    """svc_041: Agent服务发现 — 能力声明+语义匹配"""
-    capability = params.get("capability", params.get("query", ""))
-    category = params.get("category", "")
-    max_price = params.get("max_price", 0)
-    protocol = params.get("protocol", "")  # mcp, a2a, acp
-
-    if not capability and not category:
-        return {"error": "capability or category parameter required"}
-
-    # Load services
-    try:
-        svc_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "services", "services.json")
-        with open(svc_path) as f:
-            svc_data = json.load(f)
-        available = svc_data.get("services", [])
-    except:
-        available = []
-
-    # Filter by category
-    candidates = available
-    if category:
-        candidates = [s for s in candidates if s.get("category", "").lower() == category.lower()]
-
-    # Filter by price
-    if max_price > 0:
-        candidates = [s for s in candidates if s.get("price", 0) <= max_price]
-
-    # Semantic matching using LLM if capability provided
-    if capability and len(candidates) > 0:
-        svc_desc = "\n".join([f"{s['id']}: {s['name']} - {s.get('description','')[:100]}" for s in candidates[:15]])
-        match_result = _chat(
-            f"用户需要：{capability}\n\n可用服务：\n{svc_desc}\n\n返回最匹配的3个服务ID，按相关度排序。输出JSON：{{\"matches\": [{{\"id\": \"svc_xxx\", \"relevance\": 0.95, \"reason\": \"...\"}}]}}",
-            system="你是服务匹配专家。根据用户需求匹配最合适的服务。只输出JSON。",
-            max_tokens=500
-        )
-        try:
-            matches = json.loads(match_result)
-            matched_ids = [m["id"] for m in matches.get("matches", [])]
-            # Reorder candidates by match order
-            ordered = []
-            for mid in matched_ids:
-                for s in candidates:
-                    if s["id"] == mid:
-                        ordered.append(s)
-                        break
-            # Add remaining
-            for s in candidates:
-                if s["id"] not in matched_ids:
-                    ordered.append(s)
-            candidates = ordered
-        except:
-            pass  # Keep original order
-
-    # Build discovery response
-    result = {
-        "query": capability or category,
-        "total_services": len(available),
-        "matched": len(candidates),
-        "services": [{
-            "id": s["id"],
-            "name": s["name"],
-            "category": s.get("category", ""),
-            "price": s.get("price", 0),
-            "unit": s.get("unit", ""),
-            "service_type": s.get("service_type", "llm"),
-            "description": s.get("description", "")[:150],
-            "endpoints": {
-                "buy": f"/api/v1/services/buy",
-                "execute": f"/api/v1/services/execute",
-                "mcp": f"/mcp" if protocol == "mcp" else None
-            }
-        } for s in candidates[:10]]
-    }
-
-    return result
-
-
-def _batch_web_monitor(params, buyer=""):
-    """svc_042: 批量网页监控 — 定时检测变化"""
-    urls = params.get("urls", [])
-    url = params.get("url", "")
-    selector = params.get("selector", "")  # CSS selector hint
-    check_type = params.get("check_type", "content")  # content | price | availability
-
-    if url and not urls:
-        urls = [url]
-    if not urls:
-        return {"error": "urls or url parameter required"}
-
-    import hashlib
-    results = []
-
-    for target_url in urls[:10]:  # Max 10 URLs per call
-        entry = {"url": target_url, "status": "unknown"}
-        try:
-            req = urllib.request.Request(target_url, headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            })
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                content = resp.read().decode("utf-8", errors="replace")
-
-            # Content hash for change detection
-            import re
-            clean = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', content, flags=re.S | re.I)
-            clean = re.sub(r'<[^>]+>', ' ', clean)
-            clean = re.sub(r'\s+', ' ', clean).strip()
-
-            content_hash = hashlib.md5(clean.encode()).hexdigest()
-            title_match = re.search(r'<title[^>]*>(.*?)</title>', content, re.S | re.I)
-            title = title_match.group(1).strip() if title_match else ""
-
-            entry["status"] = "ok"
-            entry["title"] = title
-            entry["content_hash"] = content_hash
-            entry["content_length"] = len(clean)
-            entry["snippet"] = clean[:300]
-
-            # Price detection (basic regex)
-            if check_type == "price":
-                prices = re.findall(r'[¥$€£]\s*[\d,]+\.?\d*', clean)
-                entry["prices_found"] = prices[:5]
-
-        except Exception as e:
-            entry["status"] = "error"
-            entry["error"] = str(e)[:100]
-
-        results.append(entry)
-
-    return {
-        "check_type": check_type,
-        "urls_checked": len(results),
-        "results": results,
-        "note": "Store content_hash to detect changes on subsequent calls"
-    }
-
 
 # ── v5.18 融合：中国合规工具执行器（调用SCF API后端） ──
 

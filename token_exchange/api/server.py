@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ATEX HTTP API v5.18 — AI服务市场 + 中国合规工具 + AI Gateway + Skill市场 + 内容安全 + 实时通知 + 支付闭环"""
+"""ATEX HTTP API v6.0 — 合规工具 + AI能力 + 交易变现平台"""
 import json, os, sys, time, threading, hashlib, secrets
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -9,12 +9,13 @@ from datetime import datetime, timezone, timedelta
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 from atex import ATEX, validate_account_id, safe_json_loads, MAX_INPUT_SIZE
-from service_executor import execute_service, execute_api_proxy
+from service_executor import execute_service, execute_api_proxy, _chat
 from payment.gateway import (
     nowpayments_create_order, nowpayments_ipn_callback,
     xunhupay_create_order, xunhupay_callback,
     request_withdrawal, approve_withdrawal,
-    get_exchange_rates, update_exchange_rate
+    get_exchange_rates, update_exchange_rate,
+    _load_records
 )
 from job_market import (create_job, list_jobs, get_job, update_job, cancel_job,
                         submit_bid, accept_bid, withdraw_bid,
@@ -245,19 +246,25 @@ class Handler(BaseHTTPRequestHandler):
         """Serve the ATEX landing page."""
         svcs = exchange.list_services().get("services", [])
         compliance_svcs = [s for s in svcs if s.get("category") == "合规工具"]
-        svc_cards = ""
+        ai_svcs = [s for s in svcs if s.get("category") == "AI能力"]
+        compliance_cards = ""
         for s in compliance_svcs:
-            svc_cards += f'''<div class="card"><h3>{s["name"]}</h3><p>{s.get("description","")}</p><div class="price">¥{s.get("price",0)}/{s.get("unit","次")}</div><a href="https://lm203688.github.io/atex/" class="btn">立即使用</a></div>'''
+            compliance_cards += f'''<div class="card"><h3>🛡️ {s["name"]}</h3><p>{s.get("description","")}</p><div class="price">¥{s.get("price",0)}/{s.get("price_unit","次")}</div><a href="https://lm203688.github.io/atex/" class="btn">立即使用</a></div>'''
+        ai_cards = ""
+        for s in ai_svcs:
+            ai_cards += f'''<div class="card"><h3>🤖 {s["name"]}</h3><p>{s.get("description","")}</p><div class="price">¥{s.get("price",0)}/{s.get("price_unit","次")}</div><a href="https://lm203688.github.io/atex/" class="btn">立即使用</a></div>'''
         html = f'''<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>ATEX - AI服务市场 | 合规工具</title>
-<meta name="description" content="ATEX AI服务市场：免费违禁词检测、AI搜索可见度检测、数据出境合规评估、AIGC内容检测。符合广告法与数据出境法规。">
-<meta name="keywords" content="违禁词检测,AI搜索优化,数据出境合规,AIGC检测,广告法合规,SEO合规">
+<title>ATEX — 合规工具 + AI能力平台</title>
+<meta name="description" content="中文违禁词检测、AI搜索可见度检测、出海合规评估、SEO合规检测。8大AI能力（TTS/ASR/VLM/图片/视频/搜索）。按次计费，支付宝充值。">
+<meta name="keywords" content="违禁词检测,内容合规,AI搜索优化,出海合规,SEO合规,AI API,MCP Server,TTS,ASR,VLM,图片生成,视频生成">
 <style>*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0}}
 .hero{{text-align:center;padding:80px 20px 40px;background:linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95)}}
 .hero h1{{font-size:2.5em;margin-bottom:16px;background:linear-gradient(90deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
 .hero p{{font-size:1.2em;color:#a5b4fc;max-width:600px;margin:0 auto 30px}}
 .hero .cta{{display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:12px;text-decoration:none;font-size:1.1em;font-weight:600}}
-.tools{{max-width:1000px;margin:40px auto;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}}
+.section{{max-width:1000px;margin:40px auto;padding:0 20px}}
+.section h2{{font-size:1.5em;color:#c7d2fe;margin-bottom:24px;padding-left:8px;border-left:4px solid #6366f1}}
+.tools{{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}}
 .card{{background:#1e293b;border-radius:16px;padding:28px;border:1px solid #334155;transition:transform .2s}}
 .card:hover{{transform:translateY(-4px);border-color:#6366f1}}
 .card h3{{font-size:1.2em;color:#c7d2fe;margin-bottom:10px}}
@@ -268,10 +275,11 @@ class Handler(BaseHTTPRequestHandler):
 .stats span{{color:#a78bfa;font-weight:600}}
 .footer{{text-align:center;padding:30px;color:#475569;font-size:.8em;border-top:1px solid #1e293b}}
 </style></head><body>
-<div class="hero"><h1>ATEX AI服务市场</h1><p>免费合规检测工具：违禁词·AI搜索可见度·数据出境评估·AIGC检测</p><a href="https://lm203688.github.io/atex/" class="cta">开始使用</a></div>
-<div class="tools">{svc_cards}</div>
+<div class="hero"><h1>ATEX 合规 + AI 平台</h1><p>4个合规工具 · 8大AI能力 · MCP协议 · 支付宝充值 · 余额永不过期</p><a href="https://lm203688.github.io/atex/" class="cta">开始使用</a></div>
+<div class="section"><h2>🛡️ 合规工具</h2><div class="tools">{compliance_cards}</div></div>
+<div class="section"><h2>🤖 AI能力</h2><div class="tools">{ai_cards}</div></div>
 <div class="stats">已注册 <span>{len(svcs)}</span> 个服务 · <span>{exchange.accounts.__len__() if hasattr(exchange.accounts,'__len__') else '?'}</span> 个用户</div>
-<div class="footer">© 2026 ATEX · AI服务市场 · 符合《广告法》《数据出境安全评估办法》《人工智能生成合成内容标识办法》</div>
+<div class="footer">© 2026 ATEX · 合规工具 + AI能力平台 · 符合《广告法》《数据出境安全评估办法》《人工智能生成合成内容标识办法》</div>
 </body></html>'''
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -984,18 +992,18 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "msg": "Payment config updated"})
         # ── 充值下单（虎皮椒）──
         elif p == '/api/v1/payment/create':
-            from payment.gateway import xunhupay_create_order
+            # xunhupay_create_order imported at top level
             r = xunhupay_create_order(d.get("account",""), d.get("amount_cny",0))
             self._json(r, 200 if r.get("ok") else 400)
         # ── 虎皮椒回调 ──
         elif p == '/v1/pay/alipay/callback':
-            from payment.gateway import xunhupay_callback
+            # xunhupay_callback imported at top level
             r = xunhupay_callback(d)
             if r.get("ok"):
                 # Auto-deposit ATEX credits
                 order_id = d.get("trade_order_id", "")
                 # Find the deposit record
-                from payment.gateway import _load_records
+                # _load_records imported at top level
                 rec = _load_records()
                 for dep in rec.get("deposits", []):
                     if dep.get("order_id") == order_id and dep.get("status") == "pending":
@@ -1031,13 +1039,12 @@ class Handler(BaseHTTPRequestHandler):
                 r["service_result"] = exec_result
             self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/workflow':
-            # v5.16: 工作流编排 — PilotDeck三层架构
-            r = execute_service("svc_040", d, d.get("buyer",""))
-            self._json(r, 200 if r.get("ok") else 400)
+            # v6.0: 工作流编排已下线，返回提示
+            self._json({"ok": False, "err": "workflow_deprecated", "hint": "请使用 /api/v1/services/buy 调用具体服务"}, 410)
         elif p == '/api/v1/discover':
-            # v5.16: Agent服务发现 — 能力声明+语义匹配
-            r = execute_service("svc_041", d, d.get("buyer",""))
-            self._json(r, 200 if r.get("ok") else 400)
+            # v6.0: Agent服务发现已下线，返回服务列表
+            svcs = exchange.list_services()
+            self._json({"ok": True, "services": svcs, "hint": "请使用 /api/v1/services/buy 调用具体服务"}, 200)
         elif p == '/api/v1/services/execute':
             # API代理执行：先扣费再调用底层API
             api_name = d.get("api", "")
@@ -1410,12 +1417,64 @@ class Handler(BaseHTTPRequestHandler):
                  "inputSchema": {"type": "object", "properties": {}}},
                 {"name": "list_services", "description": "List all available services in the ATEX marketplace.",
                  "inputSchema": {"type": "object", "properties": {"category": {"type": "string", "description": "Filter by category"}}}},
+                {"name": "cn_banned_word_check", "description": "中文违禁词检测 - 检测文本中的违禁词/敏感词，返回法律条文+罚款金额+替换建议。0.1 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"text": {"type": "string", "description": "待检测文本"}, "platform": {"type": "string", "description": "平台: douyin/xiaohongshu/wechat/weibo/bilibili/kuaishou/all", "default": "all"}}, "required": ["text"]}},
+                {"name": "ai_search_visibility", "description": "AI搜索可见度检测 - 检测品牌在DeepSeek/Kimi等AI搜索引擎中的排名。2 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"brand": {"type": "string", "description": "品牌名称"}, "keyword": {"type": "string", "description": "关键词"}, "competitors": {"type": "array", "items": {"type": "string"}, "description": "竞品列表"}}, "required": ["brand"]}},
+                {"name": "global_compliance_check", "description": "出海合规评估 - 7维度问卷式评估产品出海合规风险，生成详细报告。8 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"product_type": {"type": "string", "description": "产品类型: SaaS/App/硬件/内容"}, "markets": {"type": "array", "items": {"type": "string"}, "description": "目标市场: US/EU/JP/SEA等"}, "data_categories": {"type": "array", "items": {"type": "string"}, "description": "数据类别"}, "answers": {"type": "object", "description": "问卷答案(7维度)"}}, "required": []}},
+                {"name": "seo_compliance_check", "description": "SEO合规检测 - 检测网页/内容的SEO合规性，避免搜索引擎惩罚。1 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"text": {"type": "string", "description": "待检测文本或URL"}, "platform": {"type": "string", "description": "平台", "default": "all"}}, "required": ["text"]}},
+                # ── AI能力层 (svc_101-108) ──
+                {"name": "tts_synthesis", "description": "语音合成(TTS) - 将文本转换为自然流畅的语音，输出WAV/MP3。2 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"text": {"type": "string", "description": "待合成文本（最长5000字）"}, "voice": {"type": "string", "description": "音色: tongtong/xiaochen/yunyang等", "default": "tongtong"}, "speed": {"type": "number", "description": "语速 0.5-2.0", "default": 1.0}, "format": {"type": "string", "description": "输出格式: wav/mp3", "default": "wav"}}, "required": ["text"]}},
+                {"name": "asr_recognition", "description": "语音识别(ASR) - 将音频转换为文字，支持WAV/MP3。2 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"audio_base64": {"type": "string", "description": "音频Base64编码"}, "audio_file": {"type": "string", "description": "音频文件路径"}, "language": {"type": "string", "description": "语言: zh/en/auto", "default": "auto"}}, "required": []}},
+                {"name": "vlm_understand", "description": "图像理解(VLM) - 分析图片内容，OCR/物体检测/视觉问答。3 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"image_base64": {"type": "string", "description": "图片Base64编码"}, "image_url": {"type": "string", "description": "图片URL"}, "prompt": {"type": "string", "description": "提问/指令", "default": "请描述这张图片的内容"}}, "required": []}},
+                {"name": "image_generate", "description": "AI图片生成 - 根据文字描述生成图片。5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"prompt": {"type": "string", "description": "图片描述/提示词"}, "size": {"type": "string", "description": "尺寸: 1024x1024/1344x768等", "default": "1024x1024"}, "style": {"type": "string", "description": "风格: natural/vivid/anime等", "default": "natural"}}, "required": ["prompt"]}},
+                {"name": "image_edit", "description": "AI图片编辑 - 对现有图片进行AI编辑，风格迁移/局部修改。5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"image_base64": {"type": "string", "description": "原始图片Base64编码"}, "prompt": {"type": "string", "description": "编辑指令/描述"}, "size": {"type": "string", "description": "输出尺寸", "default": "1024x1024"}}, "required": ["image_base64", "prompt"]}},
+                {"name": "video_generate", "description": "AI视频生成 - 根据描述生成5秒视频片段（异步任务）。10 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"prompt": {"type": "string", "description": "视频描述/提示词"}, "image_base64": {"type": "string", "description": "参考图片Base64（可选）"}, "size": {"type": "string", "description": "尺寸", "default": "1344x768"}, "duration": {"type": "number", "description": "时长(秒)", "default": 5}}, "required": ["prompt"]}},
+                {"name": "web_search_ai", "description": "Web搜索 - 搜索全网实时信息，返回结构化结果。5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "搜索关键词/查询"}}, "required": ["query"]}},
+                {"name": "web_reader", "description": "网页阅读 - 提取网页正文，自动去噪返回干净内容。3 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"url": {"type": "string", "description": "网页URL"}, "format": {"type": "string", "description": "输出格式: html/text", "default": "text"}}, "required": ["url"]}},
             ]
             return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
         elif method == "tools/call":
             tool_name = params.get("name", "")
             args = params.get("arguments", {})
-            if tool_name == "chat":
+            if tool_name == "cn_banned_word_check":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                r = execute_service("svc_046", args, user)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
+            elif tool_name == "ai_search_visibility":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                r = execute_service("svc_047", args, user)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
+            elif tool_name == "global_compliance_check":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                r = execute_service("svc_048", args, user)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
+            elif tool_name == "seo_compliance_check":
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                r = execute_service("svc_049", args, user)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
+            # ── AI能力层 (svc_101-108) ──
+            elif tool_name in ("tts_synthesis", "asr_recognition", "vlm_understand", "image_generate", "image_edit", "video_generate", "web_search_ai", "web_reader"):
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
+                _TOOL_SVC_MAP = {
+                    "tts_synthesis": "svc_101", "asr_recognition": "svc_102", "vlm_understand": "svc_103",
+                    "image_generate": "svc_104", "image_edit": "svc_105", "video_generate": "svc_106",
+                    "web_search_ai": "svc_107", "web_reader": "svc_108",
+                }
+                svc_id = _TOOL_SVC_MAP[tool_name]
+                r = execute_service(svc_id, args, user)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
+            elif tool_name == "chat":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
                 model = args.get("model", "deepseek-chat")
                 messages = args.get("messages", [{"role": "user", "content": args.get("prompt", "")}])
@@ -1435,8 +1494,9 @@ class Handler(BaseHTTPRequestHandler):
             elif tool_name == "web_search":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
                 query = args.get("query", "")
-                result = execute_service("svc_012", {"query": query}, user["user_id"])
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}})
+                # v6.0: web_search通过LLM回答，不再调用已删除的svc_012
+                result = _chat(f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。", system="你是信息检索专家，提供准确的事实信息。", max_tokens=1000)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": result}]}})
             elif tool_name == "check_balance":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
                 return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"balance_cny": user["balance_cny"], "total_calls": user.get("total_calls",0)})}]}})
@@ -2259,7 +2319,7 @@ class Handler(BaseHTTPRequestHandler):
                 "step1": "POST /api/v1/services/buy with {buyer, service_id, params}",
                 "step2": "ATEX deducts tokens, executes service via DeepSeek API",
                 "step3": "Response includes service_result with actual output",
-                "example": "curl -X POST /api/v1/services/buy -d '{\"buyer\":\"my_agent\",\"service_id\":\"svc_012\",\"params\":{\"query\":\"AI news\"}}'"
+                "example": "curl -X POST /api/v1/services/buy -d '{\"buyer\":\"my_agent\",\"service_id\":\"svc_046\",\"params\":{\"text\":\"全网最低价\",\"platform\":\"douyin\"}}'"
             },
             "frameworks": ["openai_function_calling","anthropic_tool_use","mcp","rest_api","json_stdin"]
         })
@@ -2267,5 +2327,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
     server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"ATEX v5.11 (SaaS+Marketplace+AgentDiscovery) on 0.0.0.0:{port}", flush=True)
+    print(f"ATEX v6.0 (Compliance+AI+Marketplace) on 0.0.0.0:{port}", flush=True)
     server.serve_forever()
