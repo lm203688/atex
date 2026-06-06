@@ -297,18 +297,48 @@ def xunhupay_callback(data):
     deposit["completed_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
     _save_records(rec)
 
-    # 自动充值
+    # 自动充值（双账户体系：Exchange + SaaS）
     try:
         from atex import ATEX
         exchange = ATEX()
         result = exchange.deposit(deposit["user_id"], atex_amount)
         deposit["deposit_result"] = result
-        _save_records(rec)
-        return {"ok": True, "atex_credited": atex_amount, "user_id": deposit["user_id"]}
     except Exception as e:
         deposit["deposit_error"] = str(e)[:200]
-        _save_records(rec)
-        return {"ok": False, "err": "deposit_failed", "detail": str(e)[:200]}
+
+    # 同时充值SaaS余额（MCP/服务调用从SaaS扣费）
+    try:
+        saas_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "saas_data", "users.json")
+        if os.path.exists(saas_path):
+            with open(saas_path) as f:
+                saas = json.load(f)
+            uid = deposit["user_id"]
+            # 查找SaaS用户（可能是u_xxx格式或直接user_id）
+            for saas_uid, saas_user in saas.get("users", {}).items():
+                if saas_uid == uid or saas_user.get("user_id") == uid:
+                    # 按CNY汇率转换：1 ATEX ≈ 0.01 USD ≈ 0.07 CNY
+                    cny_amount = deposit.get("amount_cny", atex_amount * 0.07)
+                    saas_user["balance_cny"] = saas_user.get("balance_cny", 0) + cny_amount
+                    saas_user["total_topup_count"] = saas_user.get("total_topup_count", 0) + 1
+                    # 赠送
+                    bonus_pct = 0
+                    if cny_amount >= 1000: bonus_pct = 0.4
+                    elif cny_amount >= 500: bonus_pct = 0.3
+                    elif cny_amount >= 100: bonus_pct = 0.2
+                    elif cny_amount >= 50: bonus_pct = 0.15
+                    elif cny_amount >= 10: bonus_pct = 0.1
+                    if bonus_pct > 0:
+                        bonus = round(cny_amount * bonus_pct, 2)
+                        saas_user["balance_cny"] += bonus
+                    with open(saas_path, "w") as f:
+                        json.dump(saas, f, ensure_ascii=False, indent=2)
+                    deposit["saas_deposit"] = {"uid": saas_uid, "cny": cny_amount, "bonus_pct": bonus_pct}
+                    break
+    except Exception as e:
+        deposit["saas_deposit_error"] = str(e)[:200]
+
+    _save_records(rec)
+    return {"ok": True, "atex_credited": atex_amount, "user_id": deposit["user_id"]}
 
 
 # ══════════════════════════════════════════════════

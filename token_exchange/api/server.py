@@ -327,15 +327,15 @@ class Handler(BaseHTTPRequestHandler):
             is_first = user.get("total_topup_count", 0) == 0
             result = {
                 "user_id": uid,
-                "alipay": "CONFIGURE_ALIPAY",
-                "paypal": "CONFIGURE_PAYPAL",
+                "alipay": "扫码支付（虎皮椒自动到账）",
+                "paypal": "COMING_SOON",
                 "min_topup_cny": 10.0,
-                "note": f"支付宝转账请备注: ATEX_{uid}，转账后联系管理员确认到账",
+                "note": f"使用 /v1/pay/alipay 创建支付订单，扫码付款后自动到账",
                 "steps": [
-                    "1. 支付宝转账至 CONFIGURE_ALIPAY，金额≥10元",
-                    f"2. 转账备注: ATEX_{uid}",
-                    "3. 联系管理员确认到账",
-                    "4. 余额自动更新（含赠送积分）",
+                    f"1. POST /v1/pay/alipay {{\"amount_cny\": 10}} (需Bearer认证)",
+                    "2. 打开返回的pay_url扫码支付",
+                    "3. 付款后自动到账（含赠送积分）",
+                    f"4. 当前余额: ¥{user.get('balance_cny', 0):.2f}",
                 ],
             }
             if bonus_active:
@@ -1051,21 +1051,28 @@ class Handler(BaseHTTPRequestHandler):
             svcs = exchange.list_services()
             self._json({"ok": True, "services": svcs, "hint": "请使用 /api/v1/services/buy 调用具体服务"}, 200)
         elif p == '/api/v1/services/execute':
-            # API代理执行：先扣费再调用底层API
-            api_name = d.get("api", "")
-            account = d.get("account", "")
+            # 服务执行：需要认证+扣费
+            auth = self.headers.get("Authorization", "").replace("Bearer ", "")
+            user = _saas_user(auth) if auth else None
+            if not user: return self._json({"err": "authentication_required", "hint": "Set Authorization: Bearer YOUR_ATEX_API_KEY"}, 401)
+            service_id = d.get("service_id", "")
             params = d.get("params", {})
-            if api_name:
-                # API代理模式：扣费+执行
-                r = exchange.api_proxy(account, api_name, params)
-                if r.get("ok"):
-                    exec_result = execute_api_proxy(api_name, params)
-                    r["api_result"] = exec_result
-                self._json(r, 200 if r.get("ok") else 400)
-            else:
-                # 服务执行模式（兼容旧接口）
-                r = execute_service(d.get("service_id",""), params, account)
-                self._json(r, 200 if r.get("ok") else 400)
+            # 查找服务价格
+            svc = None
+            for s in exchange.svc.get("services", []):
+                if s["id"] == service_id and s.get("status", "active") == "active":
+                    svc = s; break
+            if not svc: return self._json({"err": "service_not_found"}, 404)
+            price = svc.get("price", 0)
+            if user["balance_cny"] < price:
+                return self._json({"err": "insufficient_balance", "have": user["balance_cny"], "need": price}, 402)
+            # 执行
+            r = execute_service(service_id, params, user)
+            # 扣费
+            _deduct(user["user_id"], price, service_id, 0, 0)
+            r["cost_cny"] = price
+            r["balance_cny"] = round(user["balance_cny"] - price, 4)
+            self._json(r, 200 if r.get("ok") else 400)
         elif p == '/api/v1/services/update':
             r = exchange.update_service(d.get("provider",""), d.get("service_id",""),
                 name=d.get("name"), description=d.get("description"), price=d.get("price"),
@@ -1378,11 +1385,11 @@ class Handler(BaseHTTPRequestHandler):
         self._json({
             "name": "ATEX AI Gateway",
             "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call.",
-            "version": "5.11",
+            "version": "6.0",
             "url": "http://150.158.119.19:8420/mcp",
             "protocolVersion": "2025-03-26",
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.11"},
+            "serverInfo": {"name": "ATEX AI Gateway", "version": "6.0"},
             "tools": [
                 {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key."},
                 {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call."},
@@ -1395,11 +1402,11 @@ class Handler(BaseHTTPRequestHandler):
     def _mcp_get(self):
         """GET /mcp — 返回MCP服务器信息（Smithery扫描用）"""
         self._json({
-            "name": "ATEX AI Gateway",
-            "version": "5.11",
+            "name": "ATEX 合规+AI平台",
+            "version": "6.0",
             "protocolVersion": "2025-03-26",
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "ATEX AI Gateway", "version": "5.11"}
+            "serverInfo": {"name": "ATEX 合规+AI平台", "version": "6.0"}
         })
 
     def _mcp_post(self, d):
@@ -1463,32 +1470,33 @@ class Handler(BaseHTTPRequestHandler):
         elif method == "tools/call":
             tool_name = params.get("name", "")
             args = params.get("arguments", {})
-            if tool_name == "cn_banned_word_check":
-                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
-                r = execute_service("svc_046", args, user)
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
-            elif tool_name == "ai_search_visibility":
-                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
-                r = execute_service("svc_047", args, user)
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
-            elif tool_name == "global_compliance_check":
-                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
-                r = execute_service("svc_048", args, user)
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
-            elif tool_name == "seo_compliance_check":
-                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
-                r = execute_service("svc_049", args, user)
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
-            # ── AI能力层 (svc_101-108) ──
-            elif tool_name in ("tts_synthesis", "asr_recognition", "vlm_understand", "image_generate", "image_edit", "video_generate", "web_search_ai", "web_reader"):
-                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
-                _TOOL_SVC_MAP = {
-                    "tts_synthesis": "svc_101", "asr_recognition": "svc_102", "vlm_understand": "svc_103",
-                    "image_generate": "svc_104", "image_edit": "svc_105", "video_generate": "svc_106",
-                    "web_search_ai": "svc_107", "web_reader": "svc_108",
-                }
-                svc_id = _TOOL_SVC_MAP[tool_name]
+            # ── 统一计费映射 ──
+            _BILLABLE_TOOLS = {
+                "cn_banned_word_check": ("svc_046", 0.1),
+                "ai_search_visibility": ("svc_047", 2.0),
+                "global_compliance_check": ("svc_048", 8.0),
+                "seo_compliance_check": ("svc_049", 1.0),
+                "tts_synthesis": ("svc_101", 2.0),
+                "asr_recognition": ("svc_102", 2.0),
+                "vlm_understand": ("svc_103", 3.0),
+                "image_generate": ("svc_104", 5.0),
+                "image_edit": ("svc_105", 5.0),
+                "video_generate": ("svc_106", 10.0),
+                "web_search_ai": ("svc_107", 5.0),
+                "web_reader": ("svc_108", 3.0),
+            }
+            if tool_name in _BILLABLE_TOOLS:
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
+                svc_id, price_cny = _BILLABLE_TOOLS[tool_name]
+                # 检查余额
+                if user["balance_cny"] < price_cny:
+                    return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32002, "message": f"Insufficient balance. Need ¥{price_cny}, have ¥{user['balance_cny']:.2f}. Top up at http://150.158.119.19:8420"}}, 402)
+                # 执行服务
                 r = execute_service(svc_id, args, user)
+                # 扣费（无论服务是否成功，已消耗资源）
+                _deduct(user["user_id"], price_cny, svc_id, 0, 0)
+                r["cost_cny"] = price_cny
+                r["balance_cny"] = round(user["balance_cny"] - price_cny, 4)
                 return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
             elif tool_name == "chat":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
@@ -1510,9 +1518,12 @@ class Handler(BaseHTTPRequestHandler):
             elif tool_name == "web_search":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
                 query = args.get("query", "")
-                # v6.0: web_search通过LLM回答，不再调用已删除的svc_012
+                # v6.0: web_search通过LLM回答，扣费0.5元
+                if user["balance_cny"] < 0.5:
+                    return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32002, "message": "Insufficient balance"}}, 402)
                 result = _chat(f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。", system="你是信息检索专家，提供准确的事实信息。", max_tokens=1000)
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": result}]}})
+                _deduct(user["user_id"], 0.5, "web_search", 0, 0)
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": result}], "cost_cny": 0.5}})
             elif tool_name == "check_balance":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
                 return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"balance_cny": user["balance_cny"], "total_calls": user.get("total_calls",0)})}]}})
@@ -1558,7 +1569,7 @@ class Handler(BaseHTTPRequestHandler):
             # ── 基础信息 ──
             "name": "ATEX",
             "description": "Agent Token Exchange — Agent服务交易市场。一个API Key调多种AI模型，按次计费；服务市场买卖Agent服务；Token交易撮合。",
-            "version": exchange.config.get("version", "5.11"),
+            "version": exchange.config.get("version", "6.0"),
             "api_base": f"{base}/api/v1",
             "homepage": "https://lm203688.github.io/atex/",
             "repository": "https://github.com/lm203688/atex",
@@ -1731,7 +1742,7 @@ class Handler(BaseHTTPRequestHandler):
             "info": {
                 "title": "ATEX AI Gateway & Agent Service Marketplace",
                 "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. Agent service marketplace with 40+ services. Token trading. MCP protocol support.",
-                "version": exchange.config.get("version", "5.11"),
+                "version": exchange.config.get("version", "6.0"),
                 "contact": {"name": "ATEX", "url": "https://github.com/lm203688/atex", "email": "atex@agent.dev"},
                 "license": {"name": "AGPL-3.0", "url": "https://www.gnu.org/licenses/agpl-3.0.html"}
             },
@@ -2416,7 +2427,7 @@ Sitemap: {base}/api/v1/services
             self._json({
                 "ok": True,
                 "format": "anthropic_tool_use",
-                "version": exchange.config.get("version", "5.11"),
+                "version": exchange.config.get("version", "6.0"),
                 "total_tools": len(builtin_anthropic) + len(service_tools_anthropic),
                 "tools": builtin_anthropic + service_tools_anthropic,
                 "usage": "Use these tool definitions with Anthropic tool_use. Each tool has input_schema and atex_meta with endpoint/pricing info. Authenticate via Bearer token from /v1/register."
@@ -2425,7 +2436,7 @@ Sitemap: {base}/api/v1/services
             self._json({
                 "ok": True,
                 "format": "openai_function_calling",
-                "version": exchange.config.get("version", "5.11"),
+                "version": exchange.config.get("version", "6.0"),
                 "total_tools": len(builtin_openai) + len(service_tools_openai),
                 "builtin_tools": builtin_openai,
                 "service_tools": service_tools_openai,
@@ -2434,7 +2445,7 @@ Sitemap: {base}/api/v1/services
 
     def _proto(self):
         return self._json({
-            "name": "ATEX", "version": "5.11",
+            "name": "ATEX", "version": "6.0",
             "description": "多AI API按次计费SaaS + Agent服务交易市场 — 一个API Key调多种AI模型，按次计费",
             "endpoints": {
                 "GET": ["/api/v1/status","/api/v1/orderbook","/api/v1/trades",
