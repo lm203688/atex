@@ -196,6 +196,7 @@ def _record_budget_spend(uid, cost_cny):
 
 # ── SaaS定价 ──
 SAAS_PRICING = {
+    "glm-4-plus": {"name":"GLM-4 Plus","input_per_1k":0.001,"output_per_1k":0.002,"backend":"zai","model":"glm-4-plus"},
     "deepseek-chat": {"name":"DeepSeek Chat","input_per_1k":0.001,"output_per_1k":0.002,"backend":"deepseek","model":"deepseek-chat"},
     "deepseek-reasoner": {"name":"DeepSeek Reasoner","input_per_1k":0.004,"output_per_1k":0.016,"backend":"deepseek","model":"deepseek-reasoner"},
     "gpt-4o-mini": {"name":"GPT-4o Mini","input_per_1k":0.01,"output_per_1k":0.03,"backend":"openai","model":"gpt-4o-mini","status":"coming_soon"},
@@ -564,7 +565,7 @@ class Handler(BaseHTTPRequestHandler):
             auth = self.headers.get("Authorization", "").replace("Bearer ", "")
             user = _saas_user(auth) if auth else None
             if not user: return self._json({"err": "invalid_api_key", "message": "Invalid API key. Get one at http://150.158.119.19:8420"}, 401)
-            model = d.get("model", "deepseek-chat")
+            model = d.get("model", "glm-4-plus")
             model_info = SAAS_PRICING.get(model)
             if not model_info: return self._json({"err": f"unknown_model:{model}", "available": list(SAAS_PRICING.keys())}, 400)
             if model_info.get("status") == "coming_soon":
@@ -1431,7 +1432,7 @@ class Handler(BaseHTTPRequestHandler):
         elif method == "tools/list":
             tools = [
                 {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key.",
-                 "inputSchema": {"type": "object", "properties": {"model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat"}, "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}}}, "required": ["messages"]}},
+                 "inputSchema": {"type": "object", "properties": {"model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "glm-4-plus"}, "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}}}, "required": ["messages"]}},
                 {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call.",
                  "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}}, "required": ["query"]}},
                 {"name": "check_balance", "description": "Check your ATEX account balance and usage.",
@@ -1500,7 +1501,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(r, ensure_ascii=False)}]}})
             elif tool_name == "chat":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
-                model = args.get("model", "deepseek-chat")
+                model = args.get("model", "glm-4-plus")
                 messages = args.get("messages", [{"role": "user", "content": args.get("prompt", "")}])
                 model_info = SAAS_PRICING.get(model)
                 if not model_info: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Unknown model: {model}"}}, 400)
@@ -1853,7 +1854,7 @@ class Handler(BaseHTTPRequestHandler):
                     "ChatRequest": {
                         "type": "object",
                         "properties": {
-                            "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat", "description": "AI model to use"},
+                            "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "glm-4-plus", "description": "AI model to use"},
                             "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string", "enum": ["system","user","assistant"]}, "content": {"type": "string"}}, "required": ["role","content"]}, "description": "Chat messages"},
                             "temperature": {"type": "number", "default": 0.7, "minimum": 0, "maximum": 2},
                             "max_tokens": {"type": "integer", "default": 4096},
@@ -2126,7 +2127,7 @@ Sitemap: {base}/api/v1/services
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat", "description": "AI model to use"},
+                            "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "glm-4-plus", "description": "AI model to use"},
                             "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}, "description": "Chat messages"}
                         },
                         "required": ["messages"]
@@ -2319,7 +2320,7 @@ Sitemap: {base}/api/v1/services
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "deepseek-chat", "description": "AI model to use"},
+                        "model": {"type": "string", "enum": list(SAAS_PRICING.keys()), "default": "glm-4-plus", "description": "AI model to use"},
                         "messages": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "content": {"type": "string"}}, "required": ["role","content"]}, "description": "Chat messages"}
                     },
                     "required": ["messages"]

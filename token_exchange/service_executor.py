@@ -7,6 +7,7 @@ import json, os, tempfile, base64, time, subprocess, urllib.request, urllib.erro
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE = "https://api.deepseek.com/v1"
+# v6.0: LLM后端优先使用z-ai SDK（免费GLM-4-Plus），DeepSeek作为备用
 
 
 def execute_api_proxy(api_name, params):
@@ -60,9 +61,39 @@ def _proxy_deepseek_reasoner(params):
 
 
 def _call_deepseek(model, messages, max_tokens=2000):
-    """调用DeepSeek API"""
+    """调用LLM API — 优先z-ai SDK（免费GLM-4-Plus），DeepSeek备用"""
+    # 优先使用z-ai SDK（免费）
+    prompt = ""
+    system = ""
+    for m in messages:
+        if m.get("role") == "system":
+            system = m.get("content", "")
+        elif m.get("role") == "user":
+            prompt = m.get("content", "")
+    if prompt:
+        args = ["chat", "--prompt", prompt]
+        if system:
+            args += ["--system", system]
+        result = _run_zai(args, timeout=60)
+        if result.get("ok"):
+            data = result.get("data", {})
+            if isinstance(data, dict) and "choices" in data:
+                content = data["choices"][0]["message"]["content"]
+                usage = data.get("usage", {})
+                return {
+                    "content": content,
+                    "model": data.get("model", "glm-4-plus"),
+                    "usage": {"prompt_tokens": usage.get("prompt_tokens",0),
+                              "completion_tokens": usage.get("completion_tokens",0),
+                              "total_tokens": usage.get("total_tokens",0)}
+                }
+            elif isinstance(data, dict) and "content" in data:
+                return {"content": data["content"], "model": data.get("model", "glm-4-plus"), "usage": {}}
+            elif isinstance(data, str):
+                return {"content": data, "model": "glm-4-plus", "usage": {}}
+    # 备用：DeepSeek API
     if not DEEPSEEK_API_KEY:
-        return {"err": "deepseek_api_key_missing", "hint": "请设置环境变量 DEEPSEEK_API_KEY"}
+        return {"err": "llm_unavailable", "hint": "z-ai SDK和DeepSeek API均不可用，请检查z-ai安装或设置DEEPSEEK_API_KEY"}
     payload = json.dumps({
         "model": model,
         "messages": messages,
@@ -467,33 +498,16 @@ def execute_service(service_id, params, buyer):
 # ── DeepSeek API 调用 ──
 
 def _deepseek_chat(messages, model="deepseek-chat", max_tokens=2000, temperature=0.7):
-    """调用DeepSeek Chat API"""
-    body = json.dumps({
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature
-    }).encode()
-    req = urllib.request.Request(
-        f"{DEEPSEEK_BASE}/chat/completions",
-        data=body,
-        headers={
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read())
-            return data["choices"][0]["message"]["content"]
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode()[:500]
-        return f"[API Error {e.code}]: {err_body}"
-    except Exception as e:
-        return f"[Error]: {str(e)}"
+    """调用LLM — 优先z-ai SDK（免费），DeepSeek备用"""
+    result = _call_deepseek(model, messages, max_tokens)
+    if isinstance(result, dict) and "content" in result:
+        return result["content"]
+    elif isinstance(result, dict) and "err" in result:
+        return f"[Error]: {result['err']}"
+    return str(result)
 
 def _chat(prompt, system="", max_tokens=2000):
-    """简单的chat封装"""
+    """简单的chat封装 — 优先z-ai SDK（免费GLM-4-Plus）"""
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
