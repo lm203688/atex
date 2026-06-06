@@ -1481,6 +1481,11 @@ class Handler(BaseHTTPRequestHandler):
                 # ── AI浏览器自动化(BrowserAct) ──
                 {"name": "browser_act", "description": "AI浏览器自动化(BrowserAct) - AI Agent操作浏览器，自动规划步骤+生成Playwright代码，支持点网页/填表单/过验证/数据采集。5 ATEX/次",
                  "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "任务描述（AI要做什么）"}, "url": {"type": "string", "description": "起始页面URL（可选）"}, "mode": {"type": "string", "description": "模式: auto/assisted/headless", "default": "auto"}, "timeout": {"type": "integer", "description": "超时秒数(最大300)", "default": 60}}, "required": ["task"]}},
+                # ── 网络安全技能库(Anthropic Cybersecurity Skills) ──
+                {"name": "cyber_skill_lookup", "description": "网络安全技能查询 - 754个安全skills，映射5大框架(MITRE ATT&CK/NIST CSF/D3FEND/OWASP/ISO27001)，覆盖26个安全域。1 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"domain": {"type": "string", "description": "安全域: DFIR/Red_Team/AppSec/Cloud_Security等"}, "framework": {"type": "string", "description": "框架: MITRE ATT&CK/NIST CSF/D3FEND/OWASP/ISO27001"}, "skill": {"type": "string", "description": "技能关键词搜索"}}, "required": []}},
+                {"name": "cyber_skill_generate", "description": "安全技能生成 - 根据安全场景生成AI Agent可执行的安全技能，含MITRE ATT&CK映射+执行步骤+工具。5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"scenario": {"type": "string", "description": "安全场景描述"}, "target": {"type": "string", "description": "目标系统/应用（可选）"}, "domain": {"type": "string", "description": "安全域(auto自动识别)", "default": "auto"}, "framework": {"type": "string", "description": "参考框架", "default": "MITRE ATT&CK"}}, "required": ["scenario"]}},
             ]
             return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
         elif method == "tools/call":
@@ -1509,6 +1514,9 @@ class Handler(BaseHTTPRequestHandler):
                 "token_slim": ("svc_113", 1.0),
                 # ── AI浏览器自动化(BrowserAct) ──
                 "browser_act": ("svc_114", 5.0),
+                # ── 网络安全技能库(Anthropic Cybersecurity Skills) ──
+                "cyber_skill_lookup": ("svc_115", 1.0),
+                "cyber_skill_generate": ("svc_116", 5.0),
             }
             if tool_name in _BILLABLE_TOOLS:
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)

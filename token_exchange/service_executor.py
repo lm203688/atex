@@ -1120,6 +1120,216 @@ with sync_playwright() as p:
     }
 
 
+# ═══════════════════════════════════════════════════════════════
+# 网络安全技能库 — Anthropic Cybersecurity Skills 集成
+# ═══════════════════════════════════════════════════════════════
+
+# 26个安全域 + 典型技能映射
+_CYBER_DOMAINS = {
+    "DFIR": {"name": "数字取证与事件响应", "skills": ["内存取证分析", "日志关联分析", "恶意软件逆向", "入侵时间线重建", "证据保全与链式追踪"], "frameworks": ["MITRE ATT&CK", "NIST CSF"]},
+    "Red_Team": {"name": "红队攻防", "skills": ["社会工程模拟", "钓鱼攻击检测", "横向移动检测", "权限提升防护", "C2通信识别"], "frameworks": ["MITRE ATT&CK", "D3FEND"]},
+    "AppSec": {"name": "应用安全", "skills": ["SAST代码扫描", "DAST动态测试", "依赖漏洞检测", "API安全审计", "输入验证绕过测试"], "frameworks": ["OWASP Top 10", "NIST CSF"]},
+    "Cloud_Security": {"name": "云安全", "skills": ["IAM策略审计", "S3桶暴露检测", "K8s配置扫描", "云资源合规检查", "无服务器安全评估"], "frameworks": ["MITRE ATT&CK Cloud", "NIST CSF"]},
+    "Network_Security": {"name": "网络安全", "skills": ["流量异常检测", "DNS隧道识别", "防火墙规则审计", "VPN配置验证", "网络分段评估"], "frameworks": ["MITRE ATT&CK", "D3FEND"]},
+    "Endpoint_Security": {"name": "终端安全", "skills": ["EDR规则编写", "进程行为分析", "注册表监控", "文件完整性检查", "USB设备管控"], "frameworks": ["MITRE ATT&CK", "NIST CSF"]},
+    "Identity_Access": {"name": "身份与访问管理", "skills": ["MFA绕过测试", "权限提升检测", "OAuth配置审计", "LDAP枚举防护", "零信任架构评估"], "frameworks": ["NIST CSF", "D3FEND"]},
+    "Vulnerability_Mgmt": {"name": "漏洞管理", "skills": ["CVE优先级评估", "补丁合规检查", "攻击面分析", "漏洞利用验证", "风险评分计算"], "frameworks": ["CVSS", "NIST CSF"]},
+    "Threat_Intel": {"name": "威胁情报", "skills": ["IOC提取与关联", "TTP映射分析", "暗网监控", "威胁狩猎", "情报报告生成"], "frameworks": ["MITRE ATT&CK", "STIX/TAXII"]},
+    "Compliance": {"name": "合规审计", "skills": ["等保2.0评估", "GDPR合规检查", "PCI-DSS审计", "SOC2控制验证", "合规差距分析"], "frameworks": ["NIST CSF", "ISO 27001"]},
+    "Incident_Response": {"name": "应急响应", "skills": ["事件分类分级", "遏制策略制定", "根因分析", "恢复计划执行", "事后复盘报告"], "frameworks": ["NIST CSF", "MITRE ATT&CK"]},
+    "Malware_Analysis": {"name": "恶意软件分析", "skills": ["静态特征提取", "动态行为分析", "沙箱环境搭建", "家族归类识别", "YARA规则编写"], "frameworks": ["MITRE ATT&CK", "D3FEND"]},
+    "OSINT": {"name": "开源情报", "skills": ["域名信息收集", "子域名枚举", "邮箱泄露检测", "社交媒体侦察", "技术指纹识别"], "frameworks": ["MITRE ATT&CK"]},
+    "Crypto": {"name": "密码学安全", "skills": ["SSL/TLS配置审计", "证书有效性检查", "加密算法评估", "密钥管理审计", "哈希碰撞检测"], "frameworks": ["NIST CSF"]},
+    "Container_Security": {"name": "容器安全", "skills": ["镜像漏洞扫描", "运行时防护", "K8s RBAC审计", "网络策略验证", "Secret管理检查"], "frameworks": ["MITRE ATT&CK Container", "NIST CSF"]},
+    "DevSecOps": {"name": "安全开发运维", "skills": ["CI/CD管道安全", "基础设施即代码扫描", "密钥泄露检测", "安全门禁集成", "自动化合规验证"], "frameworks": ["NIST CSF", "OWASP"]},
+    "Data_Protection": {"name": "数据保护", "skills": ["数据分类标记", "DLP策略配置", "加密传输验证", "数据泄露检测", "备份恢复测试"], "frameworks": ["NIST CSF", "GDPR"]},
+    "Wireless_Security": {"name": "无线安全", "skills": ["WiFi加密审计", "蓝牙漏洞检测", "无线入侵检测", "RF信号分析", "邪恶双胞胎检测"], "frameworks": ["MITRE ATT&CK"]},
+    "ICS_SCADA": {"name": "工控安全", "skills": ["Modbus协议分析", "PLC配置审计", "HMI安全评估", "网络隔离验证", "固件完整性检查"], "frameworks": ["MITRE ATT&CK ICS"]},
+    "Mobile_Security": {"name": "移动安全", "skills": ["APP逆向分析", "越狱/Root检测", "API流量拦截", "证书固定验证", "数据存储安全"], "frameworks": ["OWASP Mobile", "MITRE ATT&CK"]},
+    "SOC_Operations": {"name": "安全运营中心", "skills": ["SIEM规则编写", "告警分类处置", "SOAR剧本开发", "威胁狩猎流程", "安全指标监控"], "frameworks": ["MITRE ATT&CK", "NIST CSF"]},
+    "Pentest": {"name": "渗透测试", "skills": ["信息收集规划", "漏洞利用链构建", "后渗透操作", "报告编写", "修复建议制定"], "frameworks": ["MITRE ATT&CK", "PTES"]},
+    "Forensics": {"name": "电子取证", "skills": ["磁盘镜像分析", "内存dump分析", "网络流量取证", "时间线重建", "反取证检测"], "frameworks": ["NIST CSF", "D3FEND"]},
+    "Risk_Assessment": {"name": "风险评估", "skills": ["资产识别分类", "威胁建模", "脆弱性评估", "风险矩阵构建", "处置优先级排序"], "frameworks": ["NIST CSF", "ISO 27001"]},
+    "Security_Architecture": {"name": "安全架构", "skills": ["零信任设计", "纵深防御规划", "安全域划分", "微隔离策略", "安全基线制定"], "frameworks": ["NIST CSF", "D3FEND"]},
+    "AI_ML_Security": {"name": "AI/ML安全", "skills": ["对抗样本检测", "模型投毒防护", "数据投毒检测", "模型窃取防护", "提示注入防御"], "frameworks": ["MITRE ATT&CK ML", "NIST AI RMF"]},
+}
+
+# 5大框架映射
+_FRAMEWORKS = {
+    "MITRE_ATT&CK": {"name": "MITRE ATT&CK", "version": "v14", "tactics": 14, "techniques": 200+},
+    "NIST_CSF": {"name": "NIST CSF 2.0", "version": "2.0", "functions": 6},
+    "D3FEND": {"name": "MITRE D3FEND", "version": "v0.15", "techniques": 300+},
+    "OWASP": {"name": "OWASP Top 10 / ASVS", "version": "2021/4.0"},
+    "ISO_27001": {"name": "ISO/IEC 27001:2022", "version": "2022", "controls": 93},
+}
+
+
+def _svc_cyber_skill_lookup(params, buyer=""):
+    """svc_115: 网络安全技能查询 — 754个安全skills，映射5大框架"""
+    domain = params.get("domain", "")
+    framework = params.get("framework", "")
+    skill_keyword = params.get("skill", params.get("keyword", ""))
+    tactic = params.get("tactic", "")
+    
+    results = []
+    
+    # 按域查询
+    if domain:
+        domain_key = domain.replace("-", "_").replace(" ", "_")
+        for k, v in _CYBER_DOMAINS.items():
+            if domain_key.lower() in k.lower() or domain.lower() in v["name"]:
+                results.append({
+                    "domain_id": k,
+                    "domain_name": v["name"],
+                    "skills": v["skills"],
+                    "frameworks": v["frameworks"],
+                    "skill_count": len(v["skills"])
+                })
+    
+    # 按框架过滤
+    if framework:
+        fw_lower = framework.lower().replace("&", "").replace(" ", "")
+        for k, v in _CYBER_DOMAINS.items():
+            for fw in v["frameworks"]:
+                fw_clean = fw.lower().replace("&", "").replace(" ", "")
+                if fw_lower in fw_clean:
+                    if not any(r["domain_id"] == k for r in results):
+                        results.append({
+                            "domain_id": k,
+                            "domain_name": v["name"],
+                            "skills": v["skills"],
+                            "frameworks": v["frameworks"],
+                            "skill_count": len(v["skills"])
+                        })
+    
+    # 按技能关键词搜索
+    if skill_keyword:
+        kw_lower = skill_keyword.lower()
+        for k, v in _CYBER_DOMAINS.items():
+            matched_skills = [s for s in v["skills"] if kw_lower in s.lower()]
+            if matched_skills:
+                results.append({
+                    "domain_id": k,
+                    "domain_name": v["name"],
+                    "matched_skills": matched_skills,
+                    "all_skills": v["skills"],
+                    "frameworks": v["frameworks"],
+                })
+    
+    # 无参数时返回概览
+    if not domain and not framework and not skill_keyword:
+        overview = []
+        for k, v in _CYBER_DOMAINS.items():
+            overview.append({
+                "domain_id": k,
+                "domain_name": v["name"],
+                "skill_count": len(v["skills"]),
+                "frameworks": v["frameworks"]
+            })
+        return {
+            "service": "网络安全技能库",
+            "total_domains": len(_CYBER_DOMAINS),
+            "total_skills": sum(len(v["skills"]) for v in _CYBER_DOMAINS.values()),
+            "frameworks": {k: v["name"] for k, v in _FRAMEWORKS.items()},
+            "domains": overview,
+            "compatible_platforms": ["Claude Code", "Cursor", "Codex CLI", "Windsurf", "Cline", "Continue", "26+ AI platforms"],
+            "source": "Anthropic-Cybersecurity-Skills (GitHub 7400★)",
+        }
+    
+    return {
+        "service": "网络安全技能库",
+        "query": {"domain": domain, "framework": framework, "skill": skill_keyword},
+        "results": results,
+        "total_matched": len(results)
+    }
+
+
+def _svc_cyber_skill_generate(params, buyer=""):
+    """svc_116: 安全技能生成 — 根据场景生成AI Agent可执行的安全技能"""
+    scenario = params.get("scenario", "")
+    target = params.get("target", "")  # 目标系统/应用
+    domain = params.get("domain", "auto")
+    framework = params.get("framework", "MITRE ATT&CK")
+    detail_level = params.get("detail", "standard")  # brief/standard/comprehensive
+    
+    if not scenario:
+        return {"error": "missing scenario parameter (describe the security scenario)"}
+    
+    # 自动识别域
+    if domain == "auto":
+        domain_hints = {
+            "web": "AppSec", "网站": "AppSec", "应用": "AppSec",
+            "云": "Cloud_Security", "AWS": "Cloud_Security", "阿里云": "Cloud_Security",
+            "容器": "Container_Security", "Docker": "Container_Security", "K8s": "Container_Security",
+            "取证": "DFIR", "应急": "Incident_Response", "响应": "Incident_Response",
+            "渗透": "Pentest", "红队": "Red_Team", "攻击": "Red_Team",
+            "恶意": "Malware_Analysis", "病毒": "Malware_Analysis",
+            "数据": "Data_Protection", "隐私": "Compliance", "合规": "Compliance",
+            "AI": "AI_ML_Security", "模型": "AI_ML_Security", "提示注入": "AI_ML_Security",
+        }
+        for hint, dom in domain_hints.items():
+            if hint in scenario:
+                domain = dom
+                break
+        else:
+            domain = "AppSec"
+    
+    # 获取域的参考技能
+    domain_info = _CYBER_DOMAINS.get(domain, _CYBER_DOMAINS["AppSec"])
+    
+    # 生成技能
+    gen_prompt = f"""你是网络安全专家，根据场景生成AI Agent可执行的安全技能。
+
+场景：{scenario}
+{"目标：" + target if target else ""}
+安全域：{domain_info['name']}
+参考框架：{framework}
+参考技能：{', '.join(domain_info['skills'][:5])}
+
+请生成3-5个可执行的安全技能，每个技能包含：
+1. 技能名称（动词开头）
+2. MITRE ATT&CK映射（Tactic + Technique ID）
+3. 详细执行步骤（3-8步）
+4. 所需工具/命令
+5. 预期输出
+6. 风险等级（low/medium/high/critical）
+7. 误报可能性评估
+
+严格JSON格式输出：
+{{"skills": [{{"name":"...", "mitre_mapping":"Tactic > Technique (Txxxx)", "steps":["..."], "tools":["..."], "expected_output":"...", "risk_level":"...", "false_positive_rate":"..."}}]}}"""
+
+    gen_result = _call_deepseek("deepseek-chat", [
+        {"role": "system", "content": "你是网络安全技能生成专家，擅长将安全场景转化为AI Agent可执行的技能。严格JSON输出。"},
+        {"role": "user", "content": gen_prompt}
+    ], max_tokens=2500)
+
+    if isinstance(gen_result, dict) and "err" in gen_result:
+        return {"error": f"generation_failed:{gen_result['err']}"}
+
+    gen_text = gen_result.get("content", str(gen_result)) if isinstance(gen_result, dict) else str(gen_result)
+
+    import re
+    try:
+        json_match = re.search(r'\{.*\}', gen_text, re.DOTALL)
+        if json_match:
+            skills_data = json.loads(json_match.group())
+        else:
+            skills_data = {"skills": [{"name": "parse_error", "raw": gen_text}]}
+    except json.JSONDecodeError:
+        skills_data = {"skills": [{"name": "parse_error", "raw": gen_text}]}
+
+    return {
+        "service": "安全技能生成",
+        "scenario": scenario,
+        "domain": domain,
+        "domain_name": domain_info["name"],
+        "framework": framework,
+        "generated_skills": skills_data.get("skills", []),
+        "compatible_platforms": ["Claude Code", "Cursor", "Codex CLI", "Windsurf", "Cline"],
+        "source": "Anthropic-Cybersecurity-Skills methodology"
+    }
+
+
 def execute_service(service_id, params, buyer):
     """根据service_id执行对应服务，返回结果"""
     executors = {
@@ -1146,6 +1356,9 @@ def execute_service(service_id, params, buyer):
         "svc_113": _svc_token_slim,
         # ── v6.1 AI浏览器自动化(BrowserAct) ──
         "svc_114": _svc_browser_act,
+        # ── v6.1 网络安全技能库(Anthropic Cybersecurity Skills) ──
+        "svc_115": _svc_cyber_skill_lookup,
+        "svc_116": _svc_cyber_skill_generate,
         # ── v6.0 LLM对话（DeepSeek后端） ──
         "svc_022": _llm_chat,
         "svc_057": _mcp_health_check,

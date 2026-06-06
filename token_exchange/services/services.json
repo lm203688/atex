@@ -399,8 +399,47 @@
         "timeout": {"type": "integer", "required": false, "description": "超时秒数(最大300)", "default": 60}
       },
       "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_115",
+      "name": "网络安全技能查询",
+      "description": "754个安全skills查询，映射5大框架(MITRE ATT&CK/NIST CSF/D3FEND/OWASP/ISO27001)，覆盖26个安全域(DFIR/红队/AppSec/云安全/容器安全/AI安全等)。兼容Claude Code/Cursor/Codex CLI等26+ AI平台。",
+      "category": "网络安全",
+      "subcategory": "安全技能库",
+      "provider": "atex_official",
+      "price": 1.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🛡️",
+      "tags": ["网络安全", "MITRE ATT&CK", "NIST CSF", "安全技能", "AI Agent", "Anthropic"],
+      "params": {
+        "domain": {"type": "string", "required": false, "description": "安全域: DFIR/Red_Team/AppSec/Cloud_Security等"},
+        "framework": {"type": "string", "required": false, "description": "框架: MITRE ATT&CK/NIST CSF/D3FEND/OWASP/ISO27001"},
+        "skill": {"type": "string", "required": false, "description": "技能关键词搜索"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_116",
+      "name": "安全技能生成",
+      "description": "根据安全场景生成AI Agent可执行的安全技能。自动识别安全域，映射MITRE ATT&CK Technique，输出详细执行步骤+所需工具+风险等级+误报评估。兼容Claude Code/Cursor/Codex CLI等。",
+      "category": "网络安全",
+      "subcategory": "安全技能生成",
+      "provider": "atex_official",
+      "price": 5.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🔐",
+      "tags": ["安全技能生成", "MITRE ATT&CK", "AI Agent", "渗透测试", "安全自动化"],
+      "params": {
+        "scenario": {"type": "string", "required": true, "description": "安全场景描述"},
+        "target": {"type": "string", "required": false, "description": "目标系统/应用"},
+        "domain": {"type": "string", "required": false, "description": "安全域(auto自动识别)", "default": "auto"},
+        "framework": {"type": "string", "required": false, "description": "参考框架", "default": "MITRE ATT&CK"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     }
   ],
   "orders": [],
-  "next_service_id": 115
+  "next_service_id": 117
 }
