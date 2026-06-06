@@ -1467,6 +1467,11 @@ class Handler(BaseHTTPRequestHandler):
                  "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "搜索关键词/查询"}}, "required": ["query"]}},
                 {"name": "web_reader", "description": "网页阅读 - 提取网页正文，自动去噪返回干净内容。3 ATEX/次",
                  "inputSchema": {"type": "object", "properties": {"url": {"type": "string", "description": "网页URL"}, "format": {"type": "string", "description": "输出格式: html/text", "default": "text"}}, "required": ["url"]}},
+                # ── cangjie-skill 书籍蒸馏 ──
+                {"name": "book_distill", "description": "书籍蒸馏(cangjie) - RIA-TV++六阶段流水线，将书籍内容转化为可执行的AI技能包。8 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"book_title": {"type": "string", "description": "书名"}, "content": {"type": "string", "description": "书籍内容文本（至少100字）"}, "num_skills": {"type": "integer", "description": "提取技能数量(1-20)", "default": 8}}, "required": ["book_title", "content"]}},
+                {"name": "skill_query", "description": "技能包查询 - 搜索已蒸馏的RIA-TV++技能包，按书名/关键词/ID查询。0.5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "搜索关键词"}, "book": {"type": "string", "description": "按书名过滤"}, "skill_id": {"type": "string", "description": "按技能ID精确查询"}}, "required": []}},
             ]
             return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
         elif method == "tools/call":
@@ -1486,6 +1491,9 @@ class Handler(BaseHTTPRequestHandler):
                 "video_generate": ("svc_106", 10.0),
                 "web_search_ai": ("svc_107", 5.0),
                 "web_reader": ("svc_108", 3.0),
+                # ── cangjie-skill 书籍蒸馏 ──
+                "book_distill": ("svc_110", 8.0),
+                "skill_query": ("svc_111", 0.5),
             }
             if tool_name in _BILLABLE_TOOLS:
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)

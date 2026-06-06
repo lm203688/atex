@@ -463,6 +463,247 @@ def _svc_web_reader(params, buyer=""):
     return {"service": "Web阅读", "content": data if isinstance(data, dict) else str(data), "url": url}
 
 
+# ═══════════════════════════════════════════════════════════════
+# cangjie-skill: 书籍蒸馏 — RIA-TV++ 六阶段流水线
+# ═══════════════════════════════════════════════════════════════
+
+CANGJIE_SKILLS_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "cangjie_skills.json")
+
+def _load_cangjie_db():
+    """加载已蒸馏的技能包数据库"""
+    if os.path.exists(CANGJIE_SKILLS_DB):
+        try:
+            with open(CANGJIE_SKILLS_DB) as f:
+                return json.load(f)
+        except:
+            pass
+    return {"skills": [], "next_id": 1}
+
+def _save_cangjie_db(db):
+    """保存技能包数据库"""
+    os.makedirs(os.path.dirname(CANGJIE_SKILLS_DB), exist_ok=True)
+    with open(CANGJIE_SKILLS_DB, "w", encoding="utf-8") as f:
+        json.dump(db, f, ensure_ascii=False, indent=2)
+
+
+def _ria_tv_plus_pipeline(book_title, content, num_skills=10):
+    """RIA-TV++ 六阶段蒸馏流水线
+    
+    R: 原文(Raw) - 提取核心段落
+    I: 重写(Interpret) - 转化为可理解语言
+    A1: 书中案例(Anchored Example) - 原书实例
+    A2: 触发场景(Activation) - 何时使用此技能
+    E: 可执行步骤(Execution) - 具体操作步骤
+    B: 边界与盲点(Boundary) - 适用范围与局限
+    """
+    # ── Stage 1: 提取核心知识点 ──
+    extract_prompt = f"""你是一位知识蒸馏专家。请从以下书籍内容中提取{num_skills}个最核心、最可执行的知识点。
+
+书籍：《{book_title}》
+
+内容：
+{content[:8000]}
+
+要求：
+1. 每个知识点必须是"可转化为行动"的，而非纯理论
+2. 按实用价值排序，最有用的排前面
+3. 每个知识点用一句话概括（不超过50字）
+4. 输出JSON数组格式：[{{"id":1,"summary":"...","raw_quote":"原文关键句"}}]"""
+
+    extract_result = _call_deepseek("deepseek-chat", [
+        {"role": "system", "content": "你是知识蒸馏专家，擅长从书籍中提取可执行的核心知识。只输出JSON，不要其他文字。"},
+        {"role": "user", "content": extract_prompt}
+    ], max_tokens=3000)
+
+    if isinstance(extract_result, dict) and "err" in extract_result:
+        return {"err": f"extract_failed:{extract_result['err']}"}
+
+    extract_text = extract_result.get("content", str(extract_result)) if isinstance(extract_result, dict) else str(extract_result)
+
+    # 解析提取的知识点
+    try:
+        # 尝试从文本中提取JSON
+        import re
+        json_match = re.search(r'\[.*\]', extract_text, re.DOTALL)
+        if json_match:
+            knowledge_points = json.loads(json_match.group())
+        else:
+            knowledge_points = [{"id": 1, "summary": extract_text[:100], "raw_quote": ""}]
+    except json.JSONDecodeError:
+        knowledge_points = [{"id": 1, "summary": extract_text[:100], "raw_quote": ""}]
+
+    # ── Stage 2-6: RIA-TV++ 结构化（批量处理） ──
+    skills = []
+    for kp in knowledge_points[:num_skills]:
+        skill_prompt = f"""请对以下知识点进行RIA-TV++六维度结构化分析：
+
+书籍：《{book_title}》
+知识点：{kp.get('summary', '')}
+原文引用：{kp.get('raw_quote', '')}
+
+请严格按照以下JSON格式输出：
+{{
+  "name": "技能名称（5-15字，动词开头）",
+  "R": "原文：核心段落的精炼引用（50-100字）",
+  "I": "重写：用现代语言重新阐述核心观点（100-150字）",
+  "A1": "书中案例：原书中的具体案例或故事（100-150字）",
+  "A2": "触发场景：什么情况下应该使用这个技能？给出3个具体场景（每个20-30字）",
+  "E": "可执行步骤：具体的操作步骤（3-5步，每步15-25字）",
+  "B": "边界与盲点：这个技能的适用范围和潜在误区（50-80字）"
+}}"""
+
+        skill_result = _call_deepseek("deepseek-chat", [
+            {"role": "system", "content": "你是RIA-TV++知识结构化专家。严格按照JSON格式输出，不要添加任何其他文字。"},
+            {"role": "user", "content": skill_prompt}
+        ], max_tokens=1500)
+
+        if isinstance(skill_result, dict) and "err" in skill_result:
+            continue
+
+        skill_text = skill_result.get("content", str(skill_result)) if isinstance(skill_result, dict) else str(skill_result)
+
+        try:
+            json_match = re.search(r'\{.*\}', skill_text, re.DOTALL)
+            if json_match:
+                skill_data = json.loads(json_match.group())
+            else:
+                continue
+        except json.JSONDecodeError:
+            continue
+
+        # ── Stage 7: 三重验证 ──
+        verification = _verify_skill(skill_data, book_title)
+        skill_data["verification"] = verification
+        skill_data["source_book"] = book_title
+
+        if verification.get("passed", False):
+            skills.append(skill_data)
+
+    return {
+        "book_title": book_title,
+        "total_extracted": len(knowledge_points),
+        "skills_passed": len(skills),
+        "pass_rate": f"{len(skills)/max(len(knowledge_points),1)*100:.0f}%",
+        "skills": skills
+    }
+
+
+def _verify_skill(skill_data, book_title):
+    """三重验证：实用性、可执行性、准确性"""
+    checks = {"practical": False, "executable": False, "accurate": True, "passed": False}
+
+    # 验证1: 实用性 - 是否有具体触发场景和可执行步骤
+    a2 = skill_data.get("A2", "")
+    e = skill_data.get("E", "")
+    if len(a2) > 30 and len(e) > 30:
+        checks["practical"] = True
+
+    # 验证2: 可执行性 - 步骤是否具体可操作
+    steps = e.split("\n") if "\n" in e else e.split("；")
+    action_words = ["写", "做", "列", "设", "查", "问", "记", "画", "算", "找", "用", "改", "删", "建", "选", "比", "测", "试", "分析", "评估", "制定", "执行", "记录", "复盘"]
+    has_action = any(any(w in s for w in action_words) for s in steps if len(s) > 5)
+    if has_action and len(steps) >= 2:
+        checks["executable"] = True
+
+    # 验证3: 准确性 - 结构完整性
+    required_fields = ["name", "R", "I", "A1", "A2", "E", "B"]
+    all_present = all(skill_data.get(f) for f in required_fields)
+    checks["accurate"] = all_present
+
+    # 通过条件：实用性 + 可执行性 + 准确性
+    checks["passed"] = checks["practical"] and checks["executable"] and checks["accurate"]
+    return checks
+
+
+def _svc_book_distill(params, buyer=""):
+    """svc_110: 书籍蒸馏 — RIA-TV++六阶段流水线，将书籍转化为结构化技能包"""
+    book_title = params.get("book_title", params.get("title", ""))
+    content = params.get("content", params.get("text", ""))
+    num_skills = min(int(params.get("num_skills", 8)), 20)  # 最多20个技能
+
+    if not book_title:
+        return {"error": "missing book_title parameter"}
+    if not content or len(content) < 100:
+        return {"error": "content too short, need at least 100 characters"}
+
+    # 执行蒸馏流水线
+    result = _ria_tv_plus_pipeline(book_title, content, num_skills)
+
+    if "err" in result:
+        return result
+
+    # 保存到技能包数据库
+    db = _load_cangjie_db()
+    for skill in result.get("skills", []):
+        skill_entry = {
+            "id": f"skill_{db['next_id']:04d}",
+            "name": skill.get("name", ""),
+            "source_book": book_title,
+            "ria_tv": {
+                "R": skill.get("R", ""),
+                "I": skill.get("I", ""),
+                "A1": skill.get("A1", ""),
+                "A2": skill.get("A2", ""),
+                "E": skill.get("E", ""),
+                "B": skill.get("B", ""),
+            },
+            "verification": skill.get("verification", {}),
+            "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "distilled_by": str(buyer) if buyer else "anonymous"
+        }
+        db["skills"].append(skill_entry)
+        db["next_id"] += 1
+    _save_cangjie_db(db)
+
+    result["saved_to_db"] = True
+    result["total_skills_in_db"] = len(db["skills"])
+    return {"service": "书籍蒸馏(cangjie)", "result": result}
+
+
+def _svc_skill_query(params, buyer=""):
+    """svc_111: 技能包查询 — 查询已蒸馏的RIA-TV++技能包"""
+    db = _load_cangjie_db()
+    query = params.get("query", params.get("keyword", ""))
+    book_filter = params.get("book", "")
+    skill_id = params.get("skill_id", "")
+
+    # 按ID精确查询
+    if skill_id:
+        for s in db["skills"]:
+            if s["id"] == skill_id:
+                return {"service": "技能包查询", "skill": s}
+        return {"service": "技能包查询", "error": "skill_not_found"}
+
+    # 按书名过滤
+    results = db["skills"]
+    if book_filter:
+        results = [s for s in results if book_filter in s.get("source_book", "")]
+
+    # 按关键词搜索
+    if query:
+        query_lower = query.lower()
+        results = [s for s in results if
+                   query_lower in s.get("name", "").lower() or
+                   query_lower in s.get("ria_tv", {}).get("I", "").lower() or
+                   query_lower in s.get("ria_tv", {}).get("A2", "").lower() or
+                   query_lower in s.get("source_book", "").lower()]
+
+    # 只返回摘要（不含完整RIA-TV内容）
+    summaries = [{
+        "id": s["id"],
+        "name": s["name"],
+        "source_book": s["source_book"],
+        "created_at": s.get("created_at", "")
+    } for s in results[:50]]
+
+    return {
+        "service": "技能包查询",
+        "total": len(results),
+        "showing": len(summaries),
+        "skills": summaries
+    }
+
+
 def execute_service(service_id, params, buyer):
     """根据service_id执行对应服务，返回结果"""
     executors = {
@@ -480,6 +721,9 @@ def execute_service(service_id, params, buyer):
         "svc_106": _svc_video_gen,
         "svc_107": _svc_web_search,
         "svc_108": _svc_web_reader,
+        # ── v6.1 cangjie-skill 书籍蒸馏（RIA-TV++流水线） ──
+        "svc_110": _svc_book_distill,
+        "svc_111": _svc_skill_query,
         # ── v6.0 LLM对话（DeepSeek后端） ──
         "svc_022": _llm_chat,
         "svc_057": _mcp_health_check,

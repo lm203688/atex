@@ -300,8 +300,46 @@
         "format": {"type": "string", "required": false, "description": "输出格式: html/text", "default": "text"}
       },
       "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_110",
+      "name": "书籍蒸馏(cangjie)",
+      "description": "RIA-TV++六阶段流水线，将书籍内容转化为可执行的AI技能包。解决'看了很多书但用不起来'的痛点。R(原文)/I(重写)/A1(书中案例)/A2(触发场景)/E(可执行步骤)/B(边界与盲点)六维度结构化，三重验证筛选确保技能质量。",
+      "category": "知识蒸馏",
+      "subcategory": "书籍技能化",
+      "provider": "atex_official",
+      "price": 8.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "📚",
+      "tags": ["书籍蒸馏", "RIA-TV++", "技能包", "知识管理", "cangjie", "读书"],
+      "params": {
+        "book_title": {"type": "string", "required": true, "description": "书名"},
+        "content": {"type": "string", "required": true, "description": "书籍内容文本（至少100字）"},
+        "num_skills": {"type": "integer", "required": false, "description": "提取技能数量(1-20)", "default": 8}
+      },
+      "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_111",
+      "name": "技能包查询",
+      "description": "搜索已蒸馏的RIA-TV++技能包，按书名、关键词或技能ID查询。查看已生成的结构化技能，获取完整的六维度分析。",
+      "category": "知识蒸馏",
+      "subcategory": "技能检索",
+      "provider": "atex_official",
+      "price": 0.5,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🔍",
+      "tags": ["技能查询", "RIA-TV++", "技能包", "知识检索"],
+      "params": {
+        "query": {"type": "string", "required": false, "description": "搜索关键词"},
+        "book": {"type": "string", "required": false, "description": "按书名过滤"},
+        "skill_id": {"type": "string", "required": false, "description": "按技能ID精确查询"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     }
   ],
   "orders": [],
-  "next_service_id": 109
+  "next_service_id": 112
 }
