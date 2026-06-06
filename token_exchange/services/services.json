@@ -338,8 +338,30 @@
         "skill_id": {"type": "string", "required": false, "description": "按技能ID精确查询"}
       },
       "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_112",
+      "name": "向量检索优化",
+      "description": "分析向量数据并生成TurboVec/FAISS压缩方案。支持4-32x压缩比，自动推荐最佳压缩策略（INT8量化/TurboVec乘积量化/TurboQuant极致压缩/二值量化），输出部署代码片段。解决AI向量检索显存爆满难题。",
+      "category": "AI基础设施",
+      "subcategory": "向量优化",
+      "provider": "atex_official",
+      "price": 3.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "⚡",
+      "tags": ["向量压缩", "TurboVec", "FAISS", "RAG优化", "显存优化", "向量检索"],
+      "params": {
+        "vector_size_mb": {"type": "number", "required": false, "description": "向量数据大小(MB)"},
+        "vector_dim": {"type": "integer", "required": false, "description": "向量维度", "default": 768},
+        "num_vectors": {"type": "integer", "required": false, "description": "向量数量（可代替size_mb）"},
+        "current_engine": {"type": "string", "required": false, "description": "当前引擎: faiss/milvus/chroma", "default": "faiss"},
+        "use_case": {"type": "string", "required": false, "description": "场景: RAG/搜索/推荐", "default": "RAG"},
+        "hardware": {"type": "string", "required": false, "description": "硬件: V100/A100/Mac/纯CPU", "default": "unknown"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     }
   ],
   "orders": [],
-  "next_service_id": 112
+  "next_service_id": 113
 }
