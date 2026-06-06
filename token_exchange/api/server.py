@@ -275,7 +275,7 @@ class Handler(BaseHTTPRequestHandler):
 .stats span{{color:#a78bfa;font-weight:600}}
 .footer{{text-align:center;padding:30px;color:#475569;font-size:.8em;border-top:1px solid #1e293b}}
 </style></head><body>
-<div class="hero"><h1>ATEX 合规 + AI 平台</h1><p>4个合规工具 · 8大AI能力 · MCP协议 · 支付宝充值 · 余额永不过期</p><a href="https://lm203688.github.io/atex/" class="cta">开始使用</a></div>
+<div class="hero"><h1>ATEX 合规 + AI 平台</h1><p>4个合规工具 · 8大AI能力 · MCP协议 · 支付宝充值 · 余额永不过期</p><a href="https://genetech.tools/credits.html" class="cta">💎 充值</a><a href="https://lm203688.github.io/atex/" class="cta" style="background:#475569;margin-left:8px">开始使用</a></div>
 <div class="section"><h2>🛡️ 合规工具</h2><div class="tools">{compliance_cards}</div></div>
 <div class="section"><h2>🤖 AI能力</h2><div class="tools">{ai_cards}</div></div>
 <div class="section"><h2>🧬 知识引擎生态</h2><p style="color:#94a3b8;margin-bottom:20px">ATEX是GeneTech知识引擎生态的AI能力层。12个前沿科技知识库，覆盖基因技术/中医药/Agent生态/机器人/量子计算/脑科学/核能/系外行星/外星矿物/深海/新能源/生命科学。</p><div class="tools"><div class="card"><h3>🧬 GeneTech Tools</h3><p>基因技术知识引擎，300+实体</p><a href="https://genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>🌿 中医药知识库</h3><p>1755+中药/方剂/疾病实体</p><a href="https://tcm.genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>🔌 Agent生态</h3><p>MCP/SDK/协议/向量数据库</p><a href="https://agent.genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>⚛️ 量子计算</h3><p>量子处理器/算法/纠错</p><a href="https://quantum.genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>🧠 脑科学</h3><p>脑机接口/神经调控/认知</p><a href="https://brain.genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>⚡ 新能源</h3><p>固态电池/钙钛矿/绿氢</p><a href="https://energy.genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>🦠 生命科学</h3><p>CRISPR/细胞疗法/合成生物</p><a href="https://life.genetech.tools" class="btn" target="_blank">访问</a></div><div class="card"><h3>🔭 更多领域</h3><p>核能/系外行星/深海/机器人/矿物</p><a href="https://genetech.tools" class="btn" target="_blank">全部站点</a></div></div></div>
@@ -460,6 +460,10 @@ class Handler(BaseHTTPRequestHandler):
         elif p == '/.well-known/ai-plugin.json': self._ai_plugin_manifest()
         elif p == '/api/v1/agent/tools.json': self._agent_tools()
         elif p == '/api/v1/openapi.json': self._openapi_spec()
+        # ── GEO/AI可发现 ──
+        elif p == '/llms.txt': self._llms_txt()
+        elif p == '/llms-full.txt': self._llms_full_txt()
+        elif p == '/robots.txt': self._robots_txt()
         # ── MCP协议端点（Streamable HTTP）──
         elif p == '/mcp': self._mcp_get()
         elif p == '/.well-known/mcp/server-card.json': self._mcp_server_card()
@@ -1653,9 +1657,9 @@ class Handler(BaseHTTPRequestHandler):
         self._json({
             "schema_version": "v1",
             "name_for_model": "atex",
-            "name_for_human": "ATEX AI Gateway",
-            "description_for_model": "Access 6 AI models (DeepSeek, GPT-4o, Claude) via one API key. Pay-per-use. Buy/sell Agent services in the marketplace. Trade ATEX tokens. Web search available.",
-            "description_for_human": "One API key for 6 AI models. Pay-per-use, OpenAI compatible. Agent service marketplace.",
+            "name_for_human": "ATEX 合规+AI平台",
+            "description_for_model": "ATEX provides 4 Chinese compliance tools (banned word detection, AI search visibility, data export compliance, SEO compliance) and 8 AI capabilities (TTS, ASR, VLM, image generation/editing, video generation, web search, web reader). Pay-per-use via Alipay. MCP protocol compatible. Part of GeneTech ecosystem (12 frontier tech knowledge bases at genetech.tools).",
+            "description_for_human": "4个中国合规工具 + 8大AI能力。违禁词检测、AI搜索可见度、出海合规、SEO合规。支付宝充值，按次计费。",
             "auth": {
                 "type": "service_http",
                 "authorization_type": "bearer",
@@ -1894,6 +1898,144 @@ class Handler(BaseHTTPRequestHandler):
         host = self.headers.get("Host", "150.158.119.19:8420")
         scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
         base = f"{scheme}://{host}"
+
+    def _llms_txt(self):
+        """GET /llms.txt — LLM可读索引（GEO优化）"""
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        svcs = exchange.list_services().get("services", [])
+        compliance = [s for s in svcs if s.get("category") == "合规工具"]
+        ai = [s for s in svcs if s.get("category") == "AI能力"]
+        txt = f"""# ATEX — 合规工具 + AI能力平台
+# {base}
+
+> 4个中国合规工具 + 8大AI能力。违禁词检测、AI搜索可见度、出海合规、SEO合规。支付宝充值，按次计费。MCP协议兼容。GeneTech生态成员。
+
+## 合规工具
+
+{chr(10).join(f"- [{s['name']}]({base}/api/v1/services/{s['id']}): {s.get('description','')[:80]} (¥{s.get('price',0)}/{s.get('price_unit','次')})" for s in compliance)}
+
+## AI能力
+
+{chr(10).join(f"- [{s['name']}]({base}/api/v1/services/{s['id']}): {s.get('description','')[:80]} (¥{s.get('price',0)}/{s.get('price_unit','次')})" for s in ai)}
+
+## API端点
+
+- [OpenAPI规范]({base}/api/v1/openapi.json)
+- [MCP协议]({base}/mcp)
+- [AI Plugin清单]({base}/.well-known/ai-plugin.json)
+- [Agent自发现]({base}/.well-known/agent.json)
+- [服务列表]({base}/api/v1/services)
+- [平台状态]({base}/api/v1/status)
+
+## GeneTech生态
+
+- [GeneTech Tools](https://genetech.tools) — 基因技术知识引擎
+- [中医药知识库](https://tcm.genetech.tools) — 1755+实体
+- [Agent生态](https://agent.genetech.tools) — MCP/SDK/协议
+- [量子计算](https://quantum.genetech.tools) — 处理器/算法/纠错
+- [脑科学](https://brain.genetech.tools) — 脑机接口/神经调控
+- [新能源](https://energy.genetech.tools) — 固态电池/钙钛矿
+- [生命科学](https://life.genetech.tools) — CRISPR/细胞疗法
+- [核能](https://nuclear.genetech.tools) — 聚变/裂变/小型堆
+- [系外行星](https://exo.genetech.tools) — 系外行星/宜居带
+- [深海科技](https://deepsea.genetech.tools) — 深海/热泉/矿物
+- [机器人](https://robot.genetech.tools) — 人形/工业/手术
+- [外星矿物](https://mineral.genetech.tools) — 月球/火星/小行星
+"""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(txt.encode("utf-8"))
+
+    def _llms_full_txt(self):
+        """GET /llms-full.txt — LLM全文版（含完整服务描述）"""
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        svcs = exchange.list_services().get("services", [])
+        compliance = [s for s in svcs if s.get("category") == "合规工具"]
+        ai = [s for s in svcs if s.get("category") == "AI能力"]
+        txt = f"""# ATEX — 合规工具 + AI能力平台 (Full)
+# {base}
+
+> 4个中国合规工具 + 8大AI能力。违禁词检测、AI搜索可见度、出海合规、SEO合规。支付宝充值，按次计费。MCP协议兼容。GeneTech生态成员。
+
+## 合规工具
+
+{chr(10).join(f"### {s['name']} ({s['id']}){chr(10)}{s.get('description','')}{chr(10)}价格: ¥{s.get('price',0)}/{s.get('price_unit','次')}{chr(10)}端点: {base}/api/v1/services/{s['id']}{chr(10)}" for s in compliance)}
+
+## AI能力
+
+{chr(10).join(f"### {s['name']} ({s['id']}){chr(10)}{s.get('description','')}{chr(10)}价格: ¥{s.get('price',0)}/{s.get('price_unit','次')}{chr(10)}端点: {base}/api/v1/services/{s['id']}{chr(10)}" for s in ai)}
+
+## API端点
+
+- OpenAPI规范: {base}/api/v1/openapi.json
+- MCP协议: {base}/mcp
+- AI Plugin清单: {base}/.well-known/ai-plugin.json
+- Agent自发现: {base}/.well-known/agent.json
+- 服务列表: {base}/api/v1/services
+- 平台状态: {base}/api/v1/status
+- 充值: {base}/api/v1/deposit
+
+## GeneTech生态
+
+- GeneTech Tools (https://genetech.tools) — 基因技术知识引擎，300+实体
+- 中医药知识库 (https://tcm.genetech.tools) — 1755+中药/方剂/疾病实体
+- Agent生态 (https://agent.genetech.tools) — MCP Server/SDK/协议/向量数据库
+- 量子计算 (https://quantum.genetech.tools) — 量子处理器/算法/纠错
+- 脑科学 (https://brain.genetech.tools) — 脑机接口/神经调控/认知增强
+- 新能源 (https://energy.genetech.tools) — 固态电池/钙钛矿/绿氢
+- 生命科学 (https://life.genetech.tools) — CRISPR/细胞疗法/合成生物
+- 核能 (https://nuclear.genetech.tools) — 聚变/裂变/小型堆
+- 系外行星 (https://exo.genetech.tools) — 系外行星/宜居带
+- 深海科技 (https://deepsea.genetech.tools) — 深海/热泉/矿物
+- 机器人 (https://robot.genetech.tools) — 人形/工业/手术
+- 外星矿物 (https://mineral.genetech.tools) — 月球/火星/小行星
+"""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(txt.encode("utf-8"))
+
+    def _robots_txt(self):
+        """GET /robots.txt — 搜索引擎/AI爬虫指引"""
+        host = self.headers.get("Host", "150.158.119.19:8420")
+        scheme = "https" if (self.headers.get("X-Forwarded-Proto") or "").lower() == "https" else "http"
+        base = f"{scheme}://{host}"
+        txt = f"""User-agent: *
+Allow: /
+Allow: /api/v1/services
+Allow: /api/v1/status
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /.well-known/ai-plugin.json
+Allow: /.well-known/agent.json
+Allow: /api/v1/openapi.json
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: {base}/api/v1/services
+"""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(txt.encode("utf-8"))
         # 解析format参数
         qs = urlparse(self.path).query
         fmt = "openai"
