@@ -574,10 +574,10 @@ class Handler(BaseHTTPRequestHandler):
             min_cost = 0.001
             if user["balance_cny"] < min_cost:
                 return self._json({"err": "insufficient_balance", "balance_cny": user["balance_cny"]}, 402)
-            # 调用底层API
+            # 调用底层API — 统一通过_call_deepseek（优先z-ai SDK，DeepSeek备用）
             messages = d.get("messages", [])
             prompt = messages[-1].get("content", "") if messages else ""
-            result = execute_api_proxy(model_info.get("backend", "deepseek") + "_chat" if model_info.get("backend") == "deepseek" else model, {"prompt": prompt, "messages": messages})
+            result = execute_api_proxy("deepseek_chat", {"prompt": prompt, "messages": messages})
             if "err" in result:
                 return self._json({"err": "api_error", "message": result["err"]}, 500)
             # 计费
