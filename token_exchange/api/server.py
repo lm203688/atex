@@ -574,10 +574,11 @@ class Handler(BaseHTTPRequestHandler):
             min_cost = 0.001
             if user["balance_cny"] < min_cost:
                 return self._json({"err": "insufficient_balance", "balance_cny": user["balance_cny"]}, 402)
-            # 调用底层API — 统一通过_call_deepseek（优先z-ai SDK，DeepSeek备用）
+            # 调用底层API — 优先z-ai SDK（免费GLM-4-Plus），DeepSeek备用
             messages = d.get("messages", [])
             prompt = messages[-1].get("content", "") if messages else ""
-            result = execute_api_proxy("deepseek_chat", {"prompt": prompt, "messages": messages})
+            # 直接使用_sdk_chat（z-ai SDK），绕过DeepSeek API
+            result = execute_api_proxy("openai_gpt4o_mini", {"prompt": prompt, "messages": messages})
             if "err" in result:
                 return self._json({"err": "api_error", "message": result["err"]}, 500)
             # 计费
@@ -1507,7 +1508,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not model_info: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Unknown model: {model}"}}, 400)
                 if model_info.get("status") == "coming_soon": return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32603, "message": f"Model {model} coming soon"}})
                 prompt = messages[-1].get("content", "") if messages else ""
-                result = execute_api_proxy(model_info.get("backend", "deepseek") + "_chat" if model_info.get("backend") == "deepseek" else model, {"prompt": prompt, "messages": messages})
+                # 统一使用_sdk_chat（z-ai SDK），绕过DeepSeek API余额问题
+                result = execute_api_proxy("openai_gpt4o_mini", {"prompt": prompt, "messages": messages})
                 content = result.get("content", str(result))
                 usage = result.get("usage", {})
                 input_tokens = usage.get("prompt_tokens", len(prompt)//4)
@@ -1519,12 +1521,14 @@ class Handler(BaseHTTPRequestHandler):
             elif tool_name == "web_search":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
                 query = args.get("query", "")
-                # v6.0: web_search通过LLM回答，扣费0.5元
+                # v6.0: web_search通过z-ai SDK LLM回答，扣费0.5元
                 if user["balance_cny"] < 0.5:
                     return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32002, "message": "Insufficient balance"}}, 402)
-                result = _chat(f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。", system="你是信息检索专家，提供准确的事实信息。", max_tokens=1000)
+                # 使用_sdk_chat替代_chat（绕过DeepSeek API）
+                ws_result = execute_api_proxy("openai_gpt4o_mini", {"prompt": f"关于'{query}'的最新信息：\n请提供关键事实、数据来源和时间线。", "system": "你是信息检索专家，提供准确的事实信息。"})
+                ws_text = ws_result.get("content", str(ws_result)) if isinstance(ws_result, dict) else str(ws_result)
                 _deduct(user["user_id"], 0.5, "web_search", 0, 0)
-                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": result}], "cost_cny": 0.5}})
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": ws_text}], "cost_cny": 0.5}})
             elif tool_name == "check_balance":
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required"}}, 401)
                 return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"balance_cny": user["balance_cny"], "total_calls": user.get("total_calls",0)})}]}})
