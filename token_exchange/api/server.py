@@ -1092,6 +1092,17 @@ class Handler(BaseHTTPRequestHandler):
                     self._json({"ok": True, "message": "Code updated and service restarted."})
                 except Exception as e:
                     self._json({"ok": False, "err": str(e)})
+            elif action == "write_config":
+                # Admin: write payment_config.json to server
+                config_data = d.get("config", {})
+                if not config_data:
+                    return self._json({"err": "missing_config"}, 400)
+                install_dir = os.environ.get("ATEX_HOME", "/home/ubuntu/atex")
+                config_path = os.path.join(install_dir, "data", "payment_config.json")
+                os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                with open(config_path, "w") as f:
+                    json.dump(config_data, f, indent=2, ensure_ascii=False)
+                self._json({"ok": True, "message": f"Config written to {config_path}"})
             else:
                 self._json({"err": "unknown_action"})
 
