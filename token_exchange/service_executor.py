@@ -1156,9 +1156,9 @@ _CYBER_DOMAINS = {
 
 # 5大框架映射
 _FRAMEWORKS = {
-    "MITRE_ATT&CK": {"name": "MITRE ATT&CK", "version": "v14", "tactics": 14, "techniques": 200+},
+    "MITRE_ATT&CK": {"name": "MITRE ATT&CK", "version": "v14", "tactics": 14, "techniques": "200+"},
     "NIST_CSF": {"name": "NIST CSF 2.0", "version": "2.0", "functions": 6},
-    "D3FEND": {"name": "MITRE D3FEND", "version": "v0.15", "techniques": 300+},
+    "D3FEND": {"name": "MITRE D3FEND", "version": "v0.15", "techniques": "300+"},
     "OWASP": {"name": "OWASP Top 10 / ASVS", "version": "2021/4.0"},
     "ISO_27001": {"name": "ISO/IEC 27001:2022", "version": "2022", "controls": 93},
 }
