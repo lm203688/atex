@@ -1092,7 +1092,7 @@ class Handler(BaseHTTPRequestHandler):
                 import subprocess
                 try:
                     install_dir = os.environ.get("ATEX_HOME", "/home/ubuntu/atex")
-                    r1 = subprocess.run(["curl", "-L", "https://ghfast.top/https://github.com/lm203688/atex/archive/refs/heads/main.tar.gz", "-o", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=120)
+                    r1 = subprocess.run(["curl", "-L", "https://github.com/lm203688/atex/archive/refs/heads/main.tar.gz", "-o", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=120)
                     r2 = subprocess.run(["tar", "xzf", "/tmp/atex_latest.tar.gz", "-C", "/tmp/"], capture_output=True, timeout=30)
                     r3 = subprocess.run(["cp", "-r", "/tmp/atex-main/token_exchange/.", install_dir + "/"], capture_output=True, timeout=10)
                     subprocess.run(["rm", "-rf", "/tmp/atex-main", "/tmp/atex_latest.tar.gz"], capture_output=True, timeout=5)
