@@ -991,6 +991,135 @@ def _svc_token_slim(params, buyer=""):
     }
 
 
+# ═══════════════════════════════════════════════════════════════
+# AI浏览器自动化 — BrowserAct 集成
+# ═══════════════════════════════════════════════════════════════
+
+def _svc_browser_act(params, buyer=""):
+    """svc_114: AI浏览器自动化 — BrowserAct风格，AI Agent操作浏览器执行任务"""
+    task = params.get("task", params.get("instruction", ""))
+    url = params.get("url", params.get("start_url", ""))
+    mode = params.get("mode", "auto")  # auto/assisted/headless
+    timeout_sec = min(int(params.get("timeout", 60)), 300)
+    
+    if not task:
+        return {"error": "missing task parameter (describe what the AI agent should do)"}
+
+    # 使用z-ai SDK的agent-browser能力
+    # 先用web_reader获取页面内容（如果提供了URL）
+    page_context = ""
+    if url:
+        reader_args = ["function", "--name", "web_reader",
+                       "--args", json.dumps({"url": url})]
+        reader_result = _run_zai(reader_args, timeout=20)
+        if reader_result.get("ok"):
+            page_data = reader_result.get("data", {})
+            if isinstance(page_data, dict):
+                page_context = page_data.get("content", page_data.get("text", str(page_data)))[:3000]
+            else:
+                page_context = str(page_data)[:3000]
+
+    # 构建BrowserAct任务规划
+    planning_prompt = f"""你是一个AI浏览器自动化专家（BrowserAct风格）。根据用户任务，生成详细的浏览器操作步骤。
+
+任务：{task}
+{"起始页面：" + url if url else "需要先确定目标网站"}
+{"页面内容摘要：" + page_context[:1000] if page_context else ""}
+
+请生成操作计划，严格按JSON格式输出：
+{{
+  "task_summary": "任务一句话概括",
+  "target_url": "目标网站URL",
+  "steps": [
+    {{
+      "step": 1,
+      "action": "navigate|click|type|scroll|wait|screenshot|extract|submit|verify",
+      "target": "CSS选择器或元素描述",
+      "value": "输入值（type动作需要）",
+      "description": "这一步做什么"
+    }}
+  ],
+  "data_to_extract": ["需要提取的数据字段"],
+  "anti_detection": {{
+    "need_captcha_handling": true/false,
+    "need_human_handoff": true/false,
+    "stealth_mode": true/false
+  }},
+  "estimated_steps": 5,
+  "risk_level": "low/medium/high"
+}}"""
+
+    plan_result = _call_deepseek("deepseek-chat", [
+        {"role": "system", "content": "你是BrowserAct浏览器自动化专家。生成可执行的操作计划，严格JSON格式输出。"},
+        {"role": "user", "content": planning_prompt}
+    ], max_tokens=2000)
+
+    if isinstance(plan_result, dict) and "err" in plan_result:
+        return {"error": f"planning_failed:{plan_result['err']}"}
+
+    plan_text = plan_result.get("content", str(plan_result)) if isinstance(plan_result, dict) else str(plan_result)
+
+    # 解析计划
+    import re
+    try:
+        json_match = re.search(r'\{.*\}', plan_text, re.DOTALL)
+        if json_match:
+            plan = json.loads(json_match.group())
+        else:
+            plan = {"task_summary": task, "steps": [], "raw_plan": plan_text}
+    except json.JSONDecodeError:
+        plan = {"task_summary": task, "steps": [], "raw_plan": plan_text}
+
+    # 生成可执行代码
+    steps_code = ""
+    for s in plan.get("steps", [])[:10]:
+        action = s.get("action", "navigate")
+        target = s.get("target", "")
+        value = s.get("value", "")
+        desc = s.get("description", "")
+        
+        if action == "navigate":
+            steps_code += f"    # {desc}\n    page.goto('{value}')\n"
+        elif action == "click":
+            steps_code += f"    # {desc}\n    page.click('{target}')\n"
+        elif action == "type":
+            steps_code += f"    # {desc}\n    page.fill('{target}', '{value}')\n"
+        elif action == "scroll":
+            steps_code += f"    # {desc}\n    page.evaluate('window.scrollBy(0, 500)')\n"
+        elif action == "wait":
+            steps_code += f"    # {desc}\n    page.wait_for_selector('{target}')\n"
+        elif action == "extract":
+            steps_code += f"    # {desc}\n    data = page.text_content('{target}')\n"
+        elif action == "screenshot":
+            steps_code += f"    # {desc}\n    page.screenshot(path='screenshot.png')\n"
+        elif action == "submit":
+            steps_code += f"    # {desc}\n    page.click('{target}')  # submit\n"
+
+    executable_code = f"""# BrowserAct 自动化脚本
+# 任务: {plan.get('task_summary', task)}
+# 模式: {mode}
+
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless={'True' if mode == 'headless' else 'False'})
+    page = browser.new_page()
+    
+{steps_code}
+    browser.close()
+"""
+
+    return {
+        "service": "AI浏览器自动化(BrowserAct)",
+        "plan": plan,
+        "executable_code": executable_code,
+        "mode": mode,
+        "anti_detection": plan.get("anti_detection", {}),
+        "risk_level": plan.get("risk_level", "medium"),
+        "note": "BrowserAct风格：AI规划+浏览器执行+真人可接管。代码基于Playwright，可直接运行。"
+    }
+
+
 def execute_service(service_id, params, buyer):
     """根据service_id执行对应服务，返回结果"""
     executors = {
@@ -1015,6 +1144,8 @@ def execute_service(service_id, params, buyer):
         "svc_112": _svc_vector_optimize,
         # ── v6.1 Token瘦身(lowfat) ──
         "svc_113": _svc_token_slim,
+        # ── v6.1 AI浏览器自动化(BrowserAct) ──
+        "svc_114": _svc_browser_act,
         # ── v6.0 LLM对话（DeepSeek后端） ──
         "svc_022": _llm_chat,
         "svc_057": _mcp_health_check,

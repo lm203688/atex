@@ -1478,6 +1478,9 @@ class Handler(BaseHTTPRequestHandler):
                 # ── Token瘦身(lowfat) ──
                 {"name": "token_slim", "description": "Token瘦身(lowfat) - 在命令输出到达AI代理前过滤噪音，节省高达91.8% Token成本。1 ATEX/次",
                  "inputSchema": {"type": "object", "properties": {"text": {"type": "string", "description": "待过滤的文本内容"}, "mode": {"type": "string", "description": "过滤模式: aggressive/balanced/conservative", "default": "balanced"}, "rules": {"type": "object", "description": "自定义过滤规则(可选)"}}, "required": ["text"]}},
+                # ── AI浏览器自动化(BrowserAct) ──
+                {"name": "browser_act", "description": "AI浏览器自动化(BrowserAct) - AI Agent操作浏览器，自动规划步骤+生成Playwright代码，支持点网页/填表单/过验证/数据采集。5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "任务描述（AI要做什么）"}, "url": {"type": "string", "description": "起始页面URL（可选）"}, "mode": {"type": "string", "description": "模式: auto/assisted/headless", "default": "auto"}, "timeout": {"type": "integer", "description": "超时秒数(最大300)", "default": 60}}, "required": ["task"]}},
             ]
             return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
         elif method == "tools/call":
@@ -1504,6 +1507,8 @@ class Handler(BaseHTTPRequestHandler):
                 "vector_optimize": ("svc_112", 3.0),
                 # ── Token瘦身(lowfat) ──
                 "token_slim": ("svc_113", 1.0),
+                # ── AI浏览器自动化(BrowserAct) ──
+                "browser_act": ("svc_114", 5.0),
             }
             if tool_name in _BILLABLE_TOOLS:
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)

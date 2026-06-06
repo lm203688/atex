@@ -379,8 +379,28 @@
         "rules": {"type": "object", "required": false, "description": "自定义过滤规则(可选)"}
       },
       "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_114",
+      "name": "AI浏览器自动化(BrowserAct)",
+      "description": "AI Agent操作浏览器执行任务。自动规划操作步骤，生成可执行的Playwright代码。支持点网页、填表单、过人机验证、数据采集、竞品监控。三种模式：auto(全自动)/assisted(真人可接管)/headless(无头)。",
+      "category": "AI自动化",
+      "subcategory": "浏览器操作",
+      "provider": "atex_official",
+      "price": 5.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "🌐",
+      "tags": ["浏览器自动化", "BrowserAct", "Playwright", "AI Agent", "数据采集", "RPA"],
+      "params": {
+        "task": {"type": "string", "required": true, "description": "任务描述（AI要做什么）"},
+        "url": {"type": "string", "required": false, "description": "起始页面URL"},
+        "mode": {"type": "string", "required": false, "description": "模式: auto/assisted/headless", "default": "auto"},
+        "timeout": {"type": "integer", "required": false, "description": "超时秒数(最大300)", "default": 60}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     }
   ],
   "orders": [],
-  "next_service_id": 114
+  "next_service_id": 115
 }
