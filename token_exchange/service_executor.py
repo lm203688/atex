@@ -834,6 +834,163 @@ vectorstore = TurboVec.from_documents(docs, embeddings, compression="{recommende
     }
 
 
+# ═══════════════════════════════════════════════════════════════
+# Token瘦身 — lowfat CLI 集成
+# ═══════════════════════════════════════════════════════════════
+
+# lowfat噪音过滤规则（内置，无需安装lowfat CLI）
+_LOWFAT_FILTER_RULES = {
+    "strip_ansi": True,          # 去除ANSI转义码
+    "strip_progress": True,      # 去除进度条
+    "strip_timestamps": True,    # 去除时间戳前缀
+    "strip_empty_lines": True,   # 压缩连续空行
+    "strip_debug": True,         # 去除DEBUG级别日志
+    "strip_trace": True,         # 去除TRACE/VERBOSE级别日志
+    "strip_deprecation": True,   # 去除deprecation警告
+    "strip_git_diff_meta": True, # 精简git diff元信息
+    "strip_http_meta": True,     # 精简HTTP请求头
+    "max_line_length": 500,      # 截断超长行
+}
+
+def _lowfat_filter(text, rules=None):
+    """lowfat风格的Token瘦身过滤器
+    
+    在命令输出到达AI代理前过滤噪音，减少token消耗。
+    参考开源工具lowfat (Rust CLI)的过滤逻辑。
+    """
+    import re
+    if rules is None:
+        rules = _LOWFAT_FILTER_RULES
+    
+    lines = text.split('\n')
+    filtered = []
+    
+    for line in lines:
+        original = line
+        
+        # 去除ANSI转义码
+        if rules.get("strip_ansi", True):
+            line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', line)
+            line = re.sub(r'\x1b\].*?\x07', '', line)
+        
+        # 去除进度条 (===, ---, *** 重复3次以上的行)
+        if rules.get("strip_progress", True):
+            if re.match(r'^[\s]*[=\-*#]{3,}[\s]*$', line):
+                continue
+            # 百分比进度行
+            if re.match(r'^[\s]*\d{1,3}%[\s]*$', line):
+                continue
+            # \r覆盖式进度
+            if '\r' in line:
+                parts = line.split('\r')
+                line = parts[-1] if parts else ''
+        
+        # 去除时间戳前缀 (2024-01-01 12:00:00 / [12:00:00] / 12:00:00.000)
+        if rules.get("strip_timestamps", True):
+            line = re.sub(r'^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}[\.\d]*\s*', '', line)
+            line = re.sub(r'^\[\d{2}:\d{2}:\d{2}[\.\d]*\]\s*', '', line)
+        
+        # 去除DEBUG/TRACE/VERBOSE级别日志
+        if rules.get("strip_debug", True):
+            if re.match(r'^[\s]*(DEBUG|TRACE|VERBOSE|FINE|FINER|FINEST)[\s:]', line, re.IGNORECASE):
+                continue
+        if rules.get("strip_trace", True):
+            if re.match(r'^[\s]*(TRACE|STACKTRACE|BACKTRACE)[\s:]', line, re.IGNORECASE):
+                continue
+        
+        # 去除deprecation警告
+        if rules.get("strip_deprecation", True):
+            if re.match(r'^[\s]*(DeprecationWarning|DeprecationNotice|DEPRECATED)[\s:]', line, re.IGNORECASE):
+                continue
+        
+        # 精简git diff元信息
+        if rules.get("strip_git_diff_meta", True):
+            if line.startswith('diff --git'):
+                # 保留文件名，去掉完整路径
+                match = re.match(r'diff --git a/.+ b/(.+)', line)
+                if match:
+                    line = f'diff: {match.group(1)}'
+            elif line.startswith('index '):
+                continue  # 完全去掉index行
+            elif re.match(r'^@@ .+ @@', line):
+                line = re.sub(r'@@[^@]+@@\s*', '@@ ', line)
+        
+        # 精简HTTP请求头
+        if rules.get("strip_http_meta", True):
+            if re.match(r'^(Accept|Cache-Control|Connection|Content-Type|Host|User-Agent|X-)[\s:]', line, re.IGNORECASE):
+                if not re.match(r'^Content-Type:', line, re.IGNORECASE):
+                    continue
+        
+        # 截断超长行
+        if rules.get("max_line_length", 0) > 0 and len(line) > rules["max_line_length"]:
+            line = line[:rules["max_line_length"]] + '...[truncated]'
+        
+        # 压缩连续空行
+        if rules.get("strip_empty_lines", True):
+            if not line.strip() and filtered and not filtered[-1].strip():
+                continue
+        
+        filtered.append(line)
+    
+    result = '\n'.join(filtered)
+    
+    # 计算节省
+    original_tokens = len(text) // 4  # 粗略估算token数
+    filtered_tokens = len(result) // 4
+    saved_pct = (1 - len(result) / max(len(text), 1)) * 100
+    
+    return {
+        "filtered_text": result,
+        "original_chars": len(text),
+        "filtered_chars": len(result),
+        "chars_saved": len(text) - len(result),
+        "estimated_original_tokens": original_tokens,
+        "estimated_filtered_tokens": filtered_tokens,
+        "estimated_tokens_saved": original_tokens - filtered_tokens,
+        "savings_percentage": f"{saved_pct:.1f}%",
+        "rules_applied": [k for k, v in rules.items() if v],
+    }
+
+
+def _svc_token_slim(params, buyer=""):
+    """svc_113: Token瘦身 — lowfat风格噪音过滤，减少AI代理token消耗"""
+    text = params.get("text", params.get("content", ""))
+    if not text:
+        return {"error": "missing text parameter"}
+    
+    # 自定义规则
+    custom_rules = {}
+    if "rules" in params and isinstance(params["rules"], dict):
+        custom_rules = {**_LOWFAT_FILTER_RULES, **params["rules"]}
+    
+    # 选择预设模式
+    mode = params.get("mode", "balanced")  # aggressive/balanced/conservative
+    if mode == "aggressive":
+        custom_rules = {**_LOWFAT_FILTER_RULES, 
+                       "strip_empty_lines": True,
+                       "max_line_length": 200,
+                       "strip_git_diff_meta": True,
+                       "strip_http_meta": True}
+    elif mode == "conservative":
+        custom_rules = {**_LOWFAT_FILTER_RULES,
+                       "strip_ansi": True,
+                       "strip_progress": True,
+                       "strip_empty_lines": True,
+                       "strip_debug": False,
+                       "strip_trace": False,
+                       "strip_deprecation": False,
+                       "strip_git_diff_meta": False,
+                       "strip_http_meta": False,
+                       "max_line_length": 0}
+    
+    result = _lowfat_filter(text, custom_rules or None)
+    
+    return {
+        "service": "Token瘦身(lowfat)",
+        "result": result
+    }
+
+
 def execute_service(service_id, params, buyer):
     """根据service_id执行对应服务，返回结果"""
     executors = {
@@ -856,6 +1013,8 @@ def execute_service(service_id, params, buyer):
         "svc_111": _svc_skill_query,
         # ── v6.1 向量检索优化 ──
         "svc_112": _svc_vector_optimize,
+        # ── v6.1 Token瘦身(lowfat) ──
+        "svc_113": _svc_token_slim,
         # ── v6.0 LLM对话（DeepSeek后端） ──
         "svc_022": _llm_chat,
         "svc_057": _mcp_health_check,

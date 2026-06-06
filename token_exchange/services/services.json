@@ -360,8 +360,27 @@
         "hardware": {"type": "string", "required": false, "description": "硬件: V100/A100/Mac/纯CPU", "default": "unknown"}
       },
       "api_endpoint": "/api/v1/services/buy"
+    },
+    {
+      "id": "svc_113",
+      "name": "Token瘦身(lowfat)",
+      "description": "在命令输出到达AI代理前过滤噪音，节省高达91.8% Token成本。去除ANSI转义码、进度条、时间戳、DEBUG日志、deprecation警告、git diff冗余、HTTP请求头等，支持aggressive/balanced/conservative三种模式。",
+      "category": "AI基础设施",
+      "subcategory": "Token优化",
+      "provider": "atex_official",
+      "price": 1.0,
+      "price_unit": "ATEX/次",
+      "status": "active",
+      "icon": "✂️",
+      "tags": ["Token优化", "lowfat", "噪音过滤", "成本节省", "AI代理", "CLI"],
+      "params": {
+        "text": {"type": "string", "required": true, "description": "待过滤的文本内容"},
+        "mode": {"type": "string", "required": false, "description": "过滤模式: aggressive/balanced/conservative", "default": "balanced"},
+        "rules": {"type": "object", "required": false, "description": "自定义过滤规则(可选)"}
+      },
+      "api_endpoint": "/api/v1/services/buy"
     }
   ],
   "orders": [],
-  "next_service_id": 113
+  "next_service_id": 114
 }

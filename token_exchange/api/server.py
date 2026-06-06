@@ -1475,6 +1475,9 @@ class Handler(BaseHTTPRequestHandler):
                 # ── 向量检索优化 ──
                 {"name": "vector_optimize", "description": "向量检索优化 - 分析向量数据并生成TurboVec/FAISS压缩方案，支持4-32x压缩比。3 ATEX/次",
                  "inputSchema": {"type": "object", "properties": {"vector_size_mb": {"type": "number", "description": "向量数据大小(MB)"}, "vector_dim": {"type": "integer", "description": "向量维度", "default": 768}, "num_vectors": {"type": "integer", "description": "向量数量（可代替size_mb）"}, "current_engine": {"type": "string", "description": "当前引擎: faiss/milvus/chroma", "default": "faiss"}, "use_case": {"type": "string", "description": "场景: RAG/搜索/推荐", "default": "RAG"}, "hardware": {"type": "string", "description": "硬件: V100/A100/Mac/纯CPU", "default": "unknown"}}, "required": []}},
+                # ── Token瘦身(lowfat) ──
+                {"name": "token_slim", "description": "Token瘦身(lowfat) - 在命令输出到达AI代理前过滤噪音，节省高达91.8% Token成本。1 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"text": {"type": "string", "description": "待过滤的文本内容"}, "mode": {"type": "string", "description": "过滤模式: aggressive/balanced/conservative", "default": "balanced"}, "rules": {"type": "object", "description": "自定义过滤规则(可选)"}}, "required": ["text"]}},
             ]
             return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
         elif method == "tools/call":
@@ -1499,6 +1502,8 @@ class Handler(BaseHTTPRequestHandler):
                 "skill_query": ("svc_111", 0.5),
                 # ── 向量检索优化 ──
                 "vector_optimize": ("svc_112", 3.0),
+                # ── Token瘦身(lowfat) ──
+                "token_slim": ("svc_113", 1.0),
             }
             if tool_name in _BILLABLE_TOOLS:
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
