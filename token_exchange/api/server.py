@@ -1386,18 +1386,30 @@ class Handler(BaseHTTPRequestHandler):
         """GET /.well-known/mcp/server-card.json — Smithery扫描用"""
         self._json({
             "name": "ATEX AI Gateway",
-            "description": "One API Key to access 6 AI models (DeepSeek, GPT-4o, Claude). Pay-per-use, OpenAI compatible. MCP protocol support. Web search at 5 ATEX/call.",
+            "description": "23 AI services + 12 knowledge engines. Compliance tools (banned words, AI visibility, SEO), AI capabilities (TTS, ASR, VLM, image/video gen), knowledge engines (gene tech, TCM, quantum, robotics, deep sea, exo-science, etc.), LLM chat (DeepSeek/GPT-4o/Claude). Pay-per-use via ATEX credits.",
             "version": "6.0",
             "url": "http://150.158.119.19:8420/mcp",
             "protocolVersion": "2025-03-26",
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": "ATEX AI Gateway", "version": "6.0"},
+            "repository": {"url": "https://github.com/lm203688/atex/tree/main/mcp-server"},
             "tools": [
                 {"name": "chat", "description": "Chat with AI models (DeepSeek, GPT-4o, Claude). Pay-per-use via ATEX API key."},
                 {"name": "web_search", "description": "Search the web for real-time information. 5 ATEX per call."},
+                {"name": "tts", "description": "Text-to-speech synthesis. 2 ATEX per call."},
+                {"name": "asr", "description": "Speech-to-text transcription. 2 ATEX per call."},
+                {"name": "vlm", "description": "Vision-language model for image understanding. 3 ATEX per call."},
+                {"name": "image_generate", "description": "AI image generation from text. 5 ATEX per call."},
+                {"name": "image_edit", "description": "AI image editing. 5 ATEX per call."},
+                {"name": "video_generate", "description": "AI video generation. 10 ATEX per call."},
+                {"name": "banned_words_check", "description": "Chinese banned/prohibited words detection. 0.1 ATEX per call."},
+                {"name": "ai_visibility_check", "description": "AI search visibility analysis. 2 ATEX per call."},
+                {"name": "global_compliance", "description": "Cross-border compliance assessment. 8 ATEX per call."},
+                {"name": "seo_compliance", "description": "SEO compliance check. 5 ATEX per call."},
+                {"name": "knowledge_engines_list", "description": "List all 12 knowledge engines (gene tech, TCM, quantum, robotics, deep sea, exo-science, etc.)"},
+                {"name": "knowledge_search", "description": "Search across 12 knowledge engine databases."},
                 {"name": "check_balance", "description": "Check your ATEX account balance and usage."},
-                {"name": "list_models", "description": "List available AI models and their pricing."},
-                {"name": "list_services", "description": "List all available services in the ATEX marketplace."}
+                {"name": "list_services", "description": "List all 23 available services in the ATEX marketplace."}
             ]
         })
 
@@ -1486,6 +1498,13 @@ class Handler(BaseHTTPRequestHandler):
                  "inputSchema": {"type": "object", "properties": {"domain": {"type": "string", "description": "安全域: DFIR/Red_Team/AppSec/Cloud_Security等"}, "framework": {"type": "string", "description": "框架: MITRE ATT&CK/NIST CSF/D3FEND/OWASP/ISO27001"}, "skill": {"type": "string", "description": "技能关键词搜索"}}, "required": []}},
                 {"name": "cyber_skill_generate", "description": "安全技能生成 - 根据安全场景生成AI Agent可执行的安全技能，含MITRE ATT&CK映射+执行步骤+工具。5 ATEX/次",
                  "inputSchema": {"type": "object", "properties": {"scenario": {"type": "string", "description": "安全场景描述"}, "target": {"type": "string", "description": "目标系统/应用（可选）"}, "domain": {"type": "string", "description": "安全域(auto自动识别)", "default": "auto"}, "framework": {"type": "string", "description": "参考框架", "default": "MITRE ATT&CK"}}, "required": ["scenario"]}},
+                # ── 知识引擎 (12 domains) ──
+                {"name": "knowledge_engines_list", "description": "列出所有12个知识引擎及其覆盖范围。免费查询。",
+                 "inputSchema": {"type": "object", "properties": {}}},
+                {"name": "knowledge_search", "description": "搜索12个知识引擎数据库 - 基因技术/中医药/Agent生态/量子计算/脑科学/核能/系外行星/外星矿物/深海/新能源/生命科学/机器人。0.5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"engine": {"type": "string", "description": "知识引擎: genetech/tcm/agent/quantum/brain/nuclear/exo/mineral/deepsea/energy/life/robot/all", "default": "all"}, "query": {"type": "string", "description": "搜索关键词"}, "category": {"type": "string", "description": "分类过滤(如: genes/herbs/mcp_servers/exoplanets/sensors等)"}}, "required": ["query"]}},
+                {"name": "knowledge_entity_detail", "description": "获取知识引擎中特定实体的详细信息。0.5 ATEX/次",
+                 "inputSchema": {"type": "object", "properties": {"engine": {"type": "string", "description": "知识引擎: genetech/tcm/agent/quantum/brain/nuclear/exo/mineral/deepsea/energy/life/robot"}, "entity_id": {"type": "string", "description": "实体ID(如: GENE-001/EXO-091/SENS-006等)"}}, "required": ["engine", "entity_id"]}},
             ]
             return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}})
         elif method == "tools/call":
@@ -1517,6 +1536,9 @@ class Handler(BaseHTTPRequestHandler):
                 # ── 网络安全技能库(Anthropic Cybersecurity Skills) ──
                 "cyber_skill_lookup": ("svc_115", 1.0),
                 "cyber_skill_generate": ("svc_116", 5.0),
+                # ── 知识引擎 ──
+                "knowledge_search": ("svc_knowledge", 0.5),
+                "knowledge_entity_detail": ("svc_knowledge", 0.5),
             }
             if tool_name in _BILLABLE_TOOLS:
                 if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
@@ -1569,6 +1591,91 @@ class Handler(BaseHTTPRequestHandler):
             elif tool_name == "list_services":
                 svcs = exchange.list_services()
                 return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(svcs, ensure_ascii=False)[:4000]}]}})
+            elif tool_name == "knowledge_engines_list":
+                engines = [
+                    {"id": "genetech", "name": "GeneTech Tools", "domain": "genetech.tools", "entities": 397, "categories": ["genes", "diseases", "gene_therapies", "crispr_applications"]},
+                    {"id": "tcm", "name": "TCMDB", "domain": "tcm.genetech.tools", "entities": 1778, "categories": ["herbs", "diseases"]},
+                    {"id": "agent", "name": "Agent Ecosystem DB", "domain": "agent.genetech.tools", "entities": 398, "categories": ["mcp_servers", "agent_sdks", "protocols"]},
+                    {"id": "quantum", "name": "QuantumDB", "domain": "quantum.genetech.tools", "entities": 273, "categories": ["qubits", "algorithms", "hardware"]},
+                    {"id": "brain", "name": "BrainDB", "domain": "brain.genetech.tools", "entities": 252, "categories": ["neurotech", "bci", "cognition"]},
+                    {"id": "nuclear", "name": "NuclearDB", "domain": "nuclear.genetech.tools", "entities": 238, "categories": ["reactors", "fusion", "materials"]},
+                    {"id": "exo", "name": "ExoDB", "domain": "exo.genetech.tools", "entities": 316, "categories": ["exoplanets", "space_missions", "astrobiology"]},
+                    {"id": "mineral", "name": "MineralDB", "domain": "mineral.genetech.tools", "entities": 283, "categories": ["minerals", "asteroids", "mining_tech"]},
+                    {"id": "deepsea", "name": "DeepSeaDB", "domain": "deepsea.genetech.tools", "entities": 307, "categories": ["submersibles", "deep_sea_resources", "ocean_energy"]},
+                    {"id": "energy", "name": "EnergyDB", "domain": "energy.genetech.tools", "entities": 430, "categories": ["solar", "hydrogen", "batteries"]},
+                    {"id": "life", "name": "LifeDB", "domain": "life.genetech.tools", "entities": 475, "categories": ["synthetic_biology", "longevity", "proteins"]},
+                    {"id": "robot", "name": "RobotParts DB", "domain": "robot.genetech.tools", "entities": 229, "categories": ["sensors", "actuators", "platforms", "chips"]},
+                ]
+                return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(engines, ensure_ascii=False)}]}})
+            elif tool_name in ("knowledge_search", "knowledge_entity_detail"):
+                # 知识引擎搜索 — 直接读取本地JSON文件
+                if not user: return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32001, "message": "Authentication required. Set Authorization: Bearer YOUR_ATEX_API_KEY"}}, 401)
+                if user["balance_cny"] < 0.5:
+                    return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32002, "message": "Insufficient balance. Need ¥0.50"}}, 402)
+                _KB_MAP = {
+                    "genetech": "/home/z/my-project/genetech-tools/knowledge-base/entities",
+                    "tcm": "/home/z/my-project/tcm-tools/knowledge-base/entities",
+                    "agent": "/home/z/my-project/agent-ecosystem/knowledge-base/entities",
+                    "quantum": "/home/z/my-project/quantum-computing/knowledge-base/entities",
+                    "brain": "/home/z/my-project/brain-science/knowledge-base/entities",
+                    "nuclear": "/home/z/my-project/nuclear-energy/knowledge-base/entities",
+                    "exo": "/home/z/my-project/exo-science/knowledge-base/entities",
+                    "mineral": "/home/z/my-project/alien-minerals/knowledge-base/entities",
+                    "deepsea": "/home/z/my-project/deep-sea-tech/knowledge-base/entities",
+                    "energy": "/home/z/my-project/new-energy/knowledge-base/entities",
+                    "life": "/home/z/my-project/life-science/knowledge-base/entities",
+                    "robot": "/home/z/my-project/robot-parts/knowledge-base/entities",
+                }
+                results = []
+                if tool_name == "knowledge_search":
+                    query = args.get("query", "").lower()
+                    engine_filter = args.get("engine", "all")
+                    cat_filter = args.get("category", "")
+                    engines_to_search = [engine_filter] if engine_filter != "all" else list(_KB_MAP.keys())
+                    for eng in engines_to_search:
+                        kb_dir = _KB_MAP.get(eng)
+                        if not kb_dir or not os.path.isdir(kb_dir): continue
+                        for fname in os.listdir(kb_dir):
+                            if not fname.endswith(".json") or fname == "main.json": continue
+                            if cat_filter and fname.replace(".json", "") != cat_filter: continue
+                            try:
+                                with open(os.path.join(kb_dir, fname), "r") as f:
+                                    data = json.load(f)
+                                items = data if isinstance(data, list) else data.get("entities", data.get("data", []))
+                                for item in items:
+                                    text = json.dumps(item, ensure_ascii=False).lower()
+                                    if query in text:
+                                        results.append({"engine": eng, "category": fname.replace(".json", ""), "id": item.get("id", ""), "name": item.get("name", ""), "match": "keyword"})
+                                        if len(results) >= 20: break
+                                if len(results) >= 20: break
+                            except: pass
+                        if len(results) >= 20: break
+                    _deduct(user["user_id"], 0.5, "knowledge_search", 0, 0)
+                    return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"total": len(results), "results": results[:20]}, ensure_ascii=False)}]}})
+                else:  # knowledge_entity_detail
+                    engine = args.get("engine", "")
+                    entity_id = args.get("entity_id", "")
+                    kb_dir = _KB_MAP.get(engine)
+                    if not kb_dir or not os.path.isdir(kb_dir):
+                        return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Unknown engine: {engine}"}})
+                    found = None
+                    for fname in os.listdir(kb_dir):
+                        if not fname.endswith(".json") or fname == "main.json": continue
+                        try:
+                            with open(os.path.join(kb_dir, fname), "r") as f:
+                                data = json.load(f)
+                            items = data if isinstance(data, list) else data.get("entities", data.get("data", []))
+                            for item in items:
+                                if item.get("id") == entity_id:
+                                    found = item
+                                    break
+                        except: pass
+                        if found: break
+                    _deduct(user["user_id"], 0.5, "knowledge_entity_detail", 0, 0)
+                    if found:
+                        return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps(found, ensure_ascii=False)}]}})
+                    else:
+                        return self._json({"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": json.dumps({"error": f"Entity {entity_id} not found in {engine}"})}]}})
             else:
                 return self._json({"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}, 400)
         elif method == "notifications/initialized":
