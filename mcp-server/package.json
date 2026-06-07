@@ -1,0 +1,47 @@
+{
+  "name": "@atex-ai/mcp-server",
+  "version": "1.0.0",
+  "description": "ATEX MCP Server — 23 AI services + 12 knowledge engines via Model Context Protocol",
+  "main": "dist/index.js",
+  "bin": {
+    "atex-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "atex",
+    "ai",
+    "knowledge-engine",
+    "compliance",
+    "tts",
+    "asr",
+    "vlm",
+    "image-generation",
+    "video-generation",
+    "gene-tech",
+    "tcm",
+    "quantum",
+    "robotics",
+    "deep-sea",
+    "exo-science"
+  ],
+  "author": "ATEX AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lm203688/atex-mcp-server"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}
