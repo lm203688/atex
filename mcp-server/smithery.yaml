@@ -1,0 +1,21 @@
+# Smithery configuration for ATEX MCP Server
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      atexApiKey:
+        type: string
+        title: ATEX API Key
+        description: Your ATEX API key for authenticated services. Get one at genetech.tools/credits.html
+      atexBaseUrl:
+        type: string
+        title: ATEX Base URL
+        description: ATEX server URL
+        default: http://150.158.119.19:8420
+  commandFunction:
+    - npx
+    - -y
+    - github:lm203688/atex/mcp-server
+    - --api-key
+    - $config.atexApiKey
