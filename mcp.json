@@ -1,0 +1,13 @@
+{
+  "name": "atex",
+  "description": "ATEX AI Gateway — 37 AI services + 12 knowledge engines via MCP. One API key for DeepSeek, GPT-4o, Claude. Token economy, job market, skill marketplace.",
+  "repository": "https://github.com/lm203688/atex",
+  "homepage": "https://lm203688.github.io/atex/",
+  "license": "MIT",
+  "mcpServers": {
+    "atex": {
+      "command": "npx",
+      "args": ["-y", "@atex-ai/mcp-server"]
+    }
+  }
+}
