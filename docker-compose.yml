@@ -1,0 +1,42 @@
+# 真测 Realcast — 生产编排（仓库根目录）
+# 用法：
+#   cp .env.example .env && 编辑 .env（务必修改 ADMIN_TOKEN / CORS_ORIGINS）
+#   docker compose up -d --build
+# 目录约定：
+#   ./app        应用代码（构建上下文）
+#   ./data      持久化 SQLite（与 DB_PATH=/data/platform.db 对应）
+#   ./certs     TLS 证书 fullchain.pem + privkey.pem
+#   ./app/static 单文件 SPA，由 nginx 静态托管
+
+services:
+  app:
+    build: .
+    image: realcast:0.4.1
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DB_PATH=/data/platform.db
+    volumes:
+      - ./data:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./app/static:/usr/share/nginx/html:ro

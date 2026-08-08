@@ -17,6 +17,10 @@ _prod_db/
 venv/
 .venv/
 
+# Runtime data & TLS certs (host-mounted volumes)
+data/
+certs/
+
 # Tooling
 .pytest_cache/
 *.egg-info/
