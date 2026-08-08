@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>真测 Realcast · 真实预测游戏</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#fff; --primary:#4f46e5; --primary-d:#4338ca;
+    --green:#16a34a; --red:#dc2626; --amber:#b45309; --muted:#6b7280;
+    --line:#e7eaf3; --ink:#1f2937; --soft:#eef2ff;
+  }
+  *{box-sizing:border-box;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-size:14px}
+  .app{display:flex;min-height:100vh}
+  .side{width:210px;background:#11162b;color:#cdd3e6;padding:18px 12px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;transition:transform .2s}
+  .side .logo{font-size:18px;font-weight:700;color:#fff;margin:6px 8px 18px;display:flex;align-items:center;gap:8px}
+  .side .logo small{font-size:11px;color:#8b93b0;font-weight:400}
+  .navbtn{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:#cdd3e6;
+    padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;text-align:left;margin-bottom:4px}
+  .navbtn:hover{background:#1c2342}
+  .navbtn.active{background:var(--primary);color:#fff}
+  .navbtn .ic{width:18px;text-align:center}
+  .side .me{margin-top:18px;border-top:1px solid #2a3157;padding-top:14px;font-size:13px}
+  .side .me .nm{color:#fff;font-weight:600}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;
+    justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:5}
+  .topbar h2{font-size:16px;margin:0;display:flex;align-items:center;gap:10px}
+  #menuBtn{display:none;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--ink)}
+  .chip{display:flex;align-items:center;gap:8px}
+  .btn{border:0;background:var(--primary);color:#fff;padding:9px 16px;border-radius:10px;cursor:pointer;font-size:14px}
+  .btn:hover{background:var(--primary-d)}
+  .btn.sec{background:var(--soft);color:var(--primary)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .view{padding:22px;max-width:1080px;width:100%;margin:0 auto}
+  .grid{display:grid;gap:16px}
+  .cols2{grid-template-columns:1fr 1fr}
+  .cols3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:880px){
+    .cols2,.cols3{grid-template-columns:1fr}
+    #menuBtn{display:inline-flex}
+    .side{position:fixed;left:0;top:0;transform:translateX(-100%);z-index:30;box-shadow:0 0 40px rgba(0,0,0,.4)}
+    .side.open{transform:none}
+    .scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:25;display:none}
+    .scrim.show{display:block}
+  }
+  /* 概率趋势图（v0.4.1：网格 + 事件标注 + 悬停读数） */
+  .trendwrap{max-width:560px}
+  .trendsvg{width:100%;display:block;background:#f8fafc;border-radius:8px;touch-action:pan-y;cursor:crosshair}
+  .trendtip{font-size:12px;margin-top:6px;min-height:36px;line-height:1.7;
+    background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:6px 9px}
+  .spark{vertical-align:middle}
+  /* 移动端小屏走查修复（v0.4.1） */
+  @media(max-width:480px){
+    body{font-size:13px}
+    .view{padding:14px 12px}
+    .topbar{padding:0 12px;height:52px}
+    .topbar h2{font-size:15px}
+    .card{padding:12px;border-radius:12px}
+    .hero h1{font-size:19px !important}
+    .kpi b{font-size:17px !important}
+    .spark{display:none}                       /* 小屏隐藏卡片迷你趋势，避免标题挤压 */
+    .trendtip{min-height:48px}
+    .card select,.card input[type=number]{width:100% !important}
+    .row>.btn{flex:1 1 auto;min-height:40px}   /* 拇指可点区域 */
+    .cmt-reply{margin-left:10px !important;padding-left:8px !important}
+    table{font-size:12px}
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(20,30,70,.04)}
+  .card h3{margin:0 0 12px;font-size:15px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+  input,select,textarea{padding:9px 11px;border:1px solid #d4d9e6;border-radius:9px;font-size:14px;background:#fff;width:100%}
+  textarea{resize:vertical;min-height:54px}
+  .muted{color:var(--muted);font-size:13px}
+  .tag{display:inline-block;background:#ecfdf5;color:var(--green);font-size:12px;padding:2px 9px;border-radius:7px;margin-left:6px}
+  .tag.rev{background:#fef3c7;color:var(--amber)}
+  .tag.rej{background:#fee2e2;color:var(--red)}
+  .tag.cat{background:var(--soft);color:var(--primary)}
+  .pill{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--primary)}
+  .prob{font-weight:700}
+  .bar{height:9px;background:#eef1f8;border-radius:6px;overflow:hidden;margin-top:5px}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,#6366f1,#4f46e5)}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid #f0f2f7;padding:9px 8px;text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .banner{background:linear-gradient(120deg,#4f46e5,#7c3aed);color:#fff;border-radius:14px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .banner small{opacity:.85}
+  .hero{background:linear-gradient(120deg,#1e293b,#334155);color:#fff;border-radius:14px;padding:24px;margin-bottom:16px}
+  .hero h1{margin:0 0 8px;font-size:22px}
+  .kpi{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}
+  .kpi div{background:rgba(255,255,255,.1);padding:10px 14px;border-radius:10px}
+  .kpi b{display:block;font-size:18px}
+  .mask{position:fixed;inset:0;background:rgba(15,20,40,.45);display:flex;align-items:center;justify-content:center;z-index:40}
+  .modal{background:#fff;border-radius:16px;padding:24px;width:420px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:86vh;overflow:auto}
+  .modal h3{margin:0 0 14px}
+  .seg{display:flex;gap:6px;margin-bottom:14px}
+  .seg button{flex:1;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px;cursor:pointer}
+  .seg button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#11162b;color:#fff;
+    padding:11px 18px;border-radius:10px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:14px}
+  .empty{color:var(--muted);text-align:center;padding:30px 0}
+  .link{color:var(--primary);cursor:pointer}
+  .lb-num{width:26px;height:26px;border-radius:50%;background:var(--soft);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .codebox{background:#f3f4ff;border:1px dashed var(--primary);border-radius:10px;padding:10px;font-family:monospace;letter-spacing:1px}
+  .cal{display:flex;gap:6px;align-items:flex-end;height:60px;margin-top:8px}
+  .cal .c{flex:1;background:var(--soft);border-radius:6px 6px 0 0;position:relative;min-height:4px}
+  .cal .c small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;color:var(--muted);font-size:10px}
+  .res{background:#ecfdf5;color:var(--green);font-size:12px;padding:3px 9px;border-radius:7px;margin-left:6px}
+  .res.lose{background:#fee2e2;color:var(--red)}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#fff7ed,#fef3c7);
+    border:1px solid #fcd34d;color:#92400e;border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600;
+    box-shadow:0 1px 3px rgba(146,64,14,.12)}
+  .toastpop{margin-top:10px;background:#ecfdf5;color:#047857;border-radius:8px;padding:8px 12px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="scrim" id="scrim" onclick="toggleMenu()"></div>
+  <aside class="side" id="side">
+    <div class="logo">🔮 真测 Realcast <small>真实预测游戏</small></div>
+    <button class="navbtn active" data-v="home"><span class="ic">🏠</span>首页</button>
+    <button class="navbtn" data-v="markets"><span class="ic">📊</span>预测市场</button>
+    <button class="navbtn" data-v="board"><span class="ic">🏆</span>排行榜</button>
+    <button class="navbtn" data-v="league"><span class="ic">🏅</span>竞猜联赛</button>
+    <button class="navbtn" data-v="mall"><span class="ic">🎁</span>积分商城</button>
+    <button class="navbtn" data-v="ugc"><span class="ic">✍️</span>发起事件</button>
+    <button class="navbtn" data-v="mypred"><span class="ic">📈</span>我的预测</button>
+    <button class="navbtn" data-v="me"><span class="ic">👤</span>我的</button>
+    <div style="margin-top:14px;border-top:1px solid #2a3157;padding-top:12px" class="muted">运营 / 后台</div>
+    <button class="navbtn" data-v="ops"><span class="ic">⚙️</span>自动化运营</button>
+    <button class="navbtn" data-v="support"><span class="ic">💬</span>客服 Agent</button>
+    <button class="navbtn" data-v="ads"><span class="ic">📣</span>广告 Agent</button>
+    <button class="navbtn" data-v="dev"><span class="ic">🛠️</span>开发看板</button>
+    <div class="me" id="sideMe"></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h2><button id="menuBtn" onclick="toggleMenu()">☰</button><span id="pageTitle">首页</span></h2>
+      <div class="chip" id="topUser"></div>
+    </div>
+    <div class="view" id="view"></div>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+const LS='py_user';
+const ADMIN_TOKEN='dev-admin-token';  // 演示用；生产由环境变量注入
+let me = JSON.parse(localStorage.getItem(LS)||'null');
+
+function authHeaders(){
+  const h={'Content-Type':'application/json'};
+  if(me&&me.token) h['Authorization']='Bearer '+me.token;
+  return h;
+}
+const api = async (u, opt={}) => {
+  opt.headers = Object.assign(authHeaders(), opt.headers||{});
+  const r = await fetch(u, opt);
+  const j = await r.json().catch(()=>({detail:r.statusText}));
+  if (r.status>=400 && j && j.detail!==undefined){
+    toast('⚠️ '+(typeof j.detail==='string'?j.detail:JSON.stringify(j.detail)));
+    return null;
+  }
+  return j;
+};
+const post=(u,b)=>api(u,{method:'POST',body:JSON.stringify(b||{})});
+const adminPost=(u,b)=>api(u,{method:'POST',headers:{'x-admin-token':ADMIN_TOKEN},body:JSON.stringify(b||{})});
+
+function toast(msg){
+  const t=document.getElementById('toastRoot');
+  const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
+  t.appendChild(d); setTimeout(()=>d.remove(),2600);
+}
+function $(id){return document.getElementById(id);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ---------- 移动端导航 ---------- */
+function toggleMenu(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('show'); }
+
+/* ---------- 登录态 ---------- */
+async function refreshMe(){
+  if(!me) return;
+  const p = await api('/api/users/'+me.id);
+  if(p){ me = Object.assign(me, p); localStorage.setItem(LS, JSON.stringify(me)); }
+  renderUser();
+}
+function renderUser(){
+  const tu=$('topUser'); const sm=$('sideMe');
+  if(me){
+    tu.innerHTML=`<span class="pill">${esc(me.username)}</span><span class="muted">${me.balance} 积分</span><button class="btn ghost" style="padding:5px 10px" onclick="logout()">退出</button>`;
+    sm.innerHTML=`<div class="nm">${esc(me.username)}</div><div class="muted">余额 ${me.balance} · 声誉 ${Math.round(me.reputation||0)}</div>`;
+  }else{
+    tu.innerHTML=`<button class="btn" onclick="openAuth()">登录 / 注册</button>`;
+    sm.innerHTML=`<div class="muted">未登录</div><button class="navbtn" onclick="openAuth()"><span class="ic">🔑</span>登录</button>`;
+  }
+}
+function logout(){ localStorage.removeItem(LS); me=null; renderUser(); go('home'); toast('已退出'); }
+
+function openAuth(){
+  $('modalRoot').innerHTML=`
+  <div class="mask" onclick="if(event.target===this)closeAuth()">
+    <div class="modal">
+      <h3>欢迎来到真测 Realcast</h3>
+      <div class="seg">
+        <button id="segReg" class="on" onclick="authSeg('reg')">注册</button>
+        <button id="segLogin" onclick="authSeg('login')">登录</button>
+      </div>
+      <div id="authBody"></div>
+    </div>
+  </div>`;
+  authSeg('reg');
+}
+function closeAuth(){ $('modalRoot').innerHTML=''; }
+function authSeg(m){
+  $('segReg').classList.toggle('on', m==='reg');
+  $('segLogin').classList.toggle('on', m==='login');
+  if(m==='reg'){
+    $('authBody').innerHTML=`
+      <input id="a_uname" placeholder="用户名">
+      <div style="height:8px"></div>
+      <input id="a_phone" placeholder="手机号（可选）">
+      <div style="height:8px"></div>
+      <input id="a_code" placeholder="邀请码（可选，填了双方都得奖励）">
+      <div style="height:10px"></div>
+      <label class="muted" style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="a_age" style="width:auto;margin-top:2px"> 我已满18周岁，已阅读并同意<a class="link" onclick="showCompliance('tos')">用户协议</a></label>
+      <div style="height:14px"></div>
+      <button class="btn" style="width:100%" onclick="doRegister()">注册并领取 500 积分</button>
+      <div class="muted" style="margin-top:10px">注册即送 500 积分；积分仅限平台内参与预测与兑换，不可交易/回兑。</div>`;
+  }else{
+    $('authBody').innerHTML=`
+      <input id="a_uname" placeholder="用户名">
+      <div style="height:14px"></div>
+      <button class="btn" style="width:100%" onclick="doLogin()">登录</button>
+      <div class="muted" style="margin-top:10px">演示环境免密码，输入已注册用户名即可。</div>`;
+  }
+}
+async function doRegister(){
+  if(!$('a_age').checked){ toast('请先确认已满18周岁并同意用户协议'); return; }
+  const r=await post('/api/register',{username:$('a_uname').value,phone:$('a_phone').value||null,invite_code:$('a_code').value||null,age_confirmed:true});
+  if(r&&r.user_id){ await afterLogin(r.user_id); closeAuth(); }
+}
+async function doLogin(){
+  const r=await post('/api/login',{username:$('a_uname').value});
+  if(r&&r.id){ await afterLogin(r.id); closeAuth(); }
+}
+async function afterLogin(id){
+  const p=await api('/api/users/'+id);
+  if(!p) return;
+  me={ id:p.id, username:p.username, balance:p.balance!==undefined?p.balance:p.points_balance,
+       reputation:p.reputation||0, streak:p.streak||0, invite_code:p.invite_code,
+       invited_count:p.invited_count||0, token:p.token };
+  localStorage.setItem(LS, JSON.stringify(me));
+  renderUser(); toast('登录成功，欢迎 '+me.username); go('home');
+}
+
+/* ---------- 导航 ---------- */
+const TITLES={home:'首页',markets:'预测市场',board:'排行榜',league:'竞猜联赛',mall:'积分商城',ugc:'发起事件',mypred:'我的预测',me:'我的',ops:'自动化运营',support:'客服 Agent',ads:'广告 Agent',dev:'开发看板'};
+function go(v){
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  $('pageTitle').textContent=TITLES[v]||'';
+  if(window.innerWidth<=880) toggleMenu();
+  ({home:renderHome,markets:renderMarkets,board:renderBoard,league:renderLeague,mall:renderMall,ugc:renderUgc,mypred:renderMypred,me:renderMe,ops:renderOps,support:renderSupport,ads:renderAds,dev:renderDev}[v]||renderHome)();
+}
+document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+/* ---------- 首页（产品级 hub） ---------- */
+async function renderHome(){
+  const d=await api('/api/feed'+(me?('?user_id='+me.id):''))||{for_you:[],hot_markets:[],ending_soon:[],banner:{advertiser:'品牌合作招募',position:'首页banner'}};
+  const bm=d.banner||{advertiser:'品牌合作招募',position:'首页banner',industry:''};
+  let streakHTML='';
+  if(me){
+    try{
+      const s=await api('/api/users/'+me.id+'/streak')||{predict_streak:0,next_reward:5,claimed_today:false};
+      streakHTML=`<div class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between;align-items:center">
+        <div><b style="font-size:20px">🔥 ${s.predict_streak} 天</b> <span class="muted">每日预测连胜</span></div>
+        <div class="pill">${s.claimed_today?'今日已领 +'+s.next_reward+' 积分':'下次预测领 +'+s.next_reward+' 积分'}</div>
+      </div><div class="muted" style="margin-top:6px">连续每天预测即可累积连胜，奖励随天数递增（Manifold 范式）。</div></div>`;
+    }catch(e){}
+  }
+  const fy=(d.for_you||[]).slice(0,4), hot=(d.hot_markets||[]).slice(0,4), end=(d.ending_soon||[]).slice(0,4);
+  $('view').innerHTML=`
+    <div class="hero">
+      <h1>真测 Realcast · 真实预测游戏</h1>
+      <div class="muted">合规·非现金·非加密：用积分预测真实未来，声誉加权社区共识，平台奖励池加成，积分商城换好礼；越准，声望越高。</div>
+      <div class="kpi">
+        <div><b>声誉加权</b><span class="muted">高手更准</span></div>
+        <div><b>平台奖励</b><span class="muted">预测正确加成</span></div>
+        <div><b>商城兑换</b><span class="muted">实物/虚拟权益</span></div>
+        <div><b>社区讨论</b><span class="muted">分享你的理由</span></div>
+      </div>
+    </div>
+    <div class="banner"><div><b>📣 ${esc(bm.advertiser)}</b><br><small>${esc(bm.position)} · ${esc(bm.industry||'')}</small></div>
+      <button class="btn sec" onclick="go('ads')">了解广告合作</button></div>
+    ${streakHTML}
+    ${me&&fy.length?`<div class="card"><h3>🎯 为你推荐 <span class="muted" style="font-weight:400">按你的参与偏好</span></h3><div class="grid" id="fyGrid"></div></div>`:''}
+    <div class="card"><h3>🔥 热门预测</h3><div class="grid" id="hotGrid"></div>
+      <div class="row" style="margin-top:12px"><button class="btn sec" onclick="go('markets')">查看全部市场</button></div></div>
+    <div class="card" style="margin-top:16px"><h3>⏳ 即将截止 <span class="muted" style="font-weight:400">抓住最后机会</span></h3><div class="grid" id="endGrid"></div></div>
+    <div class="card" style="margin-top:16px" id="taskCard"></div>
+    <div class="card" style="margin-top:16px"><h3>🏅 竞猜联赛</h3><div id="homeLeagues"></div>
+      <div class="row" style="margin-top:8px"><button class="btn sec" onclick="go('league')">查看全部联赛</button></div></div>
+    <div class="card" style="margin-top:16px"><h3>🏆 排行榜（Top 5）</h3><div id="homeBoard"></div>
+      <div class="row" style="margin-top:8px"><button class="btn sec" onclick="go('board')">完整排行榜</button></div></div>
+    <div class="card" style="margin-top:16px"><div class="muted">真测 Realcast 为合规积分预测游戏，不涉及现金赌博与加密货币。查看 <a class="link" onclick="showCompliance('tos')">用户协议</a> · <a class="link" onclick="showCompliance('privacy')">隐私政策</a></div></div>`;
+  paintGrid('hotGrid', hot);
+  if(me&&fy.length) paintGrid('fyGrid', fy);
+  paintGrid('endGrid', end);
+  loadHomeLeagues(); loadHomeBoard();
+  loadTaskCenter();
+}
+async function loadHomeLeagues(){
+  const ts=await api('/api/tournaments?status=open')||[];
+  const el=$('homeLeagues'); if(!el)return;
+  el.innerHTML=(ts.slice(0,3).map(t=>`<div class="row" style="justify-content:space-between;margin:6px 0">
+    <span><b>${esc(t.title)}</b> <span class="muted">奖励池 ${t.prize_pool}</span></span>
+    <button class="btn ghost" onclick="go('league')">查看</button></div>`).join('')||'<div class="empty">暂无进行中联赛</div>');
+}
+async function loadHomeBoard(){
+  const lb=await api('/api/leaderboard?limit=5')||[];
+  const el=$('homeBoard'); if(!el)return;
+  el.innerHTML=(lb.slice(0,5).map((u,i)=>`<div class="row" style="justify-content:space-between;margin:6px 0">
+    <span>${i+1}. <b>${esc(u.username)}</b> ${u.pro?'<span class="tag cat">⭐Pro</span>':''}</span>
+    <span class="muted">${u.points_balance} 分 · 声望 ${u.reputation.toFixed(1)}</span></div>`).join('')||'<div class="empty">暂无数据</div>');
+}
+/* 批量拉取概率历史并渲染市场网格（卡片含 sparkline） */
+async function paintGrid(elId, list){
+  const arr=list||[];
+  const hist=await Promise.all(arr.map(m=>api('/api/markets/'+m.id+'/history').catch(()=>[])));
+  arr.forEach((m,i)=>m._hist=hist[i]||[]);
+  const el=$(elId); if(el) el.innerHTML=arr.map(marketCard).join('')||'<div class="empty">暂无市场</div>';
+}
+
+/* ---------- 每日任务中心 ---------- */
+async function loadTaskCenter(){
+  const box=$('taskCard'); if(!box) return;
+  if(!me){ box.innerHTML=`<h3>🎯 每日任务</h3><div class="muted">登录后每天完成任务可领积分奖励。<button class="btn" style="margin-top:8px" onclick="openAuth()">登录 / 注册</button></div>`; return; }
+  const ts=await api('/api/users/'+me.id+'/tasks')||[];
+  if(!ts.length){ box.innerHTML='<h3>🎯 每日任务</h3><div class="empty">暂无任务</div>'; return; }
+  box.innerHTML=`<h3>🎯 每日任务 <span class="muted" style="font-weight:400">完成任务领积分</span></h3>
+    <div class="grid cols3">${ts.map(t=>`
+      <div class="card" style="padding:12px">
+        <div style="font-weight:600">${esc(t.name)}</div>
+        <div class="muted" style="font-size:12px;min-height:32px">${esc(t.desc)}</div>
+        <div class="row" style="justify-content:space-between;margin:6px 0">
+          <span class="pill">+${t.reward} 积分</span>
+          ${t.claimed?'<span class="tag cat">已领取</span>':t.done?'<span class="tag cat">已完成</span>':'<span class="muted">未完成</span>'}
+        </div>
+        <button class="btn" style="width:100%;padding:6px" ${t.claimable?'':'disabled'} onclick="claimTask('${t.id}')">${t.claimed?'已领取':t.done?'领取奖励':'去完成'}</button>
+      </div>`).join('')}</div>`;
+}
+async function claimTask(id){
+  if(!me)return;
+  const r=await post('/api/users/'+me.id+'/tasks/claim?task_id='+id,{});
+  if(r&&r.reward!=null){ toast('领取 +'+r.reward+' 积分'); refreshMe(); loadTaskCenter(); }
+}
+
+/* ---------- 市场（含搜索/分类/排序发现） ---------- */
+let mkState={cat:'全部',q:'',sort:'newest'};
+async function renderMarkets(){
+  $('view').innerHTML=`<div class="card"><h3>📊 预测市场 <span class="muted" style="font-weight:400">（概率为声誉加权社区共识）</span></h3>
+    <div class="row">
+      <input id="mkSearch" placeholder="🔍 搜索事件关键词…" style="flex:1" oninput="mkSearchInput()">
+      <select id="mkSort" style="width:160px" onchange="mkSortChange()">
+        <option value="newest">最新发布</option>
+        <option value="closing">即将截止</option>
+        <option value="participants">最热参与</option>
+      </select>
+    </div>
+    <div class="row" id="catRow"></div>
+    <div class="grid" id="mktGrid"></div></div>`;
+  await loadCategories();
+  await loadMarkets();
+}
+async function loadCategories(){
+  const cats=await api('/api/categories')||[];
+  const list=['全部',...cats.map(c=>c.category)];
+  $('catRow').innerHTML=list.map(c=>`<button class="btn ghost catbtn ${c===mkState.cat?'sec':''}" data-c="${esc(c)}" onclick="mkCat('${esc(c)}')">${esc(c)}</button>`).join('');
+}
+function mkCat(c){ mkState.cat=c; document.querySelectorAll('.catbtn').forEach(b=>b.classList.toggle('sec',b.dataset.c===c)); loadMarkets(); }
+function mkSearchInput(){ mkState.q=$('mkSearch').value.trim(); loadMarkets(); }
+function mkSortChange(){ mkState.sort=$('mkSort').value; loadMarkets(); }
+async function loadMarkets(){
+  const params=new URLSearchParams({status:'open',sort:mkState.sort});
+  if(mkState.cat!=='全部') params.set('category',mkState.cat);
+  if(mkState.q) params.set('q',mkState.q);
+  const list=await api('/api/markets?'+params.toString())||[];
+  $('mktGrid').innerHTML=list.map(marketCard).join('')||'<div class="empty">没有符合条件的市场</div>';
+  applyLive();
+}
+
+/* ---------- 实时概率推送（WebSocket，离线自动回落到服务端渲染值）---------- */
+let liveProbs = {};
+let _wsRetry = 0;
+function applyLive(){
+  // 用最新快照原地更新概率条，不重渲染整页
+  document.querySelectorAll('[data-prob-mid]').forEach(el=>{
+    const mid=el.dataset.probMid, opt=el.dataset.probOpt;
+    const arr=liveProbs[mid];
+    if(arr && arr[opt]!=null){
+      const p=(arr[opt]||0)*100;
+      el.textContent=p.toFixed(1)+'%';
+      const bar=document.querySelector(`[data-bar-mid="${mid}"][data-bar-opt="${opt}"]`);
+      if(bar) bar.style.width=p+'%';
+    }
+  });
+}
+function initRealtime(){
+  if(typeof WebSocket==='undefined' || location.protocol==='file:') return; // 静态打开则跳过
+  let proto = location.protocol==='https:'?'wss:':'ws:';
+  let ws;
+  function connect(){
+    try{ ws=new WebSocket(`${proto}//${location.host}/ws/markets`); }
+    catch(e){ return retry(); }
+    ws.onmessage=ev=>{
+      try{ const d=JSON.parse(ev.data); if(d&&d.markets){ liveProbs=d.markets; applyLive(); } }catch(e){}
+    };
+    ws.onclose=()=>retry();
+    ws.onerror=()=>{ try{ws.close();}catch(e){} };
+  }
+  function retry(){
+    if(_wsRetry>30) return; // 避免无限重试，回落到服务端静态值
+    _wsRetry++;
+    setTimeout(connect, Math.min(8000, 1000*_wsRetry));
+  }
+  connect();
+}
+const SPARK_COLORS=['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
+function sparkSVG(hist, idx){
+  if(!hist||hist.length<2) return '';
+  const vals=hist.map(p=>(p.probs&&p.probs[idx]!=null?(p.probs[idx]*100):0));
+  const w=84,h=22;
+  const pts=vals.map((v,i)=>((i/(vals.length-1))*w).toFixed(1)+','+(h-(v/100)*h).toFixed(1)).join(' ');
+  return `<svg class="spark" width="${w}" height="${h}" title="概率趋势"><polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="1.5"/></svg>`;
+}
+function marketCard(m){
+  const lead=(m.probabilities||[]).reduce((bi,v,i,a)=>v>a[bi]?i:bi,0);
+  const opts=m.options.map((o,i)=>{
+    const p=(m.probabilities[i]||0)*100;
+    return `<div style="margin:8px 0">
+      <div class="row" style="margin:0"><span style="flex:1">${esc(o)}</span>
+        <span class="prob" data-prob-mid="${m.id}" data-prob-opt="${i}">${p.toFixed(1)}%</span><span class="muted">(${m.shares[i]}份)</span></div>
+      <div class="bar"><span data-bar-mid="${m.id}" data-bar-opt="${i}" style="width:${p}%"></span></div></div>`;
+  }).join('');
+  let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
+  if(m.status==='settled' && m.resolution!=null){
+    statusLine=`<span class="res">已结算：${esc(m.options[m.resolution])}</span>`;
+  }
+  const canPlay = me && m.status==='open';
+  const spark=sparkSVG(m._hist, lead);
+  return `<div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <b style="cursor:pointer" onclick="openMarket(${m.id})">${esc(m.title)}</b>
+      ${spark?`<span class="muted">${spark}</span>`:''}
+    </div>
+    <span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>
+    ${m.reco_reason?`<span class="pill" style="margin-left:6px">推荐 · ${esc(m.reco_reason)}</span>`:''}
+    <div class="muted" style="margin:4px 0">${statusLine}</div>
+    ${opts}
+    ${canPlay?`<div class="row">
+      <select id="opt_${m.id}" style="width:140px">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
+      <input id="stake_${m.id}" type="number" value="20" min="10" max="50" style="width:90px">积分
+      <button class="btn" onclick="participate(${m.id})">参与预测</button>
+      <button class="btn ghost" onclick="openMarket(${m.id})">详情</button></div>`
+      :`<div class="muted">${me?'市场已结束':'登录后可参与'} · <a class="link" onclick="openMarket(${m.id})">查看详情</a></div>`}
+  </div>`;
+}
+
+/* ---------- 市场详情：趋势图 + 社区讨论 ---------- */
+let curMarketId=null;
+async function openMarket(id){
+  curMarketId=id;
+  const m=await api('/api/markets/'+id); if(!m){toast('市场不存在');return;}
+  const hist=await api('/api/markets/'+id+'/history')||[];
+  const cmts=await api('/api/markets/'+id+'/comments')||[];
+  $('pageTitle').textContent='市场详情';
+  let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
+  if(m.status==='settled' && m.resolution!=null) statusLine=`<span class="res">已结算：${esc(m.options[m.resolution])}</span>`;
+  const canPlay=me&&m.status==='open';
+  const opts=m.options.map((o,i)=>{
+    const p=(m.probabilities[i]||0)*100;
+    return `<div style="margin:8px 0"><div class="row" style="margin:0"><span style="flex:1">${esc(o)}</span>
+      <span class="prob">${p.toFixed(1)}%</span><span class="muted">(${m.shares[i]}份)</span></div>
+      <div class="bar"><span style="width:${p}%"></span></div></div>`;
+  }).join('');
+  $('view').innerHTML=`
+    <button class="btn ghost" onclick="go('markets')">← 返回市场</button>
+    <div class="card" style="margin-top:10px">
+      <b style="font-size:18px">${esc(m.title)}</b><span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>
+      <div class="muted" style="margin:6px 0">${esc(m.description||'')}</div>
+      <div>${statusLine}</div>
+      <h4 style="margin:14px 0 6px">各选项概率（声誉加权社区共识）</h4>
+      ${opts}
+      ${canPlay?`<div class="row" style="margin-top:10px">
+        <select id="dopt_${m.id}" style="width:160px">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
+        <input id="dstake_${m.id}" type="number" value="20" min="10" max="50" style="width:90px">积分
+        <button class="btn" onclick="participateDetail(${m.id})">参与预测</button></div>`
+        :`<div class="muted" style="margin-top:8px">${me?'市场已结束':'登录后可参与'}</div>`}
+      <h4 style="margin:16px 0 6px">📈 概率趋势（声誉加权社区共识随时间变化）</h4>
+      ${trendChart(hist, m.options)}
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h4>💬 社区讨论 · 分享你的理由</h4>
+      <div id="cmtThread">${renderComments(cmts)}</div>
+      ${me?`<div class="row" style="margin-top:10px"><input id="cmtBody" style="flex:1" placeholder="写下你的判断与理由…" maxlength="600">
+        <button class="btn" onclick="postComment(${m.id})">发布</button></div>`
+        :`<div class="muted">登录后可参与讨论</div>`}
+    </div>`;
+}
+/* 趋势图 v0.4.1：网格刻度 + 事件标注 + 悬停/触摸读数 */
+const REASON_LABEL={create:'开市',trade:'有人参与',resolved:'已结算'};
+let _trend={probs:[],options:[],W:340,H:150,pad:28};
+function trendChart(probs, options){
+  if(!probs||probs.length<2) return '<div class="muted">暂无足够概率历史绘制趋势（参与后会逐渐累积）。</div>';
+  const W=340,H=150,pad=28,n=probs[0].probs.length;
+  _trend={probs:probs,options:options||[],W:W,H:H,pad:pad};
+  const px=i=>pad+(probs.length>1?(i/(probs.length-1)):0)*(W-2*pad);
+  const py=v=>H-pad-(v||0)*(H-2*pad);
+  // Y 轴网格 + 刻度
+  let grid='';
+  [0,25,50,75,100].forEach(v=>{
+    const y=py(v/100);
+    grid+=`<line x1="${pad}" y1="${y.toFixed(1)}" x2="${W-pad}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>`
+        + `<text x="2" y="${(y+3).toFixed(1)}" font-size="8" fill="#94a3b8">${v}%</text>`;
+  });
+  // 关键事件标注（开市 / 结算）
+  let marks='';
+  probs.forEach((p,i)=>{
+    if(p.reason==='create'||p.reason==='resolved'){
+      const x=px(i), lbl=REASON_LABEL[p.reason];
+      marks+=`<line x1="${x.toFixed(1)}" y1="${pad-8}" x2="${x.toFixed(1)}" y2="${H-pad}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3"/>`
+           + `<text x="${x.toFixed(1)}" y="${pad-11}" font-size="8" fill="#94a3b8" text-anchor="middle">${lbl}</text>`;
+    }
+  });
+  let paths='',dots='',legend='';
+  for(let o=0;o<n;o++){
+    const c=SPARK_COLORS[o%SPARK_COLORS.length];
+    const pts=probs.map((p,i)=>px(i).toFixed(1)+','+py(p.probs[o]).toFixed(1)).join(' ');
+    paths+=`<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;
+    const last=probs[probs.length-1];
+    dots+=`<circle cx="${px(probs.length-1).toFixed(1)}" cy="${py(last.probs[o]).toFixed(1)}" r="2.6" fill="${c}"/>`;
+    legend+=`<span style="display:inline-block;margin-right:10px"><span style="display:inline-block;width:10px;height:10px;background:${c};border-radius:2px;margin-right:4px"></span>${esc((options&&options[o])||('选项'+(o+1)))}</span>`;
+  }
+  return `<div class="trendwrap">
+    <svg class="trendsvg" viewBox="0 0 ${W} ${H}"
+         onmousemove="trendHover(event)" onmouseleave="trendLeave()"
+         ontouchstart="trendHover(event)" ontouchmove="trendHover(event)" ontouchend="trendLeave()">
+      ${grid}${marks}${paths}${dots}
+      <line id="trendCursor" x1="0" y1="${pad-8}" x2="0" y2="${H-pad}" stroke="#4f46e5" stroke-width="1" style="display:none"/>
+    </svg>
+    <div id="trendTip" class="trendtip muted">悬停/滑动查看各时点概率</div>
+    <div class="muted" style="font-size:12px;margin-top:6px">${legend}</div>
+  </div>`;
+}
+function trendHover(e){
+  const svg=e.currentTarget, r=svg.getBoundingClientRect();
+  const t=_trend; if(!t.probs.length) return;
+  const cx=(e.touches&&e.touches[0]?e.touches[0].clientX:e.clientX);
+  if(cx==null) return;
+  if(e.touches) e.preventDefault();
+  const relX=(cx-r.left)/Math.max(1,r.width)*t.W;
+  const span=(t.W-2*t.pad)||1;
+  let i=Math.round((relX-t.pad)/span*(t.probs.length-1));
+  i=Math.max(0,Math.min(t.probs.length-1,i));
+  const x=t.pad+(i/Math.max(1,t.probs.length-1))*span;
+  const cur=document.getElementById('trendCursor');
+  if(cur){cur.setAttribute('x1',x);cur.setAttribute('x2',x);cur.style.display='';}
+  const tip=document.getElementById('trendTip'); if(!tip) return;
+  const p=t.probs[i];
+  const tag=REASON_LABEL[p.reason]?`<span class="pill" style="font-size:11px">${REASON_LABEL[p.reason]}</span>`:'';
+  tip.innerHTML=`<div style="margin-bottom:3px"><b>${esc(p.ts||'')}</b> ${tag}</div>`
+    +(p.probs||[]).map((v,o)=>`<span style="display:inline-block;margin-right:12px"><span style="color:${SPARK_COLORS[o%SPARK_COLORS.length]}">■</span> ${esc((t.options&&t.options[o])||('选项'+(o+1)))} <b>${((v||0)*100).toFixed(1)}%</b></span>`).join('');
+}
+function trendLeave(){
+  const cur=document.getElementById('trendCursor'); if(cur) cur.style.display='none';
+  const tip=document.getElementById('trendTip');
+  if(tip) tip.innerHTML='悬停/滑动查看各时点概率';
+}
+function renderComments(cmts){
+  if(!cmts||!cmts.length) return '<div class="muted">还没有讨论，来分享你的理由吧。</div>';
+  const acts=c=>`${me?`<a class="link" style="font-size:12px" onclick="showReply(${c.id})">回复</a>
+      <a class="link muted" style="font-size:12px;margin-left:10px" onclick="reportComment(${c.id})">举报</a>`:''}`;
+  return cmts.map(c=>`
+    <div style="border-top:1px solid #eee;padding:8px 0">
+      <div><b>${esc(c.username)}</b> <span class="muted" style="font-size:12px">${esc(c.created_at)}</span></div>
+      <div style="margin:4px 0">${esc(c.body)}</div>
+      ${acts(c)}
+      <div id="reply_${c.id}"></div>
+      ${(c.replies||[]).map(r=>`<div class="cmt-reply" style="margin:6px 0 0 18px;padding-left:10px;border-left:2px solid #e5e7eb">
+        <div><b>${esc(r.username)}</b> <span class="muted" style="font-size:12px">${esc(r.created_at)}</span></div>
+        <div style="margin:2px 0">${esc(r.body)}</div>
+        ${me?`<a class="link muted" style="font-size:12px" onclick="reportComment(${r.id})">举报</a>`:''}</div>`).join('')}
+    </div>`).join('');
+}
+async function reportComment(cid){
+  if(!me){openAuth();return;}
+  if(!confirm('确认举报该评论？达到阈值后将自动下线并转人工复核。')) return;
+  const r=await post('/api/comments/'+cid+'/report',{user_id:me.id});
+  if(r&&r.flags!=null){
+    toast(r.status==='review'?'已举报，该评论已下线待人工复核':'已举报，感谢反馈');
+    if(curMarketId) openMarket(curMarketId);
+  }
+}
+function showReply(cid){
+  const box=$('reply_'+cid); if(!box)return;
+  box.innerHTML=`<div class="row" style="margin-top:6px"><input id="rb_${cid}" style="flex:1" placeholder="回复…" maxlength="600">
+    <button class="btn ghost" onclick="postComment(${curMarketId},${cid})">发送</button></div>`;
+}
+async function postComment(mid, parentId=null){
+  if(!me){openAuth();return;}
+  const sel = parentId? $('rb_'+parentId):$('cmtBody');
+  const body=sel?sel.value.trim():'';
+  if(!body){toast('评论不能为空');return;}
+  const r=await post('/api/markets/'+mid+'/comments',{user_id:me.id,body:body,parent_id:parentId});
+  if(r&&r.ok){
+    toast(r.pending_review?'已提交，内容涉及疑似引流将由人工复核后展示':'已发布');
+    openMarket(mid);
+  }
+}
+async function participateDetail(id){
+  if(!me){openAuth();return;}
+  const r=await post('/api/markets/'+id+'/participate',{user_id:me.id,option:+($('dopt_'+id).value),stake:+($('dstake_'+id).value)});
+  if(r&&r.id){ toast('参与成功！'); refreshMe(); openMarket(id); }
+}
+async function participate(id){
+  if(!me){openAuth();return;}
+  const r=await post('/api/markets/'+id+'/participate',{user_id:me.id,option:+($('opt_'+id).value),stake:+($('stake_'+id).value)});
+  if(r&&r.id){ toast('参与成功！'); refreshMe(); renderMarkets(); }
+}
+
+/* ---------- 我的预测 ---------- */
+async function renderMypred(){
+  if(!me){openAuth();return;}
+  await refreshMe();
+  const preds=await api('/api/users/'+me.id+'/predictions')||[];
+  const acc=await api('/api/users/'+me.id+'/accuracy')||{total:0};
+  const rows = preds.length? preds.map(p=>{
+    let out='';
+    if(p.won===true) out='<span class="res">✅ 命中</span>';
+    else if(p.won===false) out='<span class="res lose">❌ 未中</span>';
+    else out='<span class="muted">进行中</span>';
+    return `<tr><td>${esc(p.title)}</td><td>${esc(p.my_option)}</td><td>${p.stake}</td>
+      <td>${p.prob_at_bet!=null?(p.prob_at_bet*100).toFixed(0)+'%':'-'}</td>
+      <td>${out}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="muted">还没有预测记录，去市场参与吧</td></tr>';
+  let calHtml='';
+  if(acc.calibration){
+    calHtml=acc.calibration.map(c=>{
+      const h=c.hit_rate!=null?(c.hit_rate*100):0;
+      return `<div class="c" style="height:${Math.max(4,h)}px" title="${c.bucket}: 命中${h}% (${c.n})"><small>${c.bucket}</small></div>`;
+    }).join('');
+  }
+  $('view').innerHTML=`<div class="grid cols2">
+    <div class="card">
+      <h3>📈 我的预测战绩</h3>
+      <div class="row" style="justify-content:space-between"><span>总预测</span><b>${acc.total||0}</b></div>
+      <div class="row" style="justify-content:space-between"><span>命中率</span><b class="pos">${acc.accuracy!=null?(acc.accuracy*100).toFixed(1)+'%':'-'}</b></div>
+      <div class="row" style="justify-content:space-between"><span>平均校准(Brier)</span><b>${acc.avg_brier!=null?acc.avg_brier:'-'}</b></div>
+      <div class="muted" style="margin-top:8px">校准曲线：横轴为你下注时的概率区间，柱高为实际命中率（越接近该区间中点越好）。</div>
+      <div class="cal">${calHtml}</div>
+    </div>
+    <div class="card">
+      <h3>预测明细</h3>
+      <table><tr><th>事件</th><th>我的选择</th><th>积分</th><th>当时概率</th><th>结果</th></tr>${rows}</table>
+    </div>
+  </div>`;
+}
+
+/* ---------- 排行榜 ---------- */
+async function renderBoard(){
+  const rows=await api('/api/leaderboard')||[];
+  $('view').innerHTML=`<div class="card"><h3>🏆 积分排行榜 <span class="muted" style="font-weight:400">（标记 Pro 者为已结算≥20 且准确率≥70% 的高手）</span></h3>
+    <table><tr><th style="width:40px">#</th><th>用户</th><th>积分</th><th>连胜</th><th>声誉</th></tr>
+    ${rows.map((r,i)=>`<tr><td><span class="lb-num">${i+1}</span></td>
+      <td>${esc(r.username)}${r.pro?' <span class="badge" style="font-size:11px;padding:2px 8px">⭐ Pro</span>':''}</td>
+      <td class="pos">${r.points_balance}</td><td>${r.streak}</td><td>${Math.round(r.reputation||0)}</td></tr>`).join('')}
+    </table></div>`;
+}
+
+/* ---------- 竞猜联赛（Tournaments） ---------- */
+async function renderLeague(){
+  const ts=await api('/api/tournaments')||[];
+  if(!ts.length){ $('view').innerHTML='<div class="card"><h3>🏅 竞猜联赛</h3><div class="empty">暂无联赛。运营可在后台创建「竞猜联赛」组合多场事件，按平均校准排名发放奖励池。</div></div>'; return; }
+  ts.sort((a,b)=>(a.status==='open'?0:1)-(b.status==='open'?0:1));
+  $('view').innerHTML=`<div class="card"><h3>🏅 竞猜联赛 <span class="muted" style="font-weight:400">（多事件组合赛，按平均校准排名，奖励池由平台出资）</span></h3>
+    <div class="grid" id="leagueGrid">${ts.map(t=>`<div class="card" id="t_league_${t.id}"><div class="muted">加载中…</div></div>`).join('')}</div></div>`;
+  for(const t of ts){
+    const d=await api('/api/tournaments/'+t.id);
+    const el=$('t_league_'+t.id);
+    if(!d||!el) continue;
+    const lb=await api('/api/tournaments/'+t.id+'/leaderboard')||[];
+    const mktHtml=(d.markets||[]).map(m=>`<span class="pill" style="margin:3px">${esc(m.title)} · ${m.status==='settled'?'已结算':'进行中'}</span>`).join('')||'<span class="muted">暂无市场</span>';
+    const lbHtml=lb.length?`<table style="font-size:12px"><tr><th>#</th><th>用户</th><th>参与</th><th>准确率</th><th>校准(Brier)</th></tr>${
+      lb.slice(0,10).map(r=>`<tr><td>${r.rank}</td><td>${esc(r.username)}${r.avg_brier==null?'':' 🔥'}</td><td>${r.markets_played}</td><td>${r.accuracy!=null?(r.accuracy*100).toFixed(0)+'%':'-'}</td><td>${r.avg_brier!=null?r.avg_brier:'-'}</td></tr>`).join('')
+    }</table>`:'<div class="muted">尚无成绩（联赛市场结算后产生排名）</div>';
+    el.innerHTML=`<div class="row" style="justify-content:space-between">
+        <div><b>${esc(d.title)}</b> <span class="tag ${d.status==='open'?'cat':'rev'}">${d.status==='open'?'进行中':'已结束'}</span>
+          <span class="pill">奖励池 ${d.prize_pool}</span> <span class="muted">参赛 ${d.participants} 人 · 市场 ${d.market_count}</span></div>
+        ${me&&d.status==='open'?`<button class="btn" onclick="joinLeague(${d.id})">参加联赛</button>`:''}
+      </div>
+      <div class="muted" style="margin:4px 0 8px">${esc(d.description||'')}</div>
+      <div style="margin:8px 0">${mktHtml}</div>
+      <div class="muted" style="font-size:12px">🏅 排名（按平均 Brier，越准越靠前，仅计已结算市场）：</div>
+      ${lbHtml}`;
+  }
+}
+async function joinLeague(id){
+  if(!me){openAuth();return;}
+  const r=await post('/api/tournaments/'+id+'/join?user_id='+me.id,{});
+  if(r&&r.ok){ toast('已参加联赛！去对应市场预测积累成绩'); renderLeague(); }
+}
+
+/* ---------- 商城 ---------- */
+async function renderMall(){
+  const items=await api('/api/mall/items')||[];
+  $('view').innerHTML=`<div class="card"><h3>🎁 积分商城 · 单向兑换</h3>
+    <div class="muted" style="margin-bottom:12px">积分仅可在此兑换平台提供的实物/虚拟权益，不可交易、不可回兑现金。</div>
+    <div class="grid cols3" id="mallGrid"></div></div>`;
+  $('mallGrid').innerHTML=items.map(it=>`
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><b>${esc(it.name)}</b>
+        <span class="tag ${it.item_type==='physical'?'rev':'cat'}">${it.item_type==='physical'?'实物':'虚拟'}</span></div>
+      <div class="muted" style="min-height:36px">${esc(it.description||'')}</div>
+      <div class="row" style="justify-content:space-between">
+        <span class="prob" style="color:var(--primary)">${it.cost} 积分</span>
+        <span class="muted">库存 ${it.stock}</span></div>
+      <button class="btn" style="width:100%;margin-top:6px" ${it.stock>0?'':'disabled'} onclick="redeem(${it.id})">${it.stock>0?'立即兑换':'已售罄'}</button>
+    </div>`).join('')||'<div class="empty">商城暂无商品</div>';
+}
+async function redeem(itemId){
+  if(!me){openAuth();return;}
+  const r=await post('/api/mall/redeem?user_id='+me.id+'&item_id='+itemId,{});
+  if(r&&r.redemption_id){ toast('兑换成功！平台将履约发放'); refreshMe(); renderMall(); }
+}
+
+/* ---------- 发起事件 (UGC) ---------- */
+async function renderUgc(){
+  $('view').innerHTML=`<div class="grid cols2">
+    <div class="card"><h3>✍️ 发起预测事件</h3>
+      <div class="muted" style="margin-bottom:10px">提交后由 AI 分级审核：可结算且有可信数据源 → 自动上线；缺数据源 → 人工复核；含赌博话术/主权红线 → 驳回。</div>
+      <input id="utitle" placeholder="事件标题，如：哪支队赢得本周联赛？">
+      <div style="height:8px"></div>
+      <textarea id="udesc" placeholder="描述（可选）"></textarea>
+      <div style="height:8px"></div>
+      <select id="ucat"><option value="">类别（可选）</option><option>体育</option><option>娱乐</option><option>科技</option><option>消费</option><option>影视</option><option>游戏</option><option>天气</option><option>宏观经济</option><option>企业</option></select>
+      <div style="height:8px"></div>
+      <input id="uopts" placeholder="选项，逗号分隔，如：A队,B队,其他">
+      <div style="height:8px"></div>
+      <input id="uoracle" placeholder="结算数据源（必填，如：联赛官网）">
+      <div style="height:8px"></div>
+      <input id="ucrit" placeholder="结算标准（必填，如：以官方公布的冠军为准）">
+      <div style="height:8px"></div>
+      <input id="ucloses" placeholder="截止日期（可选，如 2026-08-13）">
+      <div style="height:12px"></div>
+      <button class="btn" style="width:100%" onclick="submitUgc()">提交审核</button>
+      <div id="ugcOut" style="margin-top:10px"></div>
+    </div>
+    <div class="card"><h3>我的发起 / 审核队列</h3><div id="ugcQueue"></div></div>
+  </div>`;
+  loadUgcQueue();
+}
+async function submitUgc(){
+  if(!me){openAuth();return;}
+  const opts=$('uopts').value.split(/[，,]/).map(s=>s.trim()).filter(Boolean);
+  if(!$('utitle').value||opts.length<2){toast('请填写标题和至少两个选项');return;}
+  if(!$('uoracle').value||!$('ucrit').value){toast('结算数据源与结算标准为必填（可结算性一票否决）');return;}
+  const r=await post('/api/ugc/submit',{creator:me.id,title:$('utitle').value,description:$('udesc').value,
+    category:$('ucat').value||null,options:opts,oracle_source:$('uoracle').value,settlement_criteria:$('ucrit').value,closes_at:$('ucloses').value||null});
+  if(!r)return;
+  let msg=`<b>审核路由：${r.route==='auto'?'✅ 自动发布':r.route==='review'?'⏳ 人工复核':'⛔ 驳回'}</b>`;
+  if(r.reasons&&r.reasons.length) msg+=`<div class="muted">原因：${esc(r.reasons.join('；'))}</div>`;
+  $('ugcOut').innerHTML=msg; loadUgcQueue();
+}
+async function loadUgcQueue(){
+  const qs=await api('/api/publish_queue')||[];
+  const mine=qs.filter(q=>{try{return JSON.parse(q.draft_json).source==='user';}catch(e){return false;}});
+  $('ugcQueue').innerHTML=mine.map(q=>`<div class="card" style="margin-bottom:10px"><b>${esc(q.title)}</b>
+    <span class="tag ${q.route==='auto'?'':q.route==='review'?'rev':'rej'}">${q.route==='auto'?'自动发布':q.route==='review'?'人工复核':'驳回'}</span>
+    <div class="muted">${esc(q.status)}</div></div>`).join('')||'<div class="empty">暂无发起记录</div>';
+}
+
+/* ---------- 我的 ---------- */
+async function renderMe(){
+  if(!me){openAuth();return;}
+  await refreshMe();
+  const reds=await api('/api/mall/redeem/'+me.id)||[];
+  const redHtml=reds.length?reds.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.cost}</td><td><span class="pill">${r.status}</span></td><td class="muted">${esc(r.created_at)}</td></tr>`).join(''):'<tr><td colspan="4" class="muted">暂无兑换记录</td></tr>';
+  // 成就勋章：evaluate 会按真实战绩落库新勋章，并返回全部已得
+  const badges=await api('/api/users/'+me.id+'/badges/evaluate')||{all:[]};
+  const badgeHtml=(badges.all&&badges.all.length)
+    ? badges.all.map(b=>`<span class="badge" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join('')
+    : '<span class="muted">参与预测、保持连签可解锁勋章</span>';
+  const newHtml=(badges.new&&badges.new.length)
+    ? `<div class="toastpop">🎉 新解锁：${badges.new.map(b=>b.icon+b.name).join('、')}</div>` : '';
+  $('view').innerHTML=`<div class="grid cols2">
+    <div class="card">
+      <h3>👤 我的账户</h3>
+      <div class="row" style="justify-content:space-between"><span>用户名</span><b>${esc(me.username)}</b></div>
+      <div class="row" style="justify-content:space-between"><span>积分余额</span><b class="pos">${me.balance}</b></div>
+      <div class="row" style="justify-content:space-between"><span>声誉</span><b>${Math.round(me.reputation||0)}</b></div>
+      <div class="row" style="justify-content:space-between"><span>连续签到</span><b>${me.streak||0} 天</b></div>
+      <div class="row" style="justify-content:space-between"><span>邀请好友</span><b>${me.invited_count||0} 人</b></div>
+      <div class="row"><button class="btn sec" onclick="signin()">每日签到 +积分</button>
+        <button class="btn ghost" onclick="copyInvite()">复制邀请码</button>
+        <button class="btn ghost" onclick="go('mypred')">我的预测</button>
+        <button class="btn ghost" onclick="shareMe()">分享战绩</button></div>
+      <div class="muted">我的邀请码：</div>
+      <div class="codebox">${esc(me.invite_code||'-')}</div>
+      <div class="muted" style="margin-top:6px">好友用此码注册，双方各得积分奖励（邀请人+30，被邀人+20）。</div>
+      <div class="muted" style="margin-top:12px">🏅 我的勋章</div>
+      <div class="badges">${badgeHtml}</div>
+      ${newHtml}
+    </div>
+    <div class="card">
+      <h3>🎁 我的兑换</h3>
+      <table><tr><th>商品</th><th>花费</th><th>状态</th><th>时间</th></tr>${redHtml}</table>
+    </div>
+  </div>`;
+}
+async function signin(){ if(!me)return; const r=await post('/api/signin?user_id='+me.id,{}); if(r){toast('签到获得 '+r.reward+' 积分');refreshMe();renderMe();} }
+function copyInvite(){ if(me&&me.invite_code){navigator.clipboard&&navigator.clipboard.writeText(me.invite_code);toast('邀请码已复制：'+me.invite_code);} }
+async function shareMe(){
+  if(!me){openAuth();return;}
+  const acc=await api('/api/users/'+me.id+'/accuracy')||{total:0};
+  const text=`我在「真测 Realcast」的预测战绩：总预测 ${acc.total||0} 场，命中率 ${acc.accuracy!=null?(acc.accuracy*100).toFixed(0)+'%':'-'}。用积分预测真实未来，越准声望越高，一起来玩！`;
+  if(navigator.share){ try{ await navigator.share({title:'真测 Realcast 战绩', text}); return; }catch(e){} }
+  if(navigator.clipboard){ navigator.clipboard.writeText(text); toast('战绩已复制，去粘贴分享吧'); }
+  else toast(text);
+}
+
+/* ---------- 自动化运营 ---------- */
+async function renderOps(){
+  $('view').innerHTML=`<div class="card"><h3>⚙️ 自动化运营台</h3>
+    <div class="muted" style="margin-bottom:10px">选题流水线：真实公开源抓取 → 白名单过滤 → 主权/敏感度校验 → 成稿 → 分级入队（低风险自动发布，中风险人工复核）。</div>
+    <div class="row">
+      <button class="btn" onclick="runScout()">① 触发选题扫描</button>
+      <button class="btn sec" onclick="publishAuto()">② 自动发布安全选题</button>
+      <button class="btn ghost" onclick="loadQueue()">刷新队列</button>
+      <button class="btn ghost" onclick="loadCmtQueue()">💬 评论待审</button>
+      <button class="btn ghost" onclick="loadSentiment()">群体情绪指数</button>
+    </div>
+    <div id="scoutOut" class="muted" style="margin:8px 0"></div>
+    <div id="queueList"></div>
+    <div id="cmtQueue" style="margin-top:12px"></div>
+    <div id="sentimentBox" class="muted" style="margin-top:12px"></div></div>`;
+  loadQueue();
+  loadCmtQueue();
+}
+/* 评论人工复核队列（合规兜底：疑似引流/举报超阈值） */
+async function loadCmtQueue(){
+  const box=$('cmtQueue'); if(!box) return;
+  const cs=await api('/api/admin/comments/pending',{headers:{'x-admin-token':ADMIN_TOKEN}})||[];
+  box.innerHTML=`<h3 style="font-size:14px;margin:6px 0">💬 评论人工复核（${cs.length}）</h3>`+
+    (cs.length? cs.map(c=>`<div class="card" style="margin-bottom:8px">
+      <div><b>${esc(c.username)}</b> <span class="muted" style="font-size:12px">${esc(c.created_at)} · 市场《${esc(c.market_title)}》</span>
+        <span class="tag rev">${esc(c.audit_note||'待审')}</span>${c.flags?`<span class="tag rej">举报 ${c.flags}</span>`:''}</div>
+      <div style="margin:6px 0">${esc(c.body)}</div>
+      <div class="row"><button class="btn sec" onclick="reviewCmt(${c.id},true)">放行</button>
+        <button class="btn ghost" onclick="reviewCmt(${c.id},false)">下架</button></div></div>`).join('')
+      : '<div class="empty">无待审评论 ✅</div>');
+}
+async function reviewCmt(cid, approve){
+  const r=await adminPost('/api/admin/comments/'+cid+'/review',{approve:approve});
+  if(r){ toast(approve?'已放行':'已下架'); loadCmtQueue(); }
+}
+async function runScout(){ const r=await adminPost('/api/automation/scout',{}); if(r)$('scoutOut').innerHTML=`扫描 ${r.scanned} · 安全 ${r.safe} · 待复核 ${r.review} · 丢弃 ${r.discarded} · 入队 ${r.queued}${r.demo_mode?' · <span class="neg">真实源不可用，当前为标注demo兜底</span>':''}`; loadQueue(); }
+async function publishAuto(){ const r=await adminPost('/api/automation/publish',{}); if(r)$('scoutOut').innerHTML+=`<br>自动发布 ${r.published} 个市场`; renderMarkets(); }
+async function loadQueue(){
+  const qs=await api('/api/publish_queue')||[];
+  $('queueList').innerHTML=qs.filter(q=>q.status!=='discarded').map(q=>`<div class="card" style="margin-bottom:8px">
+    <b>${esc(q.title)}</b><span class="tag ${q.route==='auto'?'':q.route==='review'?'rev':'rej'}">${q.route==='auto'?'自动发布':q.route==='review'?'人工复核':'驳回'}</span>
+    <span class="muted">${esc(q.sensitivity)}</span>
+    ${q.route==='review'&&q.status==='pending'?`<button class="btn sec" onclick="approve(${q.id})">admin 放行</button>`:''}
+    <span class="muted">${esc(q.status)}</span></div>`).join('')||'<div class="empty">队列空</div>';
+}
+async function approve(id){ const r=await adminPost('/api/admin/approve?queue_id='+id,{}); if(r){toast('已发布为市场 #'+r.market_id);loadQueue();renderMarkets();} }
+async function loadSentiment(){
+  const s=await api('/api/data/sentiment')||[];
+  $('sentimentBox').innerHTML=`<h3 style="font-size:14px">📡 匿名群体情绪指数（B2B 数据产品，无 PII）</h3>`+
+    (s.length?`<table><tr><th>品类</th><th>市场</th><th>参与人</th><th>情绪指数</th><th>校准</th></tr>`+
+    s.map(x=>`<tr><td>${esc(x.category)}</td><td>${x.markets}</td><td>${x.participants}</td><td>${x.sentiment_index!=null?(x.sentiment_index*100).toFixed(0)+'%':'-'}</td><td>${x.avg_calibration!=null?x.avg_calibration:'-'}</td></tr>`).join('')+`</table>`:'<div class="empty">暂无数据</div>');
+}
+
+/* ---------- 客服 Agent ---------- */
+async function renderSupport(){
+  $('view').innerHTML=`<div class="card"><h3>💬 客服 Agent</h3>
+    <div class="muted" style="margin-bottom:10px">意图识别 → FAQ/建单/升级人工。涉及合规与法律风险会自动升级并生成开发工单。</div>
+    <div class="row"><input id="smsg" style="flex:1" placeholder="输入你的问题或投诉…"><input id="suser" placeholder="昵称（可选）" style="width:140px">
+      <button class="btn" onclick="sendSupport()">发送</button></div>
+    <div id="supportOut"></div></div>`;
+}
+async function sendSupport(){
+  const r=await post('/api/agents/support',{message:$('smsg').value,user:$('suser').value||null});
+  if(!r)return;
+  $('supportOut').innerHTML=`<div class="card"><b>意图：${esc(r.intent)}</b> ${r.escalated?'<span class="pill">已升级</span>':''}
+    <div style="margin-top:6px">${esc(r.reply)}</div>${r.ticket_id?`<div class="muted">工单 #${r.ticket_id}</div>`:''}</div>`;
+}
+
+/* ---------- 广告 Agent ---------- */
+async function renderAds(){
+  $('view').innerHTML=`<div class="card"><h3>📣 广告对接 Agent</h3>
+    <div class="muted" style="margin-bottom:10px">接单 → 合规定价 → 定广告位 → 协调开发投放 → 出对账单。敏感行业（金融投资等）自动升级人工审核。</div>
+    <div class="row">
+      <input id="adv" placeholder="广告主" style="width:130px"><input id="ind" placeholder="行业" style="width:120px">
+      <select id="afmt" style="width:100px"><option value="cpm">CPM</option><option value="fixed">固定位</option></select>
+      <select id="apos" style="width:120px"><option>首页banner</option><option>信息流</option><option>开屏</option><option>品牌礼品格</option></select>
+      <button class="btn" onclick="adInquire()">咨询报价</button>
+    </div>
+    <div id="adsOut"></div></div>`;
+}
+async function adInquire(){
+  const r=await post('/api/agents/ads/inquire',{advertiser:$('adv').value,industry:$('ind').value,ad_format:$('afmt').value,position:$('apos').value});
+  if(!r)return;
+  $('adsOut').innerHTML=`<div class="card"><b>状态：${esc(r.status)}</b><div style="margin-top:6px">${esc(r.message)}</div>
+    ${r.quote?`<pre style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;font-size:12px">${esc(JSON.stringify(r.quote,null,2))}</pre>`:''}
+    ${r.order_id?`<button class="btn" onclick="adConfirm(${r.order_id})">确认并投放（模拟预付）</button>`:''}</div>`;
+  window._oid=r.order_id;
+}
+async function adConfirm(oid){ const r=await post('/api/agents/ads/confirm',{order_id:oid,method:'预付'}); if(r)$('adsOut').innerHTML+=`<div class="card"><b>投放状态：${esc(r.status)}</b><div>${esc(r.message)}</div><button class="btn sec" onclick="adStmt(${oid})">查看对账单</button></div>`; }
+async function adStmt(oid){ const r=await api('/api/agents/ads/statement/'+oid); if(r)$('adsOut').innerHTML+=`<pre style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;font-size:12px">${esc(JSON.stringify(r,null,2))}</pre>`; }
+
+/* ---------- 开发看板 ---------- */
+async function renderDev(){
+  $('view').innerHTML=`<div class="card"><h3>🛠️ 开发看板</h3>
+    <div class="muted" style="margin-bottom:10px">客服/广告/运营告警/争议统一汇入开发工单，形成「反馈→开发→验证关闭」闭环。</div>
+    <button class="btn ghost" onclick="loadTickets()">刷新工单</button><div id="ticketList" style="margin-top:10px"></div></div>`;
+  loadTickets();
+}
+async function loadTickets(){
+  const ts=await api('/api/dev/tickets')||[];
+  $('ticketList').innerHTML=ts.map(t=>`<div class="card" style="margin-bottom:8px"><b>#${t.id} [${esc(t.source)}/${esc(t.type)}]</b>
+    <span class="pill">${esc(t.priority)}</span> <span class="muted">${esc(t.status)}</span>
+    <div class="muted" style="margin-top:4px">${esc(t.title)}</div></div>`).join('')||'<div class="empty">暂无工单</div>';
+}
+
+/* ---------- 合规页 ---------- */
+function showCompliance(kind){
+  const url = kind==='tos'?'/api/compliance/tos':'/api/compliance/privacy';
+  fetch(url).then(r=>r.text()).then(t=>{
+    $('modalRoot').innerHTML=`<div class="mask" onclick="if(event.target===this)closeAuth()"><div class="modal">
+      <h3>${kind==='tos'?'用户协议':'隐私政策'}（摘要）</h3>
+      <pre style="white-space:pre-wrap;font-size:13px;max-height:60vh;overflow:auto">${esc(t)}</pre>
+      <button class="btn" style="width:100%;margin-top:12px" onclick="closeAuth()">关闭</button></div></div>`;
+  });
+}
+
+/* ---------- 新手引导（首次访问） ---------- */
+function showOnboarding(){
+  if(localStorage.getItem('rc_onboarded')) return;
+  $('modalRoot').innerHTML=`
+  <div class="mask" onclick="if(event.target===this)closeOnboarding()">
+    <div class="modal">
+      <h3>👋 欢迎来到 真测 Realcast</h3>
+      <div style="line-height:1.7">
+        <p><b>这是一款合规的「真实预测游戏」</b>：用<b>免费积分</b>对真实世界事件下注你的判断，<b>不涉及现金、不涉及加密货币、不可交易回兑</b>。</p>
+        <p>🔮 <b>声誉加权</b>：高手的概率权重更高，社区共识更准；<br>
+           🏅 <b>竞猜联赛</b>：多场组合赛，按校准排名赢平台奖励池；<br>
+           📈 <b>越准声望越高</b>：看「我的预测」战绩与校准曲线；<br>
+           🎁 <b>积分商城</b>：用积分换实物 / 虚拟权益。</p>
+        <p class="muted">年满 18 周岁方可参与。预测娱乐化、理性参与。</p>
+      </div>
+      <button class="btn" style="width:100%;margin-top:8px" onclick="closeOnboarding()">开始预测</button>
+    </div>
+  </div>`;
+}
+function closeOnboarding(){ localStorage.setItem('rc_onboarded','1'); closeAuth(); }
+
+/* ---------- 启动 ---------- */
+renderUser();
+showOnboarding();
+go('home');
+initRealtime();   // 实时概率推送（失败自动回落到服务端静态值）
+</script>
+</body>
+</html>

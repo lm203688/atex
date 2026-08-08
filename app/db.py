@@ -1,0 +1,255 @@
+"""SQLite 数据层：建表 + 连接助手。去加密化，仅本地关系库。"""
+import sqlite3
+import os
+from datetime import datetime
+from contextlib import contextmanager
+
+# 默认库位于应用目录；生产可通过 DB_PATH 指向挂载卷（如 /data/platform.db）
+DB_PATH = os.environ.get("DB_PATH") or os.path.join(os.path.dirname(__file__), "platform.db")
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  phone TEXT,
+  points_balance INTEGER NOT NULL DEFAULT 0,
+  reputation REAL NOT NULL DEFAULT 0,
+  streak INTEGER NOT NULL DEFAULT 0,
+  signin_day INTEGER NOT NULL DEFAULT 0,
+  last_signin TEXT,
+  token TEXT,
+  invite_code TEXT UNIQUE,
+  invited_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS points_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  delta INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  ref_type TEXT,
+  ref_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS markets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT,
+  whitelist_tag TEXT,
+  options_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  resolution INTEGER,
+  oracle_source TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  closes_at TEXT,
+  settled_at TEXT,
+  creator INTEGER,
+  settlement_criteria TEXT
+);
+CREATE TABLE IF NOT EXISTS positions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  market_id INTEGER NOT NULL,
+  option_index INTEGER NOT NULL,
+  stake INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS reward_pool (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  day TEXT NOT NULL,
+  budget INTEGER NOT NULL,
+  spent INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS publish_queue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  draft_json TEXT,
+  sensitivity TEXT,
+  route TEXT,
+  status TEXT DEFAULT 'pending',
+  ref_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS dev_tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source TEXT,
+  type TEXT,
+  priority TEXT,
+  title TEXT,
+  body TEXT,
+  status TEXT DEFAULT 'open',
+  related_user TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS ad_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  advertiser TEXT,
+  industry TEXT,
+  ad_format TEXT,
+  position TEXT,
+  budget INTEGER,
+  cpm INTEGER,
+  status TEXT DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  confirmed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS mall_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT '虚拟权益',
+  cost INTEGER NOT NULL,
+  stock INTEGER NOT NULL DEFAULT 9999,
+  item_type TEXT DEFAULT 'virtual',   -- physical / virtual
+  status TEXT DEFAULT 'on',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS redemptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  cost INTEGER NOT NULL,
+  status TEXT DEFAULT 'pending',       -- pending / shipped / done
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS oracle_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  market_id INTEGER NOT NULL,
+  winning_option INTEGER NOT NULL,
+  source TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS disputes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  market_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT DEFAULT 'open',          -- open / upheld / rejected
+  resolution_note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT
+);
+CREATE TABLE IF NOT EXISTS badges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  badge_id TEXT NOT NULL,
+  awarded_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(user_id, badge_id)
+);
+CREATE TABLE IF NOT EXISTS tournaments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT '综合',
+  entry_fee INTEGER NOT NULL DEFAULT 0,
+  prize_pool INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'open',
+  starts_at TEXT,
+  ends_at TEXT,
+  created_by INTEGER,
+  paid_total INTEGER NOT NULL DEFAULT 0,
+  closed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS tournament_markets (
+  tournament_id INTEGER NOT NULL,
+  market_id INTEGER NOT NULL,
+  PRIMARY KEY (tournament_id, market_id)
+);
+CREATE TABLE IF NOT EXISTS tournament_entries (
+  tournament_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (tournament_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS task_claims (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  task_id TEXT NOT NULL,
+  day TEXT NOT NULL,
+  reward INTEGER NOT NULL,
+  claimed_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS probability_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  market_id INTEGER NOT NULL,
+  probs_json TEXT NOT NULL,
+  ts TEXT NOT NULL DEFAULT (datetime('now')),
+  reason TEXT DEFAULT 'trade'
+);
+CREATE TABLE IF NOT EXISTS comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  market_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  body TEXT NOT NULL,
+  parent_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"""
+
+
+def init_db():
+    with get_conn() as conn:
+        conn.executescript(SCHEMA)
+        # 迁移：新增列（幂等，兼容已有库）
+        for col, ctype in (("creator", "INTEGER"), ("settlement_criteria", "TEXT")):
+            try:
+                conn.execute(f"ALTER TABLE markets ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass  # 已存在
+        for col, ctype in (
+            ("token", "TEXT"), ("invite_code", "TEXT"), ("invited_by", "INTEGER")
+        ):
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass
+        # 每日预测连胜 streak（对标 Manifold 每日预测奖励循环）
+        for col, ctype in (
+            ("predict_streak", "INTEGER"), ("last_predict_date", "TEXT")
+        ):
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass
+        # positions 增加下注时社区概率（用于真实校准统计）
+        try:
+            conn.execute("ALTER TABLE positions ADD COLUMN prob_at_bet REAL")
+        except sqlite3.OperationalError:
+            pass
+        # 评论层合规：审核状态 / 举报计数 / 命中原因（人工兜底）
+        for col, ctype, default in (
+            ("status", "TEXT", "'ok'"),        # ok / review / rejected
+            ("flags", "INTEGER", "0"),          # 用户举报计数
+            ("audit_note", "TEXT", "NULL"),     # 命中的过滤原因
+        ):
+            try:
+                conn.execute(
+                    f"ALTER TABLE comments ADD COLUMN {col} {ctype} DEFAULT {default}")
+            except sqlite3.OperationalError:
+                pass
+        conn.commit()
+
+
+@contextmanager
+def get_conn():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    # WAL + 忙等待：缓解并发写时的 database is locked，提升生产健壮性
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
+        yield conn
+    finally:
+        conn.close()
+
+
+def now_iso():
+    return datetime.now().isoformat(timespec='seconds')
+
+
+def today_str():
+    return datetime.now().strftime('%Y-%m-%d')

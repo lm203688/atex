@@ -1,0 +1,5 @@
+# 真测 Realcast 生产依赖（版本锁定，与开发 venv 一致）
+fastapi==0.141.1
+pydantic==2.13.4
+uvicorn[standard]==0.52.1
+websockets==17.0.1

@@ -1,0 +1,32 @@
+# 真测 Realcast systemd 单元（裸机/VM 部署，无 Docker 时）
+# 安装：
+#   sudo cp realcast.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now realcast
+# 前置：/opt/realcast/app 放代码；/opt/realcast/venv 建 venv 并 pip install -r requirements.txt
+#       /opt/realcast/data 放 SQLite（DB_PATH）；/opt/realcast/deploy/.env 放环境变量
+
+[Unit]
+Description=真测 Realcast 预测社区后端 (uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=realcast
+Group=realcast
+WorkingDirectory=/opt/realcast/app
+EnvironmentFile=/opt/realcast/deploy/.env
+ExecStart=/opt/realcast/venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000 --workers 3
+Restart=on-failure
+RestartSec=5
+
+# 等保/最小权限加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/realcast/data
+PrivateTmp=true
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
