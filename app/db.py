@@ -188,6 +188,12 @@ CREATE TABLE IF NOT EXISTS comments (
   parent_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS comment_reports (
+  reporter_id INTEGER NOT NULL,
+  comment_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (reporter_id, comment_id)
+);
 """
 
 

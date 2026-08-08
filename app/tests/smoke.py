@@ -343,8 +343,13 @@ def main():
                     {"user_id": uA, "body": "我觉得动作片会赢"}, token=tokA)
         rcid = j.get("comment_id")
         if rcid:
-            for _ in range(3):
-                call("POST", f"/api/comments/{rcid}/report", {"user_id": uid})
+            # 去重后需 3 名【不同】用户举报才达阈值（同一用户重复举报不计数）
+            for uname in ("reporter_x1", "reporter_x2", "reporter_x3"):
+                _, jR = call("POST", "/api/register", {"username": uname, "age_confirmed": True})
+                call("POST", f"/api/comments/{rcid}/report", {"user_id": jR.get("user_id")})
+            s, jq = call("GET", "/api/admin/comments/pending", admin=True)
+            check("3名不同用户举报达阈值自动转待审",
+                  s == 200 and any(p["id"] == rcid for p in jq), f"{s} {jq}")
             # 管理员下架
             s, j = call("POST", f"/api/admin/comments/{rcid}/review",
                         {"approve": False, "note": "冒烟下架"}, admin=True)

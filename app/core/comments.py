@@ -108,26 +108,39 @@ def _raise_ticket(cid, market_id, user_id, body, note):
 
 
 def report(comment_id, user_id=None):
-    """用户举报评论。达阈值自动下线转人工复核。返回 dict(flags, status)。"""
+    """用户举报评论（每用户至多计一次，防刷举报）。
+
+    同一用户重复举报不重复计数；仅当【不同用户】举报数达阈值才自动下线转人工复核。
+    返回 dict(flags=不同举报人数, status, reporter_count)。
+    """
+    if user_id is None:
+        raise ValueError("举报需先登录")
     with get_conn() as conn:
         row = conn.execute(
             "SELECT id, market_id, user_id, body, flags, status FROM comments WHERE id=?",
             (comment_id,)).fetchone()
         if not row:
             raise ValueError("评论不存在")
-        flags = (row["flags"] or 0) + 1
         status = row["status"] or STATUS_OK
-        if flags >= FLAG_THRESHOLD and status == STATUS_OK:
+        # 去重：同一用户重复举报只记一次（INSERT OR IGNORE + 唯一主键兜底）
+        conn.execute(
+            "INSERT OR IGNORE INTO comment_reports (reporter_id, comment_id) VALUES (?, ?)",
+            (user_id, comment_id))
+        # 统计不同举报人数（真实阈值依据）
+        cnt = conn.execute(
+            "SELECT COUNT(*) AS c FROM comment_reports WHERE comment_id=?", (comment_id,)
+        ).fetchone()["c"]
+        if cnt >= FLAG_THRESHOLD and status == STATUS_OK:
             status = STATUS_REVIEW
             conn.execute("UPDATE comments SET flags=?, status=?, audit_note=? WHERE id=?",
-                         (flags, status, f"用户举报达{flags}次", comment_id))
+                         (cnt, status, f"用户举报达{cnt}人", comment_id))
         else:
-            conn.execute("UPDATE comments SET flags=? WHERE id=?", (flags, comment_id))
+            conn.execute("UPDATE comments SET flags=? WHERE id=?", (cnt, comment_id))
         conn.commit()
         body, mid, owner = row["body"], row["market_id"], row["user_id"]
-    if status == STATUS_REVIEW and flags == FLAG_THRESHOLD:
-        _raise_ticket(comment_id, mid, owner, body, f"用户举报达{flags}次")
-    return {"flags": flags, "status": status}
+    if status == STATUS_REVIEW and cnt == FLAG_THRESHOLD:
+        _raise_ticket(comment_id, mid, owner, body, f"用户举报达{cnt}人")
+    return {"flags": cnt, "status": status, "reporter_count": cnt}
 
 
 def list_for(market_id, include_hidden=False):
