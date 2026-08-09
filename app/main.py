@@ -41,7 +41,7 @@ DESCRIPTION = (
 )
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.4.1",
+    version="0.5.0",
     description=DESCRIPTION,
     docs_url="/docs",
 )
