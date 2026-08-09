@@ -207,6 +207,40 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read);
+
+-- Agent 任务表（LoopX 状态内核）：长时任务分片、中断恢复
+CREATE TABLE IF NOT EXISTS agent_tasks (
+  id TEXT PRIMARY KEY,
+  goal TEXT NOT NULL,
+  agent TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  input TEXT NOT NULL DEFAULT '{}',
+  output TEXT NOT NULL DEFAULT '{}',
+  log TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_agent_status ON agent_tasks(agent, status);
+
+-- Agent 状态快照（断点续跑）
+CREATE TABLE IF NOT EXISTS agent_state (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id TEXT NOT NULL,
+  checkpoint TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_agent_state_task ON agent_state(task_id);
+
+-- 自然语言规则（AutoAgent 零代码思想）
+CREATE TABLE IF NOT EXISTS agent_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  domain TEXT,
+  rule_json TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

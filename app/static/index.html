@@ -931,9 +931,14 @@ async function renderOps(){
     <div id="scoutOut" class="muted" style="margin:8px 0"></div>
     <div id="queueList"></div>
     <div id="cmtQueue" style="margin-top:12px"></div>
-    <div id="sentimentBox" class="muted" style="margin-top:12px"></div></div>`;
+    <div id="sentimentBox" class="muted" style="margin-top:12px"></div>
+    <div class="card" style="margin-top:14px"><h3>🤖 Agent 编排台</h3>
+      <div class="row"><button class="btn" onclick="loadAgentDashboard()">刷新状态</button>
+        <button class="btn sec" onclick="agentOrchestrate()">自然语言派发任务</button></div>
+      <div id="agentDash" class="muted" style="margin-top:10px">点击刷新查看各专业 Agent 实时状态。</div></div></div>`;
   loadQueue();
   loadCmtQueue();
+  loadAgentDashboard();
 }
 /* 评论人工复核队列（合规兜底：疑似引流/举报超阈值） */
 async function loadCmtQueue(){
@@ -963,6 +968,24 @@ async function loadQueue(){
     <span class="muted">${esc(q.status)}</span></div>`).join('')||'<div class="empty">队列空</div>';
 }
 async function approve(id){ const r=await adminPost('/api/admin/approve?queue_id='+id,{}); if(r){toast('已发布为市场 #'+r.market_id);loadQueue();renderMarkets();} }
+async function loadAgentDashboard(){
+  const box=$('agentDash'); if(!box) return;
+  const d=await api('/api/admin/agents/dashboard',{headers:{'x-admin-token':ADMIN_TOKEN}})||{};
+  const agents=(d.agents||[]).map(a=>`<span class="tag" title="${esc(a.capabilities)}">${esc(a.agent)}</span>`).join(' ');
+  const counts=Object.entries(d.status_counts||{}).map(([k,v])=>`${k}:${v}`).join(' ');
+  const tasks=(d.recent_tasks||[]).slice(0,8).map(t=>`<div style="font-size:12px;border-bottom:1px dashed var(--line);padding:4px 0">
+      <b>${esc(t.agent)}</b> <span class="tag ${t.status==='done'?'':t.status==='failed'?'rej':'rev'}">${esc(t.status)}</span>
+      <span class="muted">${esc(t.goal)}</span></div>`).join('');
+  box.innerHTML=`<div><b>在线 Agent（${(d.agents||[]).length}）：</b>${agents}</div>
+    <div style="margin-top:6px"><b>任务统计：</b>${counts||'暂无'}</div>
+    <div style="margin-top:8px"><b>最近任务：</b></div>${tasks||'<div class="empty">无</div>'}`;
+}
+async function agentOrchestrate(){
+  const goal=prompt('用自然语言描述要派发的任务，例如：\n- 审核这个UGC题目\n- 处理用户投诉积分没到账\n- 广告咨询');
+  if(!goal) return;
+  const r=await adminPost('/api/agents/orchestrate',{goal:goal,input:{}});
+  if(r&&r.task_id){ toast('已派发任务 '+r.task_id); setTimeout(loadAgentDashboard,600); }
+}
 async function loadSentiment(){
   const s=await api('/api/data/sentiment')||[];
   $('sentimentBox').innerHTML=`<h3 style="font-size:14px">📡 匿名群体情绪指数（B2B 数据产品，无 PII）</h3>`+

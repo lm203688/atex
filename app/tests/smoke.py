@@ -379,6 +379,24 @@ def main():
               s == 200 and isinstance(j, list) and any(r.get("reason") == "create" for r in j),
               f"{s} {j}")
 
+    # v0.5.0 Agent Orchestrator 能力
+    s, j = call("POST", "/api/agents/orchestrate",
+                {"goal": "用户投诉积分没到账", "input": {"message": "积分没到账", "user": "u1"}, "agent": "support"})
+    check("Agent编排提交返回task_id", s == 200 and j.get("task_id"), f"{s} {j}")
+    task_id = j.get("task_id")
+    if task_id:
+        s, j = call("GET", f"/api/agents/tasks/{task_id}")
+        check("Agent任务状态可查询", s == 200 and j.get("status") == "done", f"{s} {j}")
+
+    s, j = call("GET", "/api/admin/agents/dashboard", admin=True)
+    check("Agent看板返回在线Agent列表", s == 200 and isinstance(j.get("agents"), list) and len(j["agents"]) >= 6,
+          f"{s} {j}")
+
+    s, j = call("POST", "/api/admin/agents/rules",
+                body={"name": "UGC自动通过规则", "text": "娱乐类UGC题目有票房数据源时自动通过"}, admin=True)
+    check("自然语言规则创建成功", s == 200 and j.get("rule_id") and j["rule"].get("domain") == "UGC审核",
+          f"{s} {j}")
+
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
         print("失败项：", FAIL)

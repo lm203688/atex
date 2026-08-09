@@ -24,3 +24,6 @@ certs/
 # Tooling
 .pytest_cache/
 *.egg-info/
+
+# WorkBuddy local memory/temp
+.workbuddy/

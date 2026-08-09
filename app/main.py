@@ -32,6 +32,7 @@ from core import comments
 from core import notifications
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
+from agents import orchestrator as agent_orchestrator
 
 DESCRIPTION = (
     "真测 Realcast —— 合规的积分制真实预测游戏社区（类 Polymarket，但不涉现金/加密货币）。\n\n"
@@ -727,6 +728,49 @@ def api_tickets(status: str = None, source: str = None):
 @app.post("/api/dev/tickets/{ticket_id}/close")
 def api_close(ticket_id: int, note: str = None):
     return {"ok": devboard.close_ticket(ticket_id, note)}
+
+# ---------- Agent Orchestrator（v0.5.0 能力提升）----------
+class OrchestrateReq(BaseModel):
+    goal: str
+    input: dict = {}
+    agent: str = None
+
+@app.post("/api/agents/orchestrate")
+def api_orchestrate(req: OrchestrateReq):
+    """自然语言提交 Agent 任务，返回 task_id。参考 AutoAgent 零代码编排。"""
+    task_id = agent_orchestrator.submit(req.goal, req.input, req.agent)
+    return {"task_id": task_id, "status": "submitted"}
+
+@app.get("/api/agents/tasks/{task_id}")
+def api_task_status(task_id: str):
+    return agent_orchestrator.status(task_id)
+
+@app.get("/api/admin/agents/dashboard")
+def api_agent_dashboard(request: Request):
+    _auth_admin(request)
+    return agent_orchestrator.dashboard()
+
+@app.post("/api/admin/agents/recover")
+def api_agent_recover(request: Request):
+    _auth_admin(request)
+    recovered = agent_orchestrator.recover()
+    return {"recovered": recovered}
+
+class AgentRuleReq(BaseModel):
+    name: str
+    text: str
+
+@app.get("/api/admin/agents/rules")
+def api_list_rules(request: Request, domain: str = None):
+    _auth_admin(request)
+    return agent_orchestrator.rules.list_rules(domain)
+
+@app.post("/api/admin/agents/rules")
+def api_create_rule(req: AgentRuleReq, request: Request):
+    _auth_admin(request)
+    rule = agent_orchestrator.rules.parse_rule(req.text)
+    rid = agent_orchestrator.rules.save_rule(req.name, rule)
+    return {"rule_id": rid, "rule": rule}
 
 # ---------- 数据产品（匿名化 B2B）----------
 @app.get("/api/data/sentiment")
