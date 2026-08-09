@@ -12,10 +12,12 @@ from core import comments
 init_db()
 
 # 1) 注册 + 签到（u2 用 u1 的邀请码，演示裂变）
-u1 = points.register("小预测", "13800000001")
+# 演示账户统一密码 demo1234（生产应强制所有账户设密码，见 README 合规说明）
+DEMO_PW = "demo1234"
+u1 = points.register("小预测", "13800000001", password=DEMO_PW)["user_id"]
 code1 = points.profile(u1)["invite_code"]
-u2 = points.register("明眼人", "13800000002", invite_code=code1)
-u3 = points.register("吃瓜王", "13800000003")
+u2 = points.register("明眼人", "13800000002", invite_code=code1, password=DEMO_PW)["user_id"]
+u3 = points.register("吃瓜王", "13800000003", password=DEMO_PW)["user_id"]
 for u in (u1, u2, u3):
     points.daily_signin(u)
 

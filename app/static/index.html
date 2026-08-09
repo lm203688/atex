@@ -25,7 +25,7 @@
   .side .me{margin-top:18px;border-top:1px solid #2a3157;padding-top:14px;font-size:13px}
   .side .me .nm{color:#fff;font-weight:600}
   .main{flex:1;min-width:0;display:flex;flex-direction:column}
-  .topbar{height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  .topbar{position:relative;height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;
     justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:5}
   .topbar h2{font-size:16px;margin:0;display:flex;align-items:center;gap:10px}
   #menuBtn{display:none;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--ink)}
@@ -116,6 +116,25 @@
     border:1px solid #fcd34d;color:#92400e;border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600;
     box-shadow:0 1px 3px rgba(146,64,14,.12)}
   .toastpop{margin-top:10px;background:#ecfdf5;color:#047857;border-radius:8px;padding:8px 12px;font-size:13px}
+  .bell{position:relative;border:none;background:transparent;font-size:20px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:9px}
+  .bell:hover{background:var(--soft)}
+  .notif-badge{position:absolute;top:0;right:2px;min-width:16px;height:16px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;line-height:16px;text-align:center;padding:0 4px;font-weight:700}
+  .notif-badge.hide{display:none}
+  .notif-panel{position:absolute;top:60px;right:14px;width:340px;max-width:92vw;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(15,20,40,.22);z-index:45;overflow:hidden}
+  .notif-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .notif-head b{font-size:14px}
+  .notif-list{max-height:60vh;overflow:auto}
+  .notif-item{display:block;padding:11px 14px;border-bottom:1px solid #f1f1f4;cursor:pointer}
+  .notif-item:hover{background:#f8fafc}
+  .notif-item.unread{background:#f0f6ff}
+  .notif-item .nt{font-size:13px;font-weight:600;margin-bottom:2px}
+  .notif-item .nb{font-size:12px;color:var(--muted);line-height:1.4}
+  .notif-item .ntime{font-size:11px;color:#9aa3b2;margin-top:3px}
+  .notif-empty{padding:30px 14px;text-align:center;color:var(--muted)}
+  .cstatus{font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px;font-weight:600}
+  .cstatus.ok{background:#ecfdf5;color:#047857}
+  .cstatus.review{background:#fff7ed;color:#b45309}
+  .cstatus.rejected{background:#fee2e2;color:#b91c1c}
 </style>
 </head>
 <body>
@@ -143,6 +162,8 @@
     <div class="topbar">
       <h2><button id="menuBtn" onclick="toggleMenu()">☰</button><span id="pageTitle">首页</span></h2>
       <div class="chip" id="topUser"></div>
+      <button class="bell" id="bellBtn" onclick="toggleNotif()" title="站内通知">🔔<span id="notifBadge" class="notif-badge hide">0</span></button>
+      <div class="notif-panel" id="notifPanel" style="display:none"></div>
     </div>
     <div class="view" id="view"></div>
   </div>
@@ -181,6 +202,10 @@ function toast(msg){
 }
 function $(id){return document.getElementById(id);}
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+document.addEventListener('click', e=>{
+  const p=$('notifPanel'); if(!p||p.style.display==='none') return;
+  if(!e.target.closest('#notifPanel') && !e.target.closest('#bellBtn')) p.style.display='none';
+});
 
 /* ---------- 移动端导航 ---------- */
 function toggleMenu(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('show'); }
@@ -191,6 +216,7 @@ async function refreshMe(){
   const p = await api('/api/users/'+me.id);
   if(p){ me = Object.assign(me, p); localStorage.setItem(LS, JSON.stringify(me)); }
   renderUser();
+  loadNotifBadge();
 }
 function renderUser(){
   const tu=$('topUser'); const sm=$('sideMe');
@@ -203,6 +229,42 @@ function renderUser(){
   }
 }
 function logout(){ localStorage.removeItem(LS); me=null; renderUser(); go('home'); toast('已退出'); }
+
+/* ---------- 站内通知（回访系统） ---------- */
+async function loadNotifBadge(){
+  if(!me){ $('notifBadge').classList.add('hide'); return; }
+  const r=await api('/api/users/'+me.id+'/notif_unread');
+  if(!r) return;
+  const b=$('notifBadge');
+  if(r.unread>0){ b.textContent=r.unread>99?'99+':r.unread; b.classList.remove('hide'); }
+  else b.classList.add('hide');
+}
+function toggleNotif(){
+  const p=$('notifPanel');
+  if(p.style.display==='none'){ p.style.display='block'; renderNotif(); }
+  else p.style.display='none';
+}
+async function renderNotif(){
+  const p=$('notifPanel');
+  const list=await api('/api/users/'+me.id+'/notifications?limit=30')||[];
+  if(!list.length){ p.innerHTML='<div class="notif-empty">暂无通知</div>'; return; }
+  const items=list.map(n=>`
+    <div class="notif-item ${n.is_read?'':'unread'}" onclick="markNotifRead(${n.id})">
+      <div class="nt">${esc(n.title)}</div>
+      <div class="nb">${esc(n.body)}</div>
+      <div class="ntime">${esc(n.created_at)}</div>
+    </div>`).join('');
+  p.innerHTML=`<div class="notif-head"><b>通知</b><a class="link" style="font-size:12px" onclick="markAllRead()">全部已读</a></div>
+    <div class="notif-list">${items}</div>`;
+}
+async function markNotifRead(id){
+  await post('/api/users/'+me.id+'/notifications/read?notif_id='+id,{});
+  loadNotifBadge(); renderNotif();
+}
+async function markAllRead(){
+  await post('/api/users/'+me.id+'/notifications/read',{});
+  loadNotifBadge(); renderNotif();
+}
 
 function openAuth(){
   $('modalRoot').innerHTML=`
@@ -226,6 +288,8 @@ function authSeg(m){
     $('authBody').innerHTML=`
       <input id="a_uname" placeholder="用户名">
       <div style="height:8px"></div>
+      <input id="a_pw" type="password" placeholder="登录密码（至少 6 位，账户安全）">
+      <div style="height:8px"></div>
       <input id="a_phone" placeholder="手机号（可选）">
       <div style="height:8px"></div>
       <input id="a_code" placeholder="邀请码（可选，填了双方都得奖励）">
@@ -237,19 +301,25 @@ function authSeg(m){
   }else{
     $('authBody').innerHTML=`
       <input id="a_uname" placeholder="用户名">
+      <div style="height:8px"></div>
+      <input id="a_pw" type="password" placeholder="登录密码">
       <div style="height:14px"></div>
       <button class="btn" style="width:100%" onclick="doLogin()">登录</button>
-      <div class="muted" style="margin-top:10px">演示环境免密码，输入已注册用户名即可。</div>`;
+      <div class="muted" style="margin-top:10px">演示账户密码均为 <b>demo1234</b>（生产环境请使用你自己的密码）。</div>`;
   }
 }
 async function doRegister(){
   if(!$('a_age').checked){ toast('请先确认已满18周岁并同意用户协议'); return; }
-  const r=await post('/api/register',{username:$('a_uname').value,phone:$('a_phone').value||null,invite_code:$('a_code').value||null,age_confirmed:true});
+  const pw=$('a_pw').value;
+  if(!pw||pw.length<6){ toast('请设置至少 6 位登录密码（账户安全必填）'); return; }
+  const r=await post('/api/register',{username:$('a_uname').value,password:pw,phone:$('a_phone').value||null,invite_code:$('a_code').value||null,age_confirmed:true});
   if(r&&r.user_id){ await afterLogin(r.user_id); closeAuth(); }
+  else if(r&&r.detail){ toast('注册失败：'+r.detail); }
 }
 async function doLogin(){
-  const r=await post('/api/login',{username:$('a_uname').value});
+  const r=await post('/api/login',{username:$('a_uname').value,password:$('a_pw').value});
   if(r&&r.id){ await afterLogin(r.id); closeAuth(); }
+  else { toast('登录失败：用户名或密码错误'); }
 }
 async function afterLogin(id){
   const p=await api('/api/users/'+id);
@@ -258,7 +328,7 @@ async function afterLogin(id){
        reputation:p.reputation||0, streak:p.streak||0, invite_code:p.invite_code,
        invited_count:p.invited_count||0, token:p.token };
   localStorage.setItem(LS, JSON.stringify(me));
-  renderUser(); toast('登录成功，欢迎 '+me.username); go('home');
+  renderUser(); loadNotifBadge(); toast('登录成功，欢迎 '+me.username); go('home');
 }
 
 /* ---------- 导航 ---------- */
@@ -657,6 +727,14 @@ async function renderMypred(){
       return `<div class="c" style="height:${Math.max(4,h)}px" title="${c.bucket}: 命中${h}% (${c.n})"><small>${c.bucket}</small></div>`;
     }).join('');
   }
+  const myCmts=await api('/api/users/'+me.id+'/comments?limit=30')||[];
+  const cstatMap={ok:['ok','✅ 已公开'],review:['review','⏳ 审核中'],rejected:['rejected','⛔ 已下架']};
+  const cmtRows = myCmts.length? myCmts.map(c=>{
+    const st=c.status||'ok'; const [cls,label]=cstatMap[st]||cstatMap.ok;
+    return `<tr><td>${esc(c.market_title)}</td><td style="max-width:220px">${esc(c.body)}</td>
+      <td><span class="cstatus ${cls}">${label}</span></td>
+      <td class="muted" style="font-size:12px">${esc(c.created_at)}${c.audit_note&&st!=='ok'?' · '+esc(c.audit_note):''}</td></tr>`;
+  }).join('') : '<tr><td colspan="4" class="muted">还没有发表过评论</td></tr>';
   $('view').innerHTML=`<div class="grid cols2">
     <div class="card">
       <h3>📈 我的预测战绩</h3>
@@ -670,6 +748,10 @@ async function renderMypred(){
       <h3>预测明细</h3>
       <table><tr><th>事件</th><th>我的选择</th><th>积分</th><th>当时概率</th><th>结果</th></tr>${rows}</table>
     </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>💬 我的评论 <span class="muted" style="font-weight:400">（含审核状态，若显示「审核中」请耐心等待人工复核；「已下架」为被举报/违规处理）</span></h3>
+    <table><tr><th>市场</th><th>内容</th><th>状态</th><th>时间</th></tr>${cmtRows}</table>
   </div>`;
 }
 

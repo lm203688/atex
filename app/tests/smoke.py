@@ -13,6 +13,7 @@ import os
 
 BASE = "http://127.0.0.1:8000"
 ADMIN = "dev-admin-token"
+PW = "test1234"   # 新注册必须设密码（安全升级）
 PASS = []
 FAIL = []
 
@@ -50,18 +51,26 @@ def check(name, cond, detail=""):
 def main():
     print("== 冒烟测试 ==")
     # 注册
-    s, j = call("POST", "/api/register", {"username": "冒烟测试员", "age_confirmed": True})
-    check("注册(带年龄确认)", s == 200 and j.get("user_id"), f"{s} {j}")
+    s, j = call("POST", "/api/register", {"username": "冒烟测试员", "age_confirmed": True, "password": PW})
+    check("注册(带年龄确认+密码)", s == 200 and j.get("user_id"), f"{s} {j}")
     uid = j.get("user_id")
 
     # 年龄门拦截
-    s2, _ = call("POST", "/api/register", {"username": "未成年", "age_confirmed": False})
+    s2, _ = call("POST", "/api/register", {"username": "未成年", "age_confirmed": False, "password": PW})
     check("年龄门拦截未确认用户", s2 == 400, f"{s2}")
 
+    # 无密码注册被拒
+    s3, _ = call("POST", "/api/register", {"username": "无密用户", "age_confirmed": True})
+    check("无密码注册被拒(安全)", s3 == 400, f"{s3}")
+
     # 登录拿 token
-    s, j = call("POST", "/api/login", {"username": "冒烟测试员"})
-    check("登录返回token", s == 200 and j.get("token"), f"{s} {j}")
+    s, j = call("POST", "/api/login", {"username": "冒烟测试员", "password": PW})
+    check("登录返回token(凭密码)", s == 200 and j.get("token"), f"{s} {j}")
     tok = j.get("token")
+
+    # 错误密码登录被拒
+    s4, _ = call("POST", "/api/login", {"username": "冒烟测试员", "password": "wrong"})
+    check("错误密码登录被拒", s4 == 401, f"{s4}")
 
     # 无 token 参与应 401
     s, _ = call("POST", "/api/markets/1/participate", {"user_id": uid, "option": 0, "stake": 20})
@@ -144,15 +153,15 @@ def main():
     check("选题扫描运行", s == 200 and "scanned" in j, f"{s} {j}")
 
     # ---- 邀请裂变 + 反刷（自环/深度上限）----
-    sA, jA = call("POST", "/api/register", {"username": "inviter_A", "age_confirmed": True})
+    sA, jA = call("POST", "/api/register", {"username": "inviter_A", "age_confirmed": True, "password": PW})
     uA = jA.get("user_id")
-    _, jL = call("POST", "/api/login", {"username": "inviter_A"})
+    _, jL = call("POST", "/api/login", {"username": "inviter_A", "password": PW})
     tokA = jL.get("token")
     _, jP = call("GET", f"/api/users/{uA}", token=tokA)
     codeA = jP.get("invite_code")
     balA0 = jP.get("balance")
     sB, jB = call("POST", "/api/register",
-                   {"username": "invitee_B", "age_confirmed": True, "invite_code": codeA})
+                   {"username": "invitee_B", "age_confirmed": True, "invite_code": codeA, "password": PW})
     # inviter A 应获得邀请奖励（+30），且建立了下线关系
     _, jP2 = call("GET", f"/api/users/{uA}", token=tokA)
     check("邀请裂变发放邀请人奖励(+30)",
@@ -165,11 +174,11 @@ def main():
     chain_tok = {}
     for i in range(2, 14):
         sX, jX = call("POST", "/api/register",
-                       {"username": f"chain_{i}", "age_confirmed": True, "invite_code": prev_code})
+                       {"username": f"chain_{i}", "age_confirmed": True, "invite_code": prev_code, "password": PW})
         if sX != 200:
             break
         chain_ids[i] = jX.get("user_id")
-        _, jLx = call("POST", "/api/login", {"username": f"chain_{i}"})
+        _, jLx = call("POST", "/api/login", {"username": f"chain_{i}", "password": PW})
         chain_tok[i] = jLx.get("token")
         _, jPx = call("GET", f"/api/users/{jX.get('user_id')}", token=jLx.get("token"))
         prev_code = jPx.get("invite_code")
@@ -345,7 +354,7 @@ def main():
         if rcid:
             # 去重后需 3 名【不同】用户举报才达阈值（同一用户重复举报不计数）
             for uname in ("reporter_x1", "reporter_x2", "reporter_x3"):
-                _, jR = call("POST", "/api/register", {"username": uname, "age_confirmed": True})
+                _, jR = call("POST", "/api/register", {"username": uname, "age_confirmed": True, "password": PW})
                 call("POST", f"/api/comments/{rcid}/report", {"user_id": jR.get("user_id")})
             s, jq = call("GET", "/api/admin/comments/pending", admin=True)
             check("3名不同用户举报达阈值自动转待审",

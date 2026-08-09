@@ -29,6 +29,7 @@ from core import tournaments
 from core import tasks
 from core import metrics
 from core import comments
+from core import notifications
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
 
@@ -142,15 +143,28 @@ class RegReq(BaseModel):
     phone: str = None
     invite_code: str = None
     age_confirmed: bool = False
+    password: str = None
 
 @app.post("/api/register")
 def api_register(req: RegReq):
     if not req.age_confirmed:
         raise HTTPException(400, "需确认已满18周岁并同意用户协议")
+    if not req.password or len(req.password) < 6:
+        raise HTTPException(400, "请设置至少 6 位登录密码（账户安全必填）")
     try:
-        uid = points.register(req.username, req.phone, req.invite_code)
+        res = points.register(req.username, req.phone, req.invite_code, req.password)
     except Exception as e:
         raise HTTPException(400, str(e))
+    uid = res["user_id"]
+    # 回访：通知邀请人「好友通过你的邀请注册」
+    if res.get("inviter_id"):
+        inv = points.profile(res["inviter_id"])
+        if inv:
+            notifications.notify(
+                res["inviter_id"], "invite",
+                "好友通过你的邀请注册 🎉",
+                f"用户「{req.username}」使用你的邀请码完成注册，奖励已发放。",
+                ref_type="user", ref_id=uid)
     return {"user_id": uid, "balance": points.balance(uid)}
 
 @app.post("/api/signin")
@@ -161,12 +175,13 @@ def api_signin(user_id: int, request: Request):
 
 class LoginReq(BaseModel):
     username: str
+    password: str = None
 
 @app.post("/api/login")
 def api_login(req: LoginReq):
-    p = points.login(req.username)
+    p = points.login(req.username, req.password)
     if not p:
-        raise HTTPException(404, "用户不存在，请先注册")
+        raise HTTPException(401, "用户名或密码错误")
     p["token"] = points.ensure_token(p["id"])
     p["balance"] = points.balance(p["id"])
     return p
@@ -224,6 +239,39 @@ def api_prediction_streak(user_id: int, request: Request):
         "claimed_today": claimed_today,
         "next_reward": min(5 + (max(row["predict_streak"] or 0, 0)) * 2, 25),
     }
+
+
+@app.get("/api/users/{user_id}/comments")
+def api_my_comments(user_id: int, request: Request, limit: int = 50):
+    """我的评论（含审核中状态，消除误伤导致的「发不出」困惑）。"""
+    _auth_user(user_id, request)
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT c.id, c.market_id, c.body, c.status, c.audit_note, c.created_at, "
+            "m.title AS market_title FROM comments c JOIN markets m ON m.id=c.market_id "
+            "WHERE c.user_id=? ORDER BY c.id DESC LIMIT ?", (user_id, limit)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.get("/api/users/{user_id}/notifications")
+def api_notifications(user_id: int, request: Request, limit: int = 30, only_unread: bool = False):
+    """站内通知列表（回访系统）。"""
+    _auth_user(user_id, request)
+    return notifications.list_for(user_id, limit=limit, only_unread=only_unread)
+
+
+@app.get("/api/users/{user_id}/notif_unread")
+def api_notif_unread(user_id: int, request: Request):
+    _auth_user(user_id, request)
+    return {"unread": notifications.unread_count(user_id)}
+
+
+@app.post("/api/users/{user_id}/notifications/read")
+def api_notif_read(user_id: int, request: Request, notif_id: int = None):
+    """标记通知已读（指定 notif_id 单条，否则全部）。"""
+    _auth_user(user_id, request)
+    return notifications.mark_read(user_id, notif_id)
 
 @app.get("/api/feed")
 def api_feed(user_id: int = None):
@@ -296,6 +344,22 @@ def api_market_comment_post(market_id: int, req: CommentReq, request: Request):
         res = comments.add(market_id, req.user_id, req.body, req.parent_id)
     except Exception as e:
         raise HTTPException(400, str(e))
+    # 回访：回复他人评论时通知原评论作者（不通知自己）
+    if req.parent_id:
+        try:
+            with get_conn() as conn:
+                prow = conn.execute(
+                    "SELECT user_id FROM comments WHERE id=?", (req.parent_id,)
+                ).fetchone()
+            if prow and prow["user_id"] != req.user_id:
+                author = points.profile(req.user_id) or {}
+                notifications.notify(
+                    prow["user_id"], "reply",
+                    "有人回复了你的评论 💬",
+                    f"用户「{author.get('username','某人')}」在你的评论下发表了看法。",
+                    ref_type="comment", ref_id=req.parent_id)
+        except Exception:
+            pass
     return {"comment_id": res["id"], "status": res["status"],
             "pending_review": res["status"] == "review", "ok": True}
 
@@ -324,9 +388,24 @@ def api_admin_comment_review(comment_id: int, req: CommentReviewReq, request: Re
     """人工兜底：放行或下架待审评论。"""
     _auth_admin(request)
     try:
-        return comments.review(comment_id, req.approve, req.note)
+        res = comments.review(comment_id, req.approve, req.note)
     except Exception as e:
         raise HTTPException(400, str(e))
+    # 回访：把处理结果通知评论作者
+    try:
+        with get_conn() as conn:
+            crow = conn.execute(
+                "SELECT user_id, body FROM comments WHERE id=?", (comment_id,)
+            ).fetchone()
+        if crow:
+            title = "你的评论已通过审核 ✅" if req.approve else "你的评论未通过审核"
+            body = (f"「{(crow['body'] or '')[:40]}…」"
+                    f"{'已通过审核并公开展示。' if req.approve else '因内容合规原因未能展示。'}")
+            notifications.notify(crow["user_id"], "comment_review", title, body,
+                                 ref_type="comment", ref_id=comment_id)
+    except Exception:
+        pass
+    return res
 
 class PartReq(BaseModel):
     user_id: int
@@ -468,9 +547,29 @@ class SettleReq(BaseModel):
 def api_settle(req: SettleReq, request: Request):
     _auth_admin(request)
     try:
-        return oracle.set_result(req.market_id, req.winning_option, req.source, req.note)
+        res = oracle.set_result(req.market_id, req.winning_option, req.source, req.note)
     except Exception as e:
         raise HTTPException(400, str(e))
+    # 回访：市场结算后通知所有参与者（提升回访率，纯站内）
+    try:
+        with get_conn() as conn:
+            mkt = conn.execute(
+                "SELECT title, resolution FROM markets WHERE id=?", (req.market_id,)
+            ).fetchone()
+            parts = conn.execute(
+                "SELECT DISTINCT user_id FROM positions WHERE market_id=? AND user_id IS NOT NULL",
+                (req.market_id,)).fetchall()
+        if mkt:
+            for p in parts:
+                uname = points.profile(p["user_id"]) or {}
+                notifications.notify(
+                    p["user_id"], "market_resolved",
+                    "你参与的市场已结算 🏁",
+                    f"「{mkt['title']}」结果已公布，快去看看你的战绩吧。",
+                    ref_type="market", ref_id=req.market_id)
+    except Exception:
+        pass
+    return res
 
 @app.post("/api/oracle/auto")
 def api_oracle_auto(request: Request):

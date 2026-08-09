@@ -94,15 +94,17 @@ def fresh_start():
     raise RuntimeError("server not up")
 
 # ---------------- 客户建模 ----------------
+DEMO_PW = "test1234"   # 新注册必须设密码（安全升级）
+
 def new_user(name, invite=None):
-    body = {"username": name, "age_confirmed": True}
+    body = {"username": name, "age_confirmed": True, "password": DEMO_PW}
     if invite:
         body["invite_code"] = invite
     s, j = call("POST", "/api/register", body)
     if s != 200 or "user_id" not in j:
         return None
     uid = j["user_id"]
-    s2, j2 = call("POST", "/api/login", {"username": name})
+    s2, j2 = call("POST", "/api/login", {"username": name, "password": DEMO_PW})
     return {"uid": uid, "token": j2.get("token"), "balance": j.get("balance", 0),
             "invite_code": j2.get("invite_code")}
 
@@ -243,7 +245,35 @@ def run_round(ridx):
     s, _ = call("POST", f"/api/users/{A['uid']}/badges/evaluate", token=A["token"])
     chk(results, "勋章评估接口可用(200)", s == 200, f"status={s}")
 
-    # 14) 商城兑换(单向, 扣积分)
+    # 14) 密码登录安全（公开运营前必做项验证）
+    s_ok, j_ok = call("POST", "/api/login", {"username": A["uid"] and f"alice_{tag}", "password": DEMO_PW})
+    chk(results, "凭正确密码可登录", s_ok == 200 and j_ok.get("token"), f"status={s_ok}")
+    s_bad, _ = call("POST", "/api/login", {"username": f"alice_{tag}", "password": "wrongpw"})
+    chk(results, "错误密码登录被拒(401,防冒用)", s_bad == 401, f"status={s_bad}")
+    s_nopw, _ = call("POST", "/api/login", {"username": f"alice_{tag}"})
+    chk(results, "无密码登录被拒(强制密码)", s_invalid := (s_nopw in (400, 401)), f"status={s_nopw}")
+
+    # 15) 我的评论含审核中状态（消除误伤导致的「发不出」困惑）
+    s, mc = call("GET", f"/api/users/{A['uid']}/comments", token=A["token"])
+    has_review = any(c.get("status") == "review" for c in mc)
+    chk(results, "我的评论能看到审核中状态(透明)", s == 200 and has_review,
+        f"my_comments={len(mc)} 含review={has_review}")
+
+    # 16) 站内通知/回访：被邀请人注册后邀请人收到通知
+    s, inv = call("GET", f"/api/users/{A['uid']}/notifications", token=A["token"])
+    s_un, un = call("GET", f"/api/users/{A['uid']}/notif_unread", token=A["token"])
+    got_invite_notif = any(n.get("kind") == "invite" for n in inv)
+    chk(results, "邀请人收到「好友注册」站内通知(回访)",
+        s == 200 and got_invite_notif and un.get("unread", 0) >= 1,
+        f"unread={un.get('unread')} kinds={[n.get('kind') for n in inv]}")
+
+    # 17) 市场结算后参与者收到通知（回访）
+    s, n2 = call("GET", f"/api/users/{A['uid']}/notifications", token=A["token"])
+    got_resolved = any(n.get("kind") == "market_resolved" for n in n2)
+    chk(results, "市场结算后参与者收到站内通知(回访)",
+        got_resolved, f"kinds={[n.get('kind') for n in n2]}")
+
+    # 18) 商城兑换(单向, 扣积分)
     s, items = call("GET", "/api/mall/items")
     if items:
         it = next((x for x in items if x.get("cost", 1e9) <= bal(A)), items[0])

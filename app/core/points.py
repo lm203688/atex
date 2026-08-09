@@ -7,6 +7,8 @@
 - 严禁任何转账/负值发放（consume 仅扣减余额，grant 仅平台正向）。
 """
 import secrets
+import hashlib
+import os
 from db import get_conn, now_iso, today_str
 
 REGISTER_BONUS = 500
@@ -73,6 +75,32 @@ def consume(user_id, amount, reason, ref_type=None, ref_id=None):
         conn.commit()
 
 
+def hash_password(pw: str) -> str:
+    """PBKDF2-SHA256 加盐哈希，存储格式：pbkdf2_sha256$iter$salt$hash(hex)。"""
+    if not pw or len(pw) < 6:
+        raise ValueError("密码至少 6 位")
+    iters = 100_000
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"),
+                             bytes.fromhex(salt), iters)
+    return f"pbkdf2_sha256${iters}${salt}${dk.hex()}"
+
+
+def verify_password(pw: str, stored: str) -> bool:
+    """校验密码与存储哈希是否匹配（恒定比较，防时序攻击）。"""
+    if not stored or not pw:
+        return False
+    try:
+        algo, iters, salt, exp = stored.split("$", 3)
+        if algo != "pbkdf2_sha256":
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"),
+                                 bytes.fromhex(salt), int(iters))
+        return secrets.compare_digest(dk.hex(), exp)
+    except Exception:
+        return False
+
+
 def _gen_invite_code(conn, uid):
     """生成唯一邀请码（PY + base36(uid) + 随机后缀）。"""
     import string
@@ -84,10 +112,12 @@ def _gen_invite_code(conn, uid):
     return f"PY{uid:x}{secrets.token_hex(2)}".upper()
 
 
-def register(username, phone=None, invite_code=None):
+def register(username, phone=None, invite_code=None, password=None):
+    pw_hash = hash_password(password) if password else None
     with get_conn() as conn:
         cur = conn.execute(
-            "INSERT INTO users (username, phone) VALUES (?,?)", (username, phone)
+            "INSERT INTO users (username, phone, pw_hash) VALUES (?,?,?)",
+            (username, phone, pw_hash)
         )
         uid = cur.lastrowid
         code = _gen_invite_code(conn, uid)
@@ -126,7 +156,7 @@ def register(username, phone=None, invite_code=None):
     if inviter is not None:
         grant(inviter, INVITER_REWARD, f"邀请好友奖励(被邀人#{uid})", ref_type="invite", ref_id=uid)
         grant(uid, INVITEE_REWARD, "受邀注册奖励", ref_type="invite", ref_id=inviter)
-    return uid
+    return {"user_id": uid, "inviter_id": inviter}
 
 
 def ensure_token(user_id):
@@ -142,13 +172,19 @@ def ensure_token(user_id):
         return row["token"]
 
 
-def login(username):
-    """按用户名登录（演示级：无密码）。返回简要档案，确保 token 存在。"""
+def login(username, password=None):
+    """登录：若账户已设密码则必须校验；旧库无密码(演示)降级放行。返回简要档案。"""
     with get_conn() as conn:
-        row = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+        row = conn.execute(
+            "SELECT id, pw_hash FROM users WHERE username=?", (username,)
+        ).fetchone()
         if not row:
             return None
         uid = row["id"]
+        pw_hash = row["pw_hash"]
+    # 安全校验：已设密码则必须匹配（防冒用）
+    if pw_hash and not verify_password(password or "", pw_hash):
+        return None
     tok = ensure_token(uid)
     return profile(uid)
 

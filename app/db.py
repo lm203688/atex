@@ -194,6 +194,19 @@ CREATE TABLE IF NOT EXISTS comment_reports (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (reporter_id, comment_id)
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,            -- invite / reply / comment_review / market_resolved / system
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  ref_type TEXT,
+  ref_id INTEGER,
+  is_read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read);
 """
 
 
@@ -237,6 +250,11 @@ def init_db():
                     f"ALTER TABLE comments ADD COLUMN {col} {ctype} DEFAULT {default}")
             except sqlite3.OperationalError:
                 pass
+        # 账号安全：密码哈希（公开运营前必做；旧库无密码可降级为演示登录）
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN pw_hash TEXT")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
 
 
