@@ -1,6 +1,10 @@
 """冒烟测试：覆盖核心链路并断言，确保产品非花架子。
-运行：python tests/smoke.py  （需先 python seed.py 且服务运行于 8000）
-也可自动拉起服务。这里假定服务已在 8000 运行；否则用 --start 自启。
+运行（推荐，自带清库+seed+起服务+跑测试）：
+    python tests/smoke.py --fresh
+若已手动 `python seed.py` 且服务运行于 8000，也可直接：
+    python tests/smoke.py
+注意：default 模式依赖一个干净的运行中服务；状态污染会导致级联失败，故优先用 --fresh。
+（seed.py 在部分沙箱环境中会被静默终止，如遇此情况请在沙箱外执行。）
 """
 import json
 import sys
@@ -410,11 +414,12 @@ def main():
         check("公开结算依据含权威源与结果", s == 200 and j.get("oracle_source") and j.get("resolution_label"),
               f"{s} {j}")
         # 发起争议并投票（透明化：社区投票 + 管理员终审）
-        s, j = call("POST", f"/api/markets/{sid}/dispute", {"user_id": uA, "reason": "冒烟测试异议"})
+        # 注意：dispute 端点的 user_id/reason 走查询参数（与前端 openDispute 一致），且需鉴权 token
+        s, j = call("POST", f"/api/markets/{sid}/dispute?user_id={uA}&reason={urllib.parse.quote('冒烟测试异议')}", token=tokA)
         did = j.get("dispute_id")
         check("可发起结算争议", s == 200 and did, f"{s} {j}")
         if did:
-            s, j = call("POST", f"/api/disputes/{did}/vote", {"user_id": uA, "vote": "uphold"})
+            s, j = call("POST", f"/api/disputes/{did}/vote", {"user_id": uA, "vote": "uphold"}, token=tokA)
             check("争议社区投票计入票型", s == 200 and j.get("total", 0) >= 1, f"{s} {j}")
     else:
         check("公开结算依据含权威源与结果", False, "无已结算市场可测")
