@@ -397,6 +397,28 @@ def main():
     check("自然语言规则创建成功", s == 200 and j.get("rule_id") and j["rule"].get("domain") == "UGC审核",
           f"{s} {j}")
 
+    # v0.6.0 留存与信任补强：声誉即特权 + 结算透明 + 争议投票
+    s, j = call("GET", f"/api/users/{uA}/tier", token=tokA)
+    check("声誉等级端点返回等级与特权", s == 200 and j.get("tier_name") and isinstance(j.get("privileges"), list),
+          f"{s} {j}")
+
+    s, j = call("GET", "/api/markets?status=settled")
+    settled = j if s == 200 else []
+    if settled:
+        sid = settled[0]["id"]
+        s, j = call("GET", f"/api/markets/{sid}/resolution")
+        check("公开结算依据含权威源与结果", s == 200 and j.get("oracle_source") and j.get("resolution_label"),
+              f"{s} {j}")
+        # 发起争议并投票（透明化：社区投票 + 管理员终审）
+        s, j = call("POST", f"/api/markets/{sid}/dispute", {"user_id": uA, "reason": "冒烟测试异议"})
+        did = j.get("dispute_id")
+        check("可发起结算争议", s == 200 and did, f"{s} {j}")
+        if did:
+            s, j = call("POST", f"/api/disputes/{did}/vote", {"user_id": uA, "vote": "uphold"})
+            check("争议社区投票计入票型", s == 200 and j.get("total", 0) >= 1, f"{s} {j}")
+    else:
+        check("公开结算依据含权威源与结果", False, "无已结算市场可测")
+
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
         print("失败项：", FAIL)

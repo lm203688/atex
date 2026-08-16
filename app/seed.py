@@ -62,6 +62,22 @@ markets.participate(u1, m5, 0, 20)
 markets.participate(u2, m6, 0, 25)
 markets.participate(u3, m6, 1, 20)
 
+# 3.5) 短周期「即时反馈」市场：降低新手等待，打通啊哈时刻
+# m7 已结算（即时可见战绩），m8 即将在数小时内结算（制造每日回访紧迫感）
+m7 = markets.create_market(
+    "今晚欧冠焦点战主队不败？", "短周期示例：当日赛事，赛果后即结算。", "体育", "体育",
+    ["会", "不会"], "官方赛事战报", (datetime.now() - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"))
+m8 = markets.create_market(
+    "今夜这部新剧首播热度破百万播放？", "短周期示例：当日文娱事件，数小时内揭晓。", "娱乐", "娱乐",
+    ["会", "不会"], "平台官方热度榜", (datetime.now() + timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"))
+markets.participate(u1, m7, 0, 20)
+markets.participate(u2, m7, 0, 15)
+markets.participate(u3, m7, 1, 15)
+markets.participate(u1, m8, 0, 20)
+markets.participate(u2, m8, 1, 15)
+# 立即结算 m7，新手进入即可看到「已结算 + 我的命中」的即时正反馈
+oracle.set_result(m7, 0, source="官方赛事战报", note="主队常规时间不败")
+
 # 4) 结算 m3（Oracle 官方结果：主队胜 option=0）→ 触发奖励池发放
 oracle.set_result(m3, 0, source="官方联赛战报", note="主队常规时间取胜")
 

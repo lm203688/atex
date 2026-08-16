@@ -30,6 +30,7 @@ from core import tasks
 from core import metrics
 from core import comments
 from core import notifications
+from core import tiers
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
 from agents import orchestrator as agent_orchestrator
@@ -41,7 +42,7 @@ DESCRIPTION = (
 )
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.5.0",
+    version="0.6.0",
     description=DESCRIPTION,
     docs_url="/docs",
 )
@@ -268,6 +269,22 @@ def api_notif_unread(user_id: int, request: Request):
     return {"unread": notifications.unread_count(user_id)}
 
 
+@app.get("/api/users/{user_id}/tier")
+def api_tier(user_id: int, request: Request):
+    """声誉即特权：当前等级、已解锁特权、下一级进度。"""
+    _auth_user(user_id, request)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT reputation FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "用户不存在")
+    tier = tiers.rep_tier(row["reputation"])
+    tier["mall_quota_multiplier"] = tiers.mall_quota_multiplier(row["reputation"])
+    tier["can_create_market"] = tiers.can_create_market(row["reputation"])
+    return tier
+
+
 @app.post("/api/users/{user_id}/notifications/read")
 def api_notif_read(user_id: int, request: Request, notif_id: int = None):
     """标记通知已读（指定 notif_id 单条，否则全部）。"""
@@ -332,6 +349,48 @@ def api_market_history(market_id: int):
 @app.get("/api/markets/{market_id}/comments")
 def api_market_comments(market_id: int):
     return comments.list_for(market_id)
+
+
+@app.get("/api/markets/{market_id}/resolution")
+def api_market_resolution(market_id: int):
+    """公开结算依据（透明化，无需登录）：Oracle 来源 + 结算标准 + 争议与社区票型。"""
+    res = oracle.public_resolution(market_id)
+    if not res:
+        raise HTTPException(404, "市场不存在")
+    return res
+
+
+@app.get("/api/markets/{market_id}/disputes")
+def api_market_disputes(market_id: int):
+    """某市场的争议列表（含社区票型）。"""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id, user_id, status, reason, created_at FROM disputes "
+            "WHERE market_id=? ORDER BY id DESC", (market_id,)
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d.update(oracle.dispute_vote_summary(r["id"]))
+        out.append(d)
+    return out
+
+
+class DisputeVoteReq(BaseModel):
+    user_id: int
+    vote: str
+
+
+@app.post("/api/disputes/{dispute_id}/vote")
+def api_dispute_vote(dispute_id: int, req: DisputeVoteReq, request: Request):
+    """社区对争议投票（声誉越高权重越大：铂金×2）。"""
+    _auth_user(req.user_id, request)
+    try:
+        weight = tiers.dispute_vote_weight(
+            (points.profile(req.user_id) or {}).get("reputation", 0) or 0)
+        return oracle.vote_dispute(dispute_id, req.user_id, req.vote, weight)
+    except Exception as e:
+        raise HTTPException(400, str(e))
 
 class CommentReq(BaseModel):
     user_id: int
@@ -450,6 +509,9 @@ def api_leaderboard(limit: int = 20):
         resolved = d.pop("resolved", 0) or 0
         correct = d.pop("correct", 0) or 0
         d["pro"] = (resolved >= 20 and resolved > 0 and (correct / resolved) >= 0.70)
+        d["accuracy"] = round(correct / resolved, 3) if resolved else None
+        # 声誉等级标识（公开排行榜展示地位，替代金钱排名）
+        d["tier"] = tiers.rep_tier(d.get("reputation", 0))["tier_name"]
         out.append(d)
     return out
 

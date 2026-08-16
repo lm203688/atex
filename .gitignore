@@ -27,3 +27,7 @@ certs/
 
 # WorkBuddy local memory/temp
 .workbuddy/
+
+# Local trash / temp dbs (sandbox FS artifacts)
+_trash_db/
+platform_fresh*

@@ -116,6 +116,8 @@
     border:1px solid #fcd34d;color:#92400e;border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600;
     box-shadow:0 1px 3px rgba(146,64,14,.12)}
   .toastpop{margin-top:10px;background:#ecfdf5;color:#047857;border-radius:8px;padding:8px 12px;font-size:13px}
+  .bar{height:8px;background:#eef2f7;border-radius:6px;overflow:hidden;margin-top:4px}
+  .bar-fill{height:100%;border-radius:6px;transition:width .3s}
   .bell{position:relative;border:none;background:transparent;font-size:20px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:9px}
   .bell:hover{background:var(--soft)}
   .notif-badge{position:absolute;top:0;right:2px;min-width:16px;height:16px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;line-height:16px;text-align:center;padding:0 4px;font-weight:700}
@@ -550,6 +552,7 @@ async function openMarket(id){
   const m=await api('/api/markets/'+id); if(!m){toast('市场不存在');return;}
   const hist=await api('/api/markets/'+id+'/history')||[];
   const cmts=await api('/api/markets/'+id+'/comments')||[];
+  const resol=await api('/api/markets/'+id+'/resolution')||{};
   $('pageTitle').textContent='市场详情';
   let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
   if(m.status==='settled' && m.resolution!=null) statusLine=`<span class="res">已结算：${esc(m.options[m.resolution])}</span>`;
@@ -576,6 +579,17 @@ async function openMarket(id){
       <h4 style="margin:16px 0 6px">📈 概率趋势（声誉加权社区共识随时间变化）</h4>
       ${trendChart(hist, m.options)}
     </div>
+    <div class="card" style="margin-top:16px;border-left:4px solid #06b6d4">
+      <h4>🔍 结算透明 · 依据公开</h4>
+      <div class="row" style="justify-content:space-between"><span class="muted">判定权威源</span><b>${esc(resol.oracle_source||'—')}</b></div>
+      <div class="row" style="justify-content:space-between"><span class="muted">结算标准</span><b style="font-weight:400;text-align:right;max-width:60%">${esc(resol.settlement_criteria||'—')}</b></div>
+      ${resol.status==='settled'&&resol.resolution_label?`<div class="row" style="justify-content:space-between"><span class="muted">官方结果</span><span class="res">${esc(resol.resolution_label)}</span></div>
+        ${resol.oracle&&resol.oracle.note?`<div class="muted" style="font-size:12px">来源备注：${esc(resol.oracle.note)}</div>`:''}`
+        :`<div class="muted" style="font-size:12px">${esc(resol.hint||'市场进行中，结算后在此公开依据。')}</div>`}
+      <div id="disputeBox" style="margin-top:10px">${renderDisputes(resol.disputes||[])}</div>
+      ${resol.status==='settled'?`<button class="btn ghost" style="margin-top:8px" onclick="openDispute(${m.id})">对结果有异议？发起争议</button>`
+        :`<div class="muted" style="margin-top:8px">结算前不能发起争议。</div>`}
+    </div>
     <div class="card" style="margin-top:16px">
       <h4>💬 社区讨论 · 分享你的理由</h4>
       <div id="cmtThread">${renderComments(cmts)}</div>
@@ -583,6 +597,35 @@ async function openMarket(id){
         <button class="btn" onclick="postComment(${m.id})">发布</button></div>`
         :`<div class="muted">登录后可参与讨论</div>`}
     </div>`;
+}
+/* 争议透明：渲染列表 + 发起 + 投票 */
+function renderDisputes(list){
+  if(!list||!list.length) return '<div class="muted" style="font-size:12px">暂无争议，结果由官方权威源裁定并公开。</div>';
+  return list.map(d=>{
+    const ok=d.status==='open';
+    const tally=ok?`<span class="pill" style="background:#fef2f2;color:#b91c1c">维持 ${d.uphold||0}</span> <span class="pill" style="background:#eff6ff;color:#1d4ed8">驳回 ${d.reject||0}</span>`
+      :`<span class="pill">争议已${d.status==='upheld'?'维持原判':'驳回'}</span>`;
+    const voteBtns=ok&&me?`<div style="margin-top:6px">
+        <button class="btn ghost" style="font-size:12px" onclick="voteDispute(${d.dispute_id},'uphold')">👍 维持(${d.uphold||0})</button>
+        <button class="btn ghost" style="font-size:12px" onclick="voteDispute(${d.dispute_id},'reject')">👎 驳回(${d.reject||0})</button>
+        ${d.my_vote?`<span class="muted" style="font-size:12px">（你已投：${d.my_vote==='uphold'?'维持':'驳回'}）</span>`:''}</div>`:'';
+    return `<div class="card" style="margin-top:8px;padding:10px 12px">
+      <div class="row" style="justify-content:space-between"><b style="font-size:13px">争议 #${d.dispute_id}</b>${tally}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">${esc(d.reason||'')}</div>
+      ${voteBtns}</div>`;
+  }).join('');
+}
+async function openDispute(mid){
+  if(!me){openAuth();return;}
+  const reason=prompt('请说明你对结算结果的异议（将公开并记录，由社区投票+管理员复核）：');
+  if(!reason||!reason.trim()) return;
+  const r=await api('/api/markets/'+mid+'/dispute?user_id='+me.id+'&reason='+encodeURIComponent(reason.trim()),'POST');
+  if(r&&r.dispute_id){ toast('争议已提交，进入社区投票+管理员复核'); openMarket(mid); }
+}
+async function voteDispute(did, vote){
+  if(!me){openAuth();return;}
+  const r=await api('/api/disputes/'+did+'/vote','POST',{user_id:me.id, vote});
+  if(r){ toast('投票成功：维持 '+r.uphold+' / 驳回 '+r.reject); openMarket(curMarketId); }
 }
 /* 趋势图 v0.4.1：网格刻度 + 事件标注 + 悬停/触摸读数 */
 const REASON_LABEL={create:'开市',trade:'有人参与',resolved:'已结算'};
@@ -711,6 +754,19 @@ async function renderMypred(){
   await refreshMe();
   const preds=await api('/api/users/'+me.id+'/predictions')||[];
   const acc=await api('/api/users/'+me.id+'/accuracy')||{total:0};
+  const tier=await api('/api/users/'+me.id+'/tier')||{};
+  const privHtml=(tier.privileges||[]).map(p=>`<span class="pill" style="margin:3px">${esc(p)}</span>`).join('');
+  const nextHtml = tier.next? `<div class="muted" style="font-size:12px;margin-top:6px">距「${esc(tier.next.next_name)}」还需声誉 ${tier.next.rep_to_next}（进度 ${tier.next.pct}%）</div>
+      <div class="bar"><div class="bar-fill" style="width:${tier.next.pct}%;background:${tier.color||'#06b6d4'}"></div></div>` : '<div class="muted" style="font-size:12px;margin-top:6px">已达最高等级 🎉</div>';
+  const tierCard=`<div class="card" style="margin-bottom:14px;border-left:4px solid ${tier.color||'#06b6d4'}">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div><span class="badge" style="background:${tier.color||'#06b6d4'};font-size:13px;padding:4px 12px">${esc(tier.tier_name||'青铜预测者')}</span>
+        <span class="muted" style="margin-left:8px">声誉 ${tier.reputation!=null?tier.reputation:'0'} · 商城额度 ×${tier.mall_quota_multiplier||1}</span></div>
+      ${tier.can_create_market?'<span class="pill" style="background:#ecfdf5;color:#047857">可发起 UGC 市场</span>':''}
+    </div>
+    <div style="margin-top:8px">${privHtml}</div>
+    ${nextHtml}
+  </div>`;
   const rows = preds.length? preds.map(p=>{
     let out='';
     if(p.won===true) out='<span class="res">✅ 命中</span>';
@@ -735,7 +791,7 @@ async function renderMypred(){
       <td><span class="cstatus ${cls}">${label}</span></td>
       <td class="muted" style="font-size:12px">${esc(c.created_at)}${c.audit_note&&st!=='ok'?' · '+esc(c.audit_note):''}</td></tr>`;
   }).join('') : '<tr><td colspan="4" class="muted">还没有发表过评论</td></tr>';
-  $('view').innerHTML=`<div class="grid cols2">
+  $('view').innerHTML=`${tierCard}<div class="grid cols2">
     <div class="card">
       <h3>📈 我的预测战绩</h3>
       <div class="row" style="justify-content:space-between"><span>总预测</span><b>${acc.total||0}</b></div>
@@ -758,11 +814,13 @@ async function renderMypred(){
 /* ---------- 排行榜 ---------- */
 async function renderBoard(){
   const rows=await api('/api/leaderboard')||[];
-  $('view').innerHTML=`<div class="card"><h3>🏆 积分排行榜 <span class="muted" style="font-weight:400">（标记 Pro 者为已结算≥20 且准确率≥70% 的高手）</span></h3>
-    <table><tr><th style="width:40px">#</th><th>用户</th><th>积分</th><th>连胜</th><th>声誉</th></tr>
+  $('view').innerHTML=`<div class="card"><h3>🏆 预测者排行榜 <span class="muted" style="font-weight:400">（按积分；⭐Pro=已结算≥20 且准确率≥70%；等级由声誉决定，替代金钱排名）</span></h3>
+    <table><tr><th style="width:40px">#</th><th>用户</th><th>等级</th><th>积分</th><th>连胜</th><th>声誉</th><th>准确率</th></tr>
     ${rows.map((r,i)=>`<tr><td><span class="lb-num">${i+1}</span></td>
       <td>${esc(r.username)}${r.pro?' <span class="badge" style="font-size:11px;padding:2px 8px">⭐ Pro</span>':''}</td>
-      <td class="pos">${r.points_balance}</td><td>${r.streak}</td><td>${Math.round(r.reputation||0)}</td></tr>`).join('')}
+      <td>${esc(r.tier||'青铜预测者')}</td>
+      <td class="pos">${r.points_balance}</td><td>${r.streak}</td><td>${Math.round(r.reputation||0)}</td>
+      <td>${r.accuracy!=null?(r.accuracy*100).toFixed(0)+'%':'-'}</td></tr>`).join('')}
     </table></div>`;
 }
 

@@ -132,6 +132,15 @@ CREATE TABLE IF NOT EXISTS disputes (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   resolved_at TEXT
 );
+CREATE TABLE IF NOT EXISTS dispute_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  dispute_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  vote TEXT NOT NULL,                  -- uphold / reject
+  weight INTEGER NOT NULL DEFAULT 1,   -- 铂金预测者权重×2
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(dispute_id, user_id)
+);
 CREATE TABLE IF NOT EXISTS badges (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
