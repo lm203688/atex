@@ -2,12 +2,14 @@
 运行：python seed.py
 """
 from datetime import datetime, timedelta
-from db import init_db
+import json
+from db import init_db, get_conn
 from core import points, markets
 from core import oracle
 from core import mall
 from core import tournaments
 from core import comments
+from automation import scout, publish
 
 init_db()
 
@@ -78,15 +80,69 @@ markets.participate(u2, m8, 1, 15)
 # 立即结算 m7，新手进入即可看到「已结算 + 我的命中」的即时正反馈
 oracle.set_result(m7, 0, source="官方赛事战报", note="主队常规时间不败")
 
+# 3.6) 常驻短周期市场（P1：保证每天有事可做、有回访紧迫感）
+m9 = markets.create_market(
+    "明晚NBA焦点战客队逆转取胜？", "短周期示例：次日赛事，赛果后即时结算。", "体育", "体育",
+    ["会", "不会"], "官方赛事战报", (datetime.now() + timedelta(hours=20)).strftime("%Y-%m-%d %H:%M:%S"))
+m10 = markets.create_market(
+    "今夜这部剧更新后热度能否再破纪录？", "短周期示例：当日文娱事件，数小时内揭晓。", "娱乐", "娱乐",
+    ["会", "不会"], "平台官方热度榜", (datetime.now() + timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"))
+markets.participate(u1, m9, 0, 20)
+markets.participate(u3, m9, 1, 15)
+markets.participate(u2, m10, 0, 15)
+
 # 4) 结算 m3（Oracle 官方结果：主队胜 option=0）→ 触发奖励池发放
 oracle.set_result(m3, 0, source="官方联赛战报", note="主队常规时间取胜")
 
-# 5) 商城示例商品（单向兑换，平台履约）
+# 5) 商城示例商品（单向兑换，平台履约）—— 扩至 20+，含 100 分低门槛出口
 mall.add_item("视频会员月卡", 200, "主流视频平台月卡兑换码", "虚拟权益", 9999, "virtual")
 mall.add_item("5元话费券", 300, "充值抵扣券（虚拟）", "虚拟权益", 9999, "virtual")
 mall.add_item("定制周边帆布袋", 800, "平台定制帆布袋（实物，包邮）", "实物周边", 200, "physical")
 mall.add_item("专属头像框", 120, "限定义预测达人头像框", "虚拟权益", 9999, "virtual")
 mall.add_item("百元京东卡", 2000, "高门槛实物权益（限量）", "实物周边", 50, "physical")
+# 以下为 v0.7.0 扩充：拉宽积分出口，让「攒分为了什么」有答案
+_low = [
+    ("100积分体验礼包", 100, "新手专属：平台贴纸+表情包", "虚拟权益"),
+    ("社区头衔·预言家", 800, "限定义身份头衔（社交可见）", "虚拟权益"),
+    ("电子书《预测思维》", 250, "预测与概率思维入门电子书", "虚拟权益"),
+    ("定制手机壁纸包", 180, "预测达人主题壁纸合集", "虚拟权益"),
+    ("抽奖券（1次）", 200, "参与平台实物抽奖1次", "虚拟权益"),
+    ("咖啡券", 400, "主流连锁咖啡电子券", "虚拟权益"),
+    ("游戏点卡50", 500, "主流游戏平台点卡", "虚拟权益"),
+    ("知识星球7天体验", 300, "精选社群7天体验卡", "虚拟权益"),
+    ("定制鼠标垫", 350, "平台定制鼠标垫（实物）", "实物周边"),
+    ("预测达人徽章", 150, "可展示的成就徽章", "虚拟权益"),
+]
+for _n, _c, _d, _cat in _low:
+    mall.add_item(_n, _c, _d, _cat, 9999, "virtual" if _cat == "虚拟权益" else "physical")
+_high = [
+    ("视频会员季卡", 550, "主流视频平台季卡兑换码", "虚拟权益"),
+    ("50元话费券", 600, "充值抵扣券（虚拟）", "虚拟权益"),
+    ("品牌周边T恤", 1200, "平台定制T恤（实物，包邮）", "实物周边"),
+    ("限定盲盒", 900, "平台限定盲盒（实物）", "实物周边"),
+    ("年度会员", 3000, "平台年度尊享会员", "虚拟权益"),
+    ("定制卫衣", 1500, "平台定制卫衣（实物）", "实物周边"),
+    ("千元京东卡", 10000, "高门槛实物权益（限量）", "实物周边"),
+]
+for _n, _c, _d, _cat in _high:
+    mall.add_item(_n, _c, _d, _cat, 9999, "virtual" if _cat == "虚拟权益" else "physical")
+
+# 5.5) 演示「选题 → 自动上架」流水线（P1：内容供给飞轮）
+# 低敏类目以 auto 路由进队列并自动发布为市场（人工抽检兜底已在 publish 链路就绪）。
+_auto_drafts = [
+    scout.generate_draft("本周末西甲某队能否客场取胜",
+        {"category": "体育", "safe": True, "needs_review": False, "forbidden": False, "sovereignty_risk": False}),
+    scout.generate_draft("某新上线 App 首周下载能否破百万",
+        {"category": "科技", "safe": True, "needs_review": False, "forbidden": False, "sovereignty_risk": False}),
+]
+with get_conn() as conn:
+    for d in _auto_drafts:
+        conn.execute(
+            "INSERT INTO publish_queue (title, draft_json, sensitivity, route, status) "
+            "VALUES (?,?,?,?,?)",
+            (d["title"], json.dumps(d, ensure_ascii=False), "safe", "auto", "pending"))
+        conn.commit()
+publish.publish_auto()  # 把低敏 auto 选题自动发布为市场
 
 # 6) 示例竞猜联赛：把进行中的市场纳入组合赛，演示「联赛」闭环
 tid = tournaments.create_tournament(
@@ -111,6 +167,8 @@ print("种子完成：")
 print(f"  用户 u1={u1} u2={u2}(经u1邀请) u3={u3}")
 print(f"  市场 m1={m1}(世界杯·进行中) m2={m2}(手机销量·进行中) m3={m3}(英超·已结算)")
 print(f"       m4={m4}(票房类型·多选) m5={m5}(CPI·经济) m6={m6}(剧集·即将截止)")
+print(f"       m7={m7}(欧冠·已结算·即时反馈) m8={m8}(新剧·即将结算) m9={m9}(NBA·次日) m10={m10}(剧集·6h内)")
 print(f"  联赛 tid={tid}(夏日热点竞猜联赛·进行中，含 m1/m2/m4，奖励池 500)")
+print(f"  自动上架市场：publish_auto 已把低敏选题发布为市场")
 print(f"  u1 邀请码={code1}（可在前端「我的」复制分享）")
 print("提示：去「我的预测」查看 u1/u2 命中 m3 的战绩与校准曲线；去「联赛」查看组合赛排名。")

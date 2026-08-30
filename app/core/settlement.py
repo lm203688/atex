@@ -1,12 +1,14 @@
 """结算 + 平台奖励池（规避赌博定性的核心）。
 
-模型：参与者消耗的积分为 sink（不转给赢家）；正确预测者从「平台出资的奖励池」
-获得加成积分。奖励池预算 = 该市场总参与消耗 × 30%（平台额外出资），
-超额则按比例缩放。
+v0.7.0 经济模型重构（修复「赢了也亏 / 奖励从众」根因）：
+- 赔付 = 真实 LMSR 份额结算：押中按所持有份额赔付（份额由下注时价格决定，
+  早买/逆势买单价低→份额多→回报高；晚买/从众买单价高→份额少）。
+  赔付下限保证「押中至少回本」（份额≈本金时持平，冷门押中可至 3× 上限）。
+- 声誉 = 个人 Brier：用下注时个人所见概率 prob_at_bet 算严格评分，
+  逆势押中（低 prob_at_bet 且正确）声誉增益更高——直接奖励「在众人错时判对」。
+  与按社区概率算 Brier（奖励从众）彻底脱钩。
+- 全部由平台奖励池出资，不涉及用户间资金流转（守住合规红线）。
 
-准确性引擎（本轮升级）：
-- 赢家奖励 = 本金加成（游戏手感） + Brier 严格评分加成（技能信号，奖励校准）。
-- 声誉随校准增益（高手在聚合中权重更高）。
 结算由 Oracle 决定 winning_option（见 core.oracle）。
 """
 import json
@@ -15,10 +17,10 @@ from core import points
 from core import markets
 from core import scoring
 
-REWARD_POOL_RATE = 0.30
-STAKE_REWARD_RATE = 0.30
-STAKE_REWARD_CAP = 200
-ACC_REWARD_CAP = 50
+# 奖励池预算 = 该市场总参与消耗 × 该率（平台额外出资，覆盖本金返还 + 技能溢价）
+REWARD_POOL_RATE = 2.0
+# 单份押中赔付上限 = 本金 × 该倍率（防极端低单价导致天价赔付）
+SHARE_PAYOUT_CAP = 3.0
 
 
 def _streak_multiplier(streak):
@@ -27,14 +29,10 @@ def _streak_multiplier(streak):
 
 
 def settle_market(market_id, winning_option, oracle_note=None, oracle_source=None):
-    """结算市场：用严格评分从奖励池发放正确奖励。返回统计。
+    """结算市场：按真实份额从奖励池发放正确奖励，声誉按个人校准增益。返回统计。
 
     所有写入在「单一连接」内完成（避免嵌套连接导致 SQLite 锁表）。
     """
-    # 先只读收集：赢家面对的社区概率（独立读连接，安全）
-    probs = markets.community_probabilities(market_id, weighted=True)
-    p_win = probs[winning_option] if 0 <= winning_option < len(probs) else 0.5
-
     with get_conn() as conn:
         row = conn.execute(
             "SELECT id, options_json, status, title FROM markets WHERE id=?", (market_id,)
@@ -52,21 +50,25 @@ def settle_market(market_id, winning_option, oracle_note=None, oracle_source=Non
         ).fetchone()["s"]
         budget = int(total_stakes * REWARD_POOL_RATE)
 
+        # 赢家：取真实份额（旧数据无 shares 则回退 stake）
         winners = conn.execute(
-            "SELECT user_id, stake FROM positions WHERE market_id=? AND option_index=?",
+            "SELECT user_id, stake, COALESCE(shares, stake) AS sh, "
+            "COALESCE(prob_at_bet, 0.5) AS pab FROM positions "
+            "WHERE market_id=? AND option_index=?",
             (market_id, winning_option),
         ).fetchall()
 
         planned = []
         for w in winners:
             u = w["user_id"]
-            ur = conn.execute("SELECT streak, reputation FROM users WHERE id=?", (u,)).fetchone()
-            streak = ur["streak"] if ur else 0
-            stake_bonus = min(int(w["stake"] * STAKE_REWARD_RATE * _streak_multiplier(streak)),
-                              STAKE_REWARD_CAP)
-            b = scoring.brier(p_win, True)
-            acc_bonus = scoring.accuracy_reward(b, cap=ACC_REWARD_CAP)
-            planned.append((u, stake_bonus + acc_bonus, b))
+            stake = w["stake"]
+            sh = float(w["sh"] if w["sh"] is not None else stake)
+            # 份额结算：押中按份额赔付，下限 = 本金（至少回本），上限 = 3× 本金
+            payout = min(sh, SHARE_PAYOUT_CAP * stake)
+            payout = int(round(payout))
+            # 声誉：个人下注概率算 Brier（True=押中）。逆势押中→高 Brier→高声誉增益
+            b = scoring.brier(float(w["pab"]), True)
+            planned.append((u, payout, b))
 
         total_planned = sum(r for _, r, _ in planned)
         scale = 1.0
@@ -74,8 +76,8 @@ def settle_market(market_id, winning_option, oracle_note=None, oracle_source=Non
             scale = budget / total_planned
         paid_total = 0
         paid_detail = []
-        for u, reward, b in planned:
-            actual = int(reward * scale)
+        for u, payout, b in planned:
+            actual = int(payout * scale)
             if actual > 0:
                 # 平台奖励池发放（豁免日发放上限，属平台出资）
                 conn.execute(
@@ -84,12 +86,12 @@ def settle_market(market_id, winning_option, oracle_note=None, oracle_source=Non
                 conn.execute(
                     "INSERT INTO points_ledger (user_id, delta, reason, ref_type, ref_id) "
                     "VALUES (?,?,?,?,?)",
-                    (u, actual, f"预测正确奖励(市场#{market_id})", "reward", market_id),
+                    (u, actual, f"预测正确奖励(份额结算#{market_id})", "reward", market_id),
                 )
                 rep_gain = scoring.reputation_gain(b)
                 conn.execute("UPDATE users SET reputation=reputation+? WHERE id=?", (rep_gain, u))
                 paid_total += actual
-                paid_detail.append({"user_id": u, "reward": actual})
+                paid_detail.append({"user_id": u, "reward": actual, "reputation_gain": rep_gain})
 
         day = today_str()
         rp = conn.execute("SELECT id, budget, spent FROM reward_pool WHERE day=?", (day,)).fetchone()

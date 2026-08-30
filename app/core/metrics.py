@@ -4,6 +4,7 @@
 所有指标均从既有真实数据聚合，无任何虚构。
 """
 from db import get_conn, today_str
+from datetime import datetime, timedelta
 from core import data_export
 from core import scoring
 
@@ -87,4 +88,83 @@ def kpi():
         "referrals_total": referrals_total,
         "tournaments_open": tournaments_open,
         "sentiment_summary": sentiment_summary,
+        "retention": retention(),
     }
+
+
+def _parse_date(s):
+    if not s:
+        return None
+    try:
+        return datetime.strptime(str(s)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def retention():
+    """留存与队列（投资人第一指标）。
+
+    按注册日分组（cohort），计算 D1/D7/D30 留存（该队列中有任意活跃行为的用户占比）。
+    活跃 = 在该观察日有下注行为或签到。仅统计已抵达观察窗口的队列（如 D1 只看
+    注册满 1 天的队列），避免把「尚未到观察日」误判为流失。
+    返回 {cohorts:[...], overall:{d1,d7,d30}}。无历史数据时整体为 None（诚实留空）。
+    """
+    from collections import defaultdict
+    from datetime import timedelta
+    today = datetime.now().date()
+    with get_conn() as conn:
+        users = conn.execute(
+            "SELECT id, DATE(created_at) AS rd FROM users"
+        ).fetchall()
+        pos = conn.execute(
+            "SELECT DISTINCT user_id, DATE(created_at) AS d FROM positions"
+        ).fetchall()
+        sign = conn.execute(
+            "SELECT id, last_signin FROM users WHERE last_signin IS NOT NULL"
+        ).fetchall()
+
+    active_by_user = defaultdict(set)
+    for r in pos:
+        active_by_user[r["user_id"]].add(r["d"])
+    for r in sign:
+        active_by_user[r["id"]].add(r["last_signin"])
+
+    cohorts = {}
+    for u in users:
+        rd = _parse_date(u["rd"])
+        if not rd:
+            continue
+        a = active_by_user.get(u["id"], set())
+        key = rd.isoformat()
+        c = cohorts.setdefault(key, {"reg": 0, "d1": 0, "d7": 0, "d30": 0})
+        c["reg"] += 1
+        if (rd + timedelta(days=1)).isoformat() in a:
+            c["d1"] += 1
+        if any((rd + timedelta(days=i)).isoformat() in a for i in range(1, 8)):
+            c["d7"] += 1
+        if any((rd + timedelta(days=i)).isoformat() in a for i in range(1, 31)):
+            c["d30"] += 1
+
+    cohort_list = []
+    agg = {"d1": [0, 0], "d7": [0, 0], "d30": [0, 0]}  # [分子, 分母]
+    for rd_str, c in sorted(cohorts.items()):
+        rd = _parse_date(rd_str)
+        d1 = round(c["d1"] / c["reg"], 3) if c["reg"] else None
+        d7 = round(c["d7"] / c["reg"], 3) if c["reg"] else None
+        d30 = round(c["d30"] / c["reg"], 3) if c["reg"] else None
+        cohort_list.append({"cohort_date": rd_str, "registered": c["reg"],
+                            "d1": d1, "d7": d7, "d30": d30})
+        # 仅纳入已到观察窗口的队列进整体均值
+        if (today - rd).days >= 1:
+            agg["d1"][0] += c["d1"]; agg["d1"][1] += c["reg"]
+        if (today - rd).days >= 7:
+            agg["d7"][0] += c["d7"]; agg["d7"][1] += c["reg"]
+        if (today - rd).days >= 30:
+            agg["d30"][0] += c["d30"]; agg["d30"][1] += c["reg"]
+
+    overall = {
+        "d1": round(agg["d1"][0] / agg["d1"][1], 3) if agg["d1"][1] else None,
+        "d7": round(agg["d7"][0] / agg["d7"][1], 3) if agg["d7"][1] else None,
+        "d30": round(agg["d30"][0] / agg["d30"][1], 3) if agg["d30"][1] else None,
+    }
+    return {"cohorts": cohort_list, "overall": overall}

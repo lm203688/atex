@@ -250,6 +250,13 @@ CREATE TABLE IF NOT EXISTS agent_rules (
   created_by TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- 热路径索引：避免规模化后全表扫描（v0.7.0 补）
+CREATE INDEX IF NOT EXISTS idx_positions_market ON positions(market_id);
+CREATE INDEX IF NOT EXISTS idx_positions_user ON positions(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_markets_status ON markets(status, closes_at);
+CREATE INDEX IF NOT EXISTS idx_ledger_user_created ON points_ledger(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_comments_market ON comments(market_id);
 """
 
 
@@ -280,6 +287,11 @@ def init_db():
         # positions 增加下注时社区概率（用于真实校准统计）
         try:
             conn.execute("ALTER TABLE positions ADD COLUMN prob_at_bet REAL")
+        except sqlite3.OperationalError:
+            pass
+        # 真实 LMSR 份额记账（v0.7.0：份额≠投注额，用于份额结算）
+        try:
+            conn.execute("ALTER TABLE positions ADD COLUMN shares REAL")
         except sqlite3.OperationalError:
             pass
         # 评论层合规：审核状态 / 举报计数 / 命中原因（人工兜底）

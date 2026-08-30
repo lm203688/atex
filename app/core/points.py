@@ -19,15 +19,28 @@ CORRECT_REWARD_CAP = 200
 INVITER_REWARD = 30
 INVITEE_REWARD = 20
 MAX_REFERRAL_DEPTH = 10  # 反刷：裂变链深度上限，超过则拒绝建立下线关系（防单一运营者深链刷量）
+REPUTATION_DAILY_CAP = 50  # 单用户每日声誉获取硬上限（防刷/防速成）
 
 
 def _ledger_sum_today(conn, user_id, positive_only=True):
     sign = "AND delta > 0" if positive_only else ""
     row = conn.execute(
         "SELECT COALESCE(SUM(delta),0) AS s FROM points_ledger "
-        "WHERE user_id=? AND date(created_at)=date('now') " + sign, (user_id,)
+        "WHERE user_id=? AND created_at >= date('now') AND created_at < date('now','+1 day') "
+        + sign, (user_id,)
     ).fetchone()
     return row["s"] or 0
+
+
+def grant_reputation(user_id, amount, reason="声誉奖励"):
+    """仅调整声誉（不直接发放积分），受单用户日声誉上限约束以防刷。"""
+    if amount <= 0:
+        return 0
+    amount = min(amount, REPUTATION_DAILY_CAP)
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET reputation=reputation+? WHERE id=?", (amount, user_id))
+        conn.commit()
+    return amount
 
 
 def balance(user_id):

@@ -424,6 +424,35 @@ def main():
     else:
         check("公开结算依据含权威源与结果", False, "无已结算市场可测")
 
+    # ===== v0.7.0 经济模型重构回归 =====
+    # (1) 份额结算：押中至少回本（修复「赢了也亏」）
+    s, j = call("POST", "/api/admin/markets",
+                {"title": "v0.7经济回归-押中回本", "category": "体育",
+                 "options": ["会", "不会"], "closes_at": "2020-01-01 00:00:00",
+                 "oracle_source": "manifest"}, admin=True)
+    emid = j.get("market_id")
+    if emid:
+        bal0 = call("GET", f"/api/users/{uA}", token=tokA)[1].get("points_balance", 0)
+        s, j = call("POST", f"/api/markets/{emid}/participate",
+                     {"user_id": uA, "option": 0, "stake": 20}, token=tokA)
+        check("v0.7 参与(真实份额记账)", s == 200 and "probabilities" in j, f"{s} {j}")
+        s, j = call("POST", "/api/admin/settle",
+                    {"market_id": emid, "winning_option": 0, "source": "回归校验"}, admin=True)
+        check("v0.7 结算发放奖励池", s == 200 and j.get("paid_total", 0) >= 0, f"{s} {j}")
+        bal1 = call("GET", f"/api/users/{uA}", token=tokA)[1].get("points_balance", 0)
+        # 参与扣 20 + 可能连胜奖励，押中至少回本 => 余额不减（净变化 ≥ 0）
+        check("v0.7 押中至少回本(余额不减)", bal1 >= bal0, f"bal0={bal0} bal1={bal1}")
+
+    # (2) 留存指标端点（投资人第一指标）
+    s, j = call("GET", "/api/admin/metrics/retention", admin=True)
+    check("v0.7 留存指标端点(D1/D7/D30+队列)", s == 200 and "cohorts" in j and "overall" in j, f"{s} {j}")
+
+    # (3) UGC 门槛由黄金降为白银（解锁内容供给飞轮）—— 单元校验 core.tiers
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from core import tiers as _tiers
+    check("v0.7 UGC门槛降至白银(rep50可建)", _tiers.can_create_market(50) is True)
+    check("v0.7 UGC门槛(rep0不可建)", _tiers.can_create_market(0) is False)
+
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
         print("失败项：", FAIL)

@@ -1,8 +1,8 @@
 """LMSR 对数市场定价引擎（线索化，无链上依赖）。
 
-简化设计：每个参与方投入的「积分」即等于该选项的「份额(shares)」。
-概率由 softmax(q / b) 给出，q 为各选项累计份额。
-这样记账严格：用户付 stake 积分 -> 该选项份额 +stake，余额 -stake。
+v0.7.0 起真实接线：下注时调用 shares_for_budget(q, option, stake) 计算实际获得份额，
+份额 ≠ 投注额（早买/逆势买单价低→份额多）。概率由 softmax(q / b) 给出，
+q 为各选项累计真实份额。结算按份额赔付（见 core.settlement）。
 """
 import math
 
@@ -11,7 +11,9 @@ LIQUIDITY_B = 50.0
 
 
 def cost(q, b=LIQUIDITY_B):
-    return b * math.log(sum(math.exp(qi / b) for qi in q))
+    # 数值稳定版（log-sum-exp），避免大份额时 exp 溢出
+    m = max(qi / b for qi in q)
+    return b * (m + math.log(sum(math.exp(qi / b - m) for qi in q)))
 
 
 def probabilities(q, b=LIQUIDITY_B):

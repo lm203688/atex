@@ -73,8 +73,8 @@ def mall_quota_multiplier(reputation: float) -> float:
 
 
 def can_create_market(reputation: float) -> bool:
-    """黄金及以上可发起 UGC 市场（声誉门槛防垃圾内容）。"""
-    return _index_for_rep(float(reputation or 0)) >= 2
+    """白银及以上可发起 UGC 市场（声誉门槛防垃圾内容；v0.7.0 由黄金降为白银，解锁供给飞轮）。"""
+    return _index_for_rep(float(reputation or 0)) >= 1
 
 
 def dispute_vote_weight(reputation: float) -> int:

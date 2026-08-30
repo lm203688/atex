@@ -70,17 +70,27 @@ def probability_history(market_id):
 
 
 def _q_vector(conn, market_id):
-    """返回 {option_index: 简单总份额} 与 {option_index: 声誉加权总份额}。"""
+    """返回 {option_index: 简单总份额} 与 {option_index: 声誉加权总份额}。
+
+    v0.7.0：份额来自真实 LMSR 记账（positions.shares），旧数据无 shares 时回退 stake，
+    保证历史数据兼容。
+    """
     rows = conn.execute(
-        "SELECT p.option_index, p.stake, u.reputation FROM positions p "
-        "JOIN users u ON u.id=p.user_id WHERE p.market_id=?", (market_id,)
+        "SELECT p.option_index, COALESCE(p.shares, p.stake) AS sh, u.reputation "
+        "FROM positions p JOIN users u ON u.id=p.user_id WHERE p.market_id=?", (market_id,)
     ).fetchall()
     simple, weighted = {}, {}
     for r in rows:
         i = r["option_index"]
-        simple[i] = simple.get(i, 0) + r["stake"]
-        weighted[i] = weighted.get(i, 0) + r["stake"] * scoring.weight_from_reputation(r["reputation"])
+        simple[i] = simple.get(i, 0) + (r["sh"] or 0)
+        weighted[i] = weighted.get(i, 0) + (r["sh"] or 0) * scoring.weight_from_reputation(r["reputation"])
     return simple, weighted
+
+
+def current_shares_vector(conn, market_id, n):
+    """返回长度为 n 的当前累计份额向量（供 LMSR 定价计算真实份额）。"""
+    simple, _ = _q_vector(conn, market_id)
+    return [simple.get(i, 0.0) for i in range(n)]
 
 
 def community_probabilities(market_id, weighted=True):
@@ -319,9 +329,10 @@ def participate(user_id, market_id, option_index, stake):
         ).fetchone()["c"]
         if cnt >= 3:
             raise ValueError("同一市场最多参与3次")
-        # 防刷：单用户每日参与上限
+        # 防刷：单用户每日参与上限（范围查询，命中索引）
         day_cnt = conn.execute(
-            "SELECT COUNT(*) AS c FROM positions WHERE user_id=? AND date(created_at)=date('now')",
+            "SELECT COUNT(*) AS c FROM positions "
+            "WHERE user_id=? AND created_at >= date('now') AND created_at < date('now','+1 day')",
             (user_id,),
         ).fetchone()["c"]
         if day_cnt >= DAILY_PARTICIPATE_CAP:
@@ -333,6 +344,14 @@ def participate(user_id, market_id, option_index, stake):
         points.record_prediction_streak(user_id)
     except Exception:
         pass
+    # 真实 LMSR 份额：用当前累计份额向量计算本次能买到的份额（份额≠投注额）
+    shares = float(stake)
+    try:
+        with get_conn() as conn:
+            q = current_shares_vector(conn, market_id, len(options))
+        shares = float(lmsr.shares_for_budget(q, option_index, stake))
+    except Exception:
+        shares = float(stake)
     # 记录下注时的声誉加权社区概率（真实校准用）
     prob_at_bet = 0.5
     try:
@@ -341,11 +360,23 @@ def participate(user_id, market_id, option_index, stake):
             prob_at_bet = probs[option_index]
     except Exception:
         pass
+    # 新手引导：首次预测一次性赠送声誉，缩短首次特权解锁（P1 提升项）
+    newbie_rep = 0
+    try:
+        with get_conn() as conn:
+            prior = conn.execute(
+                "SELECT COUNT(*) AS c FROM positions WHERE user_id=?", (user_id,)
+            ).fetchone()["c"]
+        if prior == 0:
+            newbie_rep = 15
+            points.grant_reputation(user_id, newbie_rep, "新手首次预测引导")
+    except Exception:
+        pass
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO positions (user_id, market_id, option_index, stake, prob_at_bet) "
-            "VALUES (?,?,?,?,?)",
-            (user_id, market_id, option_index, stake, prob_at_bet),
+            "INSERT INTO positions (user_id, market_id, option_index, stake, shares, prob_at_bet) "
+            "VALUES (?,?,?,?,?,?)",
+            (user_id, market_id, option_index, stake, shares, prob_at_bet),
         )
         conn.commit()
     # 快照概率历史（趋势图 / sparkline）

@@ -42,12 +42,16 @@ DESCRIPTION = (
 )
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.6.0",
+    version="0.7.0",
     description=DESCRIPTION,
     docs_url="/docs",
 )
 STATIC = os.path.join(os.path.dirname(__file__), "static", "index.html")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "dev-admin-token")  # 演示用，生产请环境变量注入
+# 生产门禁：生产环境(REALTCAST_PROD=1)若仍用默认弱口令，直接拒绝启动，避免全网可管理
+if os.environ.get("REALTCAST_PROD") == "1" and ADMIN_TOKEN == "dev-admin-token":
+    raise RuntimeError(
+        "生产环境必须注入 ADMIN_TOKEN 环境变量，禁止以默认弱口令(dev-admin-token)启动")
 # 生产部署允许的跨域来源（默认仅本地，生产请注入 CORS_ORIGINS）
 _CORS_ORIGINS = [o.strip() for o in os.environ.get(
     "CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000").split(",") if o.strip()]
@@ -67,14 +71,21 @@ async def security_headers(request: Request, call_next):
     return resp
 
 # ---------------- 轻量限流 ----------------
+# 注：进程内 dict 仅适用于单实例；多实例部署应外置 Redis（见 v0.7.0 提升方案 P2）。
 _RATE = {}
+_RATE_LAST_PRUNE = 0.0
 RATE_LIMIT = 120  # 每 IP 每路径每 60s 上限
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
+    global _RATE_LAST_PRUNE
     ip = request.client.host if request.client else "x"
     key = f"{ip}:{request.url.path}"
     now = time.time()
+    # 周期全量清理，避免 key 只增不减导致内存泄漏
+    if now - _RATE_LAST_PRUNE > 60:
+        _RATE.clear()
+        _RATE_LAST_PRUNE = now
     wins = _RATE.get(key, [])
     wins = [t for t in wins if now - t < 60]
     if len(wins) >= RATE_LIMIT:
@@ -125,18 +136,15 @@ def _auth_user(user_id: int, request: Request):
     tok = auth.replace("Bearer ", "").strip()
     with get_conn() as conn:
         row = conn.execute("SELECT token FROM users WHERE id=?", (user_id,)).fetchone()
-    if not row or not row["token"] or row["token"] != tok:
+    if not row or not row["token"] or not secrets.compare_digest(row["token"] or "", tok):
         raise HTTPException(401, "未授权：token 无效")
     return True
 
 def _auth_admin(request: Request):
-    if request.headers.get("x-admin-token") != ADMIN_TOKEN:
+    if not secrets.compare_digest(request.headers.get("x-admin-token") or "", ADMIN_TOKEN):
         raise HTTPException(401, "未授权：需要 admin token")
     return True
 
-@app.on_event("startup")
-def _startup():
-    init_db()
 
 
 # ---------- 用户 / 积分 ----------
@@ -479,6 +487,7 @@ def api_participate(market_id: int, req: PartReq, request: Request):
         m = markets.participate(req.user_id, market_id, req.option, req.stake)
     except Exception as e:
         raise HTTPException(400, str(e))
+    mark_markets_dirty()  # 概率变化，触发实时广播
     return m
 
 @app.post("/api/markets/{market_id}/dispute")
@@ -599,6 +608,12 @@ def api_metrics(request: Request):
     return metrics.kpi()
 
 
+@app.get("/api/admin/metrics/retention")
+def api_metrics_retention(request: Request):
+    _auth_admin(request)
+    return metrics.retention()
+
+
 # ---------- 结算（Oracle）----------
 class SettleReq(BaseModel):
     market_id: int
@@ -632,6 +647,7 @@ def api_settle(req: SettleReq, request: Request):
                     ref_type="market", ref_id=req.market_id)
     except Exception:
         pass
+    mark_markets_dirty()  # 市场状态变化，触发实时广播
     return res
 
 @app.post("/api/oracle/auto")
@@ -643,6 +659,8 @@ def api_oracle_auto(request: Request):
 def api_oracle_resolve_due(request: Request):
     _auth_admin(request)
     resolved, tried = oracle.resolve_due_from_sources()
+    if resolved:
+        mark_markets_dirty()
     return {"resolved": resolved, "tried": tried}
 
 @app.get("/api/admin/disputes")
@@ -916,26 +934,60 @@ class RealtimeManager:
 
 manager = RealtimeManager()
 
+# 脏标记：仅在有下注/结算等市场状态变化时重算并广播（v0.7.0，避免无变化也每 5s 全量重算）
+_MARKET_DIRTY = True
+_LAST_SNAPSHOT = {}
+
+
+def mark_markets_dirty():
+    global _MARKET_DIRTY
+    _MARKET_DIRTY = True
+
 
 def _market_snapshot():
-    """开放市场的声誉加权概率快照（供 WS 广播，无 PII）。"""
-    ms = markets.list_markets("open", limit=50)
-    return {
-        "type": "probabilities",
-        "ts": int(time.time()),
-        "markets": {m["id"]: m["probabilities"] for m in ms},
-    }
+    """开放市场的声誉加权概率快照（供 WS 广播，无 PII）。去掉 50 上限，覆盖全部进行中市场。"""
+    ms = markets.list_markets("open", limit=100000)
+    return {m["id"]: m["probabilities"] for m in ms}
+
+
+def _diff_snapshot(new):
+    """与上一帧比较，只返回变化的市场，降低 payload。首帧返回全部。"""
+    global _LAST_SNAPSHOT
+    if not _LAST_SNAPSHOT:
+        _LAST_SNAPSHOT = new
+        return new
+    changed = {mid: probs for mid, probs in new.items() if _LAST_SNAPSHOT.get(mid) != probs}
+    _LAST_SNAPSHOT = new
+    return changed
 
 
 async def broadcast_snapshot():
-    await manager.broadcast(_market_snapshot())
+    global _MARKET_DIRTY
+    if not _MARKET_DIRTY:
+        return
+    try:
+        new = _market_snapshot()
+        changed = _diff_snapshot(new)
+        if changed:
+            await manager.broadcast({
+                "type": "probabilities",
+                "ts": int(time.time()),
+                "markets": changed,
+            })
+        _MARKET_DIRTY = False
+    except Exception:
+        pass
 
 
 @app.websocket("/ws/markets")
 async def ws_markets(ws: WebSocket):
     await manager.connect(ws)
     try:
-        await ws.send_json(_market_snapshot())  # 连接即推一帧
+        await ws.send_json({
+            "type": "probabilities",
+            "ts": int(time.time()),
+            "markets": _market_snapshot(),
+        })  # 连接即推一帧（全量）
         while True:
             await ws.receive_text()  # 维持连接；真实推送由后台任务驱动
     except WebSocketDisconnect:
@@ -944,16 +996,29 @@ async def ws_markets(ws: WebSocket):
         manager.disconnect(ws)
 
 
-@app.on_event("startup")
+def _startup_tasks():
+    init_db()
+
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
+    _startup_tasks()
+    asyncio.create_task(_realtime_loop())
+    yield
+
+
+app.router.lifespan_context = lifespan
+
+
 async def _realtime_loop():
-    async def loop():
-        while True:
-            try:
-                await broadcast_snapshot()
-            except Exception:
-                pass
-            await asyncio.sleep(5)
-    asyncio.create_task(loop())
+    while True:
+        try:
+            await broadcast_snapshot()
+        except Exception:
+            pass
+        await asyncio.sleep(5)
 
 
 # ---------- 前端 ----------
