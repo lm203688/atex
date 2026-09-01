@@ -68,7 +68,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.4",
+    version="0.7.5",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -97,12 +97,13 @@ async def security_headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
-    # v0.7.1：script-src 去掉 'unsafe-inline'，改为 nonce 白名单。
-    # style-src 暂留 'unsafe-inline'：197 处内联样式属既有代码，
-    # CSS 注入的危害面远小于脚本执行，留到下一轮再一并收敛。
+    # v0.7.5：style-src 也去掉 'unsafe-inline'，改为 nonce 白名单。
+    # 199 处内联样式已收拢：191 静态→CSS 类（在 <style nonce> 块内），
+    # 8 动态（含 ${...}）→ data-rs-style，由前端 MutationObserver 运行时
+    # 应用到 element.style（运行时赋值不受 style-src 限制）。
     resp.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data:; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        f"style-src 'self' 'nonce-{nonce}'; "
         f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
         "connect-src 'self'; object-src 'none'; base-uri 'self'; "
         "form-action 'self'; frame-ancestors 'none'"
@@ -1094,10 +1095,10 @@ _INDEX_CACHE = {"mtime": 0.0, "body": ""}
 
 
 def _render_index(nonce: str):
-    """读取 index.html 并把一次性 nonce 注入唯一的 <script> 标签。
+    """读取 index.html 并把一次性 nonce 注入 <style> 与 <script> 标签。
 
-    CSP 已去掉 script-src 'unsafe-inline'，不带 nonce 的脚本浏览器不会执行。
-    按 mtime 缓存，避免每个请求都读盘。
+    CSP 已去掉 script-src/style-src 'unsafe-inline'：不带 nonce 的内联脚本/样式
+    浏览器不会执行/生效。按 mtime 缓存，避免每个请求都读盘。
     """
     try:
         mt = os.path.getmtime(STATIC)
@@ -1107,7 +1108,10 @@ def _render_index(nonce: str):
         with open(STATIC, encoding="utf-8") as f:
             _INDEX_CACHE["body"] = f.read()
         _INDEX_CACHE["mtime"] = mt
-    return _INDEX_CACHE["body"].replace("<script>", f'<script nonce="{nonce}">', 1)
+    body = _INDEX_CACHE["body"]
+    body = body.replace("<style>", f'<style nonce="{nonce}">', 1)
+    body = body.replace("<script>", f'<script nonce="{nonce}">', 1)
+    return body
 
 
 @app.get("/", response_class=HTMLResponse)

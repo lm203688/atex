@@ -567,6 +567,27 @@ def main():
           bool(m and hn and m.group(1) == hn.group(1)),
           f"header={m.group(1) if m else None} html={hn.group(1) if hn else None}")
 
+    # (1b) v0.7.5：style-src 也去 unsafe-inline，改用 nonce；内联 style="..." 已收拢为 CSS 类
+    style_src = ""
+    for d in csp.split(";"):
+        if d.strip().startswith("style-src"):
+            style_src = d.strip()
+    check("v0.7.5 CSP style-src 已去 unsafe-inline",
+          style_src and "'unsafe-inline'" not in style_src,
+          f"style_src={style_src!r}")
+    check("v0.7.5 CSP style-src 使用 nonce", "'nonce-" in style_src, style_src)
+    ms = _re.search(r"'nonce-([^']+)'", style_src)
+    hns = _re.search(r'<style nonce="([^"]+)"', html or "")
+    check("v0.7.5 页面 style 带与响应头一致的 nonce",
+          bool(ms and hns and ms.group(1) == hns.group(1)),
+          f"header={ms.group(1) if ms else None} html={hns.group(1) if hns else None}")
+    # 内联 style="..." 应已清零（动态的改为 data-rs-style，由 MutationObserver 运行时应用）
+    inline_style = len(_re.findall(r'(?<!-r)sstyle="', html or ""))
+    data_rs = len(_re.findall(r'data-rs-style="', html or ""))
+    check("v0.7.5 内联 style 已收拢(静态→CSS类,动态→data-rs-style)",
+          inline_style == 0 and data_rs >= 1,
+          f"inline_style={inline_style} data_rs_style={data_rs}")
+
     # (2) 页面无内联事件处理器（否则 CSP 会全部拦掉，点了没反应）
     inline_on = len(_re.findall(r'\son[a-z]+="', html or ""))
     check("v0.7.1 前端已无内联事件属性(事件委托)", st == 200 and inline_on == 0,
@@ -578,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.4", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.5", str(j.get("version")))
 
     # (5) 数据产品 API（§5.3 P1 变现单点验证）：匿名情绪指数 + CSV 导出，开放可访问
     s, body = call("GET", "/api/data/sentiment", parse_json=True)

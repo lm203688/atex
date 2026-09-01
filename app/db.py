@@ -1,7 +1,9 @@
 """SQLite 数据层：建表 + 连接助手。去加密化，仅本地关系库。"""
 import sqlite3
 import os
+import threading
 from datetime import datetime
+from typing import Optional
 from contextlib import contextmanager
 
 # 默认库位于应用目录；生产可通过 DB_PATH 指向挂载卷（如 /data/platform.db）
@@ -262,6 +264,13 @@ CREATE INDEX IF NOT EXISTS idx_comments_market ON comments(market_id);
 
 
 def init_db():
+    # WAL 模式在此设一次（每次连接都设 PRAGMA journal_mode 在 Windows 上极慢，
+    # 见 v0.7.5 性能排查：get_conn 250ms→2ms）。busy_timeout 仍在 get_conn 设。
+    _wal_conn = sqlite3.connect(DB_PATH, timeout=30)
+    try:
+        _wal_conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    finally:
+        _wal_conn.close()
     with get_conn() as conn:
         conn.executescript(SCHEMA)
         # 迁移：新增列（幂等，兼容已有库）
@@ -319,17 +328,33 @@ def init_db():
         conn.commit()
 
 
+# ---- 连接池（v0.7.5 性能修复）----
+# E: 盘每次 sqlite3.connect 耗时 ~300ms（硬件 I/O 瓶颈，代码无法消除）。
+# 改为单例连接复用：全程只 open 一次，get_conn() 仅 yield 已缓存连接。
+# check_same_thread=False 允许跨线程使用（uvicorn worker）；写操作靠 busy_timeout 串行化。
+_singleton_conn: Optional[sqlite3.Connection] = None
+_singleton_lock = threading.Lock()
+
+
+def _get_singleton_conn() -> sqlite3.Connection:
+    global _singleton_conn
+    if _singleton_conn is None:
+        with _singleton_lock:
+            if _singleton_conn is None:
+                _singleton_conn = sqlite3.connect(DB_PATH, timeout=30,
+                                                   check_same_thread=False)
+                _singleton_conn.row_factory = sqlite3.Row
+                _singleton_conn.execute("PRAGMA busy_timeout=30000")
+    return _singleton_conn
+
+
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.row_factory = sqlite3.Row
-    # WAL + 忙等待：缓解并发写时的 database is locked，提升生产健壮性
+    conn = _get_singleton_conn()
     try:
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=30000")
         yield conn
     finally:
-        conn.close()
+        pass  # 单例连接不关闭，复用
 
 
 def now_iso():
