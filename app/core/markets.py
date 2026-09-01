@@ -17,14 +17,16 @@ DAILY_PARTICIPATE_CAP = 50  # 反刷：单用户每日参与上限
 
 
 def create_market(title, description, category, whitelist_tag, options,
-                  oracle_source, closes_at, creator=None, settlement_criteria=""):
+                  oracle_source, closes_at, creator=None, settlement_criteria="",
+                  oracle_meta=None):
     opts = json.dumps(options, ensure_ascii=False)
+    meta = json.dumps(oracle_meta, ensure_ascii=False) if isinstance(oracle_meta, (dict, list)) else None
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO markets (title, description, category, whitelist_tag, options_json, "
-            "oracle_source, closes_at, creator, settlement_criteria) VALUES (?,?,?,?,?,?,?,?,?)",
+            "oracle_source, closes_at, creator, settlement_criteria, oracle_meta) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (title, description, category, whitelist_tag, opts, oracle_source, closes_at,
-             creator, settlement_criteria),
+             creator, settlement_criteria, meta),
         )
         conn.commit()
         mid = cur.lastrowid

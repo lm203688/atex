@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS markets (
   closes_at TEXT,
   settled_at TEXT,
   creator INTEGER,
-  settlement_criteria TEXT
+  settlement_criteria TEXT,
+  oracle_meta TEXT
 );
 CREATE TABLE IF NOT EXISTS positions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -292,6 +293,11 @@ def init_db():
         # 真实 LMSR 份额记账（v0.7.0：份额≠投注额，用于份额结算）
         try:
             conn.execute("ALTER TABLE positions ADD COLUMN shares REAL")
+        except sqlite3.OperationalError:
+            pass
+        # Oracle 真实权威源映射（v0.7.4：市场→外部比赛标识，如 ESPN league/date）
+        try:
+            conn.execute("ALTER TABLE markets ADD COLUMN oracle_meta TEXT")
         except sqlite3.OperationalError:
             pass
         # 评论层合规：审核状态 / 举报计数 / 命中原因（人工兜底）

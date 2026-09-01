@@ -91,6 +91,17 @@ markets.participate(u1, m9, 0, 20)
 markets.participate(u3, m9, 1, 15)
 markets.participate(u2, m10, 0, 15)
 
+# 3.7) 真实权威源（ESPN）可结算市场：演示 Oracle 真实接入（补全"未做项"）
+# 用 2025-03-16 英超真实赛果（Arsenal 胜 Chelsea），选项直接用 ESPN 队名以便精确匹配。
+m11 = markets.create_market(
+    "2025-03-16 英超：阿森纳 vs 切尔西 谁取胜？",
+    "真实权威源演示：赛果由 ESPN 公开比分 API 自动裁决，无需人工录入。",
+    "体育", "体育", ["Arsenal", "Chelsea"], "ESPN 公开比分 API",
+    "2025-03-16 23:59:00",
+    oracle_meta={"provider": "espn", "sport": "soccer", "league": "eng.1", "date": "20250316"})
+markets.participate(u1, m11, 0, 20)
+markets.participate(u2, m11, 1, 15)
+
 # 4) 结算 m3（Oracle 官方结果：主队胜 option=0）→ 触发奖励池发放
 oracle.set_result(m3, 0, source="官方联赛战报", note="主队常规时间取胜")
 

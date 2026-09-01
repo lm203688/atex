@@ -68,7 +68,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.3",
+    version="0.7.4",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,

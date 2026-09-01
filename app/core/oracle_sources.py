@@ -5,9 +5,11 @@
 
 平台按注册顺序尝试已启用的源；任一源给出结果即采用并留痕 source。
 
-内置两类真实可用的适配器：
+内置三类真实可用的适配器：
 - ManifestOracleSource：读取本地结果清单（seed/运维预置），适合已知结果的
   演示/历史/可复现市场。无需外网，确定性强。
+- EspnOracleSource：对接 ESPN 公开比分 API（无需密钥、本机网络可达），
+  真实裁决体育市场（仅对带 espn oracle_meta 的市场生效）。
 - HttpOracleSource：对接外部权威 API 的范例适配器（需配置 endpoint+key），
   是接入真实权威源（体育比分 API、官方公告 API、新闻核验 API）的标准入口。
   未配置时 resolve 返回 None（不启用），绝不冒充结果。
@@ -155,8 +157,101 @@ class HttpOracleSource(BaseOracleSource):
             return None
 
 
-# 注册源（顺序即优先级）：manifest 本地优先，http 外部权威次之。
-SOURCES: List[BaseOracleSource] = [ManifestOracleSource(), HttpOracleSource()]
+class EspnOracleSource(BaseOracleSource):
+    """真实权威源适配器：对接 ESPN 公开比分 API（无需密钥，本机网络可达）。
+
+    仅对带 espn oracle_meta 的市场生效，避免冒充结果：
+      oracle_meta = {"provider":"espn","sport":"soccer","league":"eng.1","date":"20250316"}
+    - sport/league 对应 ESPN 路径（soccer/eng.1 = 英超）；date 为 yyyymmdd。
+    - 仅采纳 STATUS_FINAL（post）的比赛；按队名与市场价格选项匹配，返回胜方下标。
+    - 网络失败 / 无匹配 / 平局（无胜者）均返回 None，交由 manifest 或人工结算。
+    带 1h TTL 缓存（同一 league+date 只拉一次）。
+    """
+
+    name = "espn"
+    BASE = "https://site.api.espn.com/apis/site/v2/sports"
+    CACHE_TTL = 3600.0
+
+    def __init__(self):
+        self._cache = {}
+        self._cache_at = {}
+
+    def enabled(self):
+        # 始终启用：只对带 espn meta 的市场产生作用，且网络失败安全返回 None
+        return True
+
+    @staticmethod
+    def _norm_options(options):
+        return {str(o or "").strip().lower(): i for i, o in enumerate(options) if o}
+
+    def _cached(self, key):
+        now = time.time()
+        if key in self._cache and now - self._cache_at.get(key, 0) < self.CACHE_TTL:
+            return self._cache[key]
+        return None
+
+    def _put(self, key, val):
+        self._cache[key] = val
+        self._cache_at[key] = time.time()
+
+    def _fetch_scoreboard(self, sport, league, date):
+        """返回 {队名lower: 是否胜者}（仅终场）。带缓存。"""
+        key = f"{sport}/{league}/{date}"
+        cached = self._cached(key)
+        if cached is not None:
+            return cached
+        url = f"{self.BASE}/{sport}/{league}/scoreboard?dates={date}"
+        result = {}
+        try:
+            import urllib.request
+            req = urllib.request.Request(url, headers={"User-Agent": "Realcast-Oracle/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read().decode("utf-8", "ignore"))
+            for ev in data.get("events", []):
+                comp = (ev.get("competitions") or [{}])[0]
+                if (comp.get("status", {}).get("type", {}).get("state")) != "post":
+                    continue
+                for c in comp.get("competitors", []):
+                    tn = (c.get("team", {}).get("displayName") or "").strip().lower()
+                    if tn:
+                        result[tn] = bool(c.get("winner"))
+        except Exception:
+            result = {}
+        self._put(key, result)
+        return result
+
+    def resolve(self, market: dict) -> Optional[int]:
+        meta = market.get("oracle_meta")
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        if not isinstance(meta, dict) or meta.get("provider") != "espn":
+            return None
+        sport = meta.get("sport", "soccer")
+        league = meta.get("league")
+        date = meta.get("date")
+        if not league or not date:
+            return None
+        options = market.get("options") or []
+        norm = self._norm_options(options)
+        if not norm:
+            return None
+        board = self._fetch_scoreboard(sport, league, date)
+        for tn, is_win in board.items():
+            if is_win and tn in norm:
+                return norm[tn]
+        return None
+
+
+# 注册源（顺序即优先级）：manifest 本地优先，espn 真实可到达权威源次之，
+# http 通用外部权威兜底。定义置于 EspnOracleSource 之后以避免前向引用。
+SOURCES: List[BaseOracleSource] = [
+    ManifestOracleSource(),
+    EspnOracleSource(),
+    HttpOracleSource(),
+]
 
 
 def resolve_from_sources(market_id: int):
