@@ -68,7 +68,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.2",
+    version="0.7.3",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -83,6 +83,9 @@ if os.environ.get("REALTCAST_PROD") == "1" and ADMIN_TOKEN == "dev-admin-token":
 _CORS_ORIGINS = [o.strip() for o in os.environ.get(
     "CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000").split(",") if o.strip()]
 MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", "1048576"))  # 默认 1MB
+# 数据产品访问钥匙（§5.3 P1 变现单点验证）：留空=演示开放；设了则需
+# 请求头 x-data-key 匹配，便于后续接付费 B 端客户（无需改代码）。
+DATA_API_KEY = os.environ.get("DATA_API_KEY", "")
 
 # ---------------- 安全响应头 ----------------
 @app.middleware("http")
@@ -172,6 +175,15 @@ def _auth_user(user_id: int, request: Request):
 def _auth_admin(request: Request):
     if not secrets.compare_digest(request.headers.get("x-admin-token") or "", ADMIN_TOKEN):
         raise HTTPException(401, "未授权：需要 admin token")
+    return True
+
+def _require_data_key(request: Request):
+    """数据产品访问门：DATA_API_KEY 留空则开放（演示/透明度），
+    设了则要求请求头 x-data-key 恒定时间匹配，便于接付费 B 端。"""
+    if not DATA_API_KEY:
+        return True
+    if not secrets.compare_digest(request.headers.get("x-data-key") or "", DATA_API_KEY):
+        raise HTTPException(401, "未授权：需要有效的 data-api-key")
     return True
 
 
@@ -895,13 +907,17 @@ def api_create_rule(req: AgentRuleReq, request: Request):
 
 # ---------- 数据产品（匿名化 B2B）----------
 @app.get("/api/data/sentiment")
-def api_sentiment():
-    """匿名群体情绪指数（无 PII，可公开展示透明度）。"""
+def api_sentiment(request: Request):
+    """匿名群体情绪指数（无 PII，可公开展示透明度，供 B 端订阅）。
+    §5.3 P1 变现单点验证：DATA_API_KEY 留空则开放，设了需 x-data-key。"""
+    _require_data_key(request)
     return data_export.sentiment_index()
 
 @app.get("/api/data/export")
-def api_export(kind: str = "category", request: Request = None):
-    _auth_admin(request)
+def api_export(request: Request, kind: str = "category"):
+    """匿名逐市场 / 品类聚合 CSV（无 PII），供 B 端数据产品分发。
+    与 sentiment 端点一致：DATA_API_KEY 留空则开放，设了需 x-data-key。"""
+    _require_data_key(request)
     if kind == "markets":
         return PlainTextResponse(data_export.export_markets_csv(),
                                  media_type="text/csv",

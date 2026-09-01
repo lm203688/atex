@@ -524,7 +524,15 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.1", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.3", str(j.get("version")))
+
+    # (5) 数据产品 API（§5.3 P1 变现单点验证）：匿名情绪指数 + CSV 导出，开放可访问
+    s, body = call("GET", "/api/data/sentiment", parse_json=True)
+    ok_sent = s == 200 and isinstance(body, list) and len(body) > 0 and "sentiment_index" in body[0]
+    check("数据产品·匿名情绪指数 API 可用", ok_sent, f"{s} {str(body)[:120]}")
+    s2, csv_body = call("GET", "/api/data/export?kind=category", parse_json=False)
+    ok_csv = s2 == 200 and csv_body.strip().startswith("category,")
+    check("数据产品·品类聚合 CSV 导出可用", ok_csv, f"{s2} {csv_body[:60]!r}")
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
