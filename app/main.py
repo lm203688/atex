@@ -2,8 +2,8 @@
 
 成熟度加固：
 - 鉴权：参与/兑换/UGC/签到等写操作校验用户 token；admin 端点校验 x-admin-token。
-- 安全响应头：CSP / X-Content-Type-Options / X-Frame-Options。
-- 轻量限流：按 IP+路径内存计数，缓解刷量。
+- 安全响应头：CSP（script-src 用每请求 nonce，已去 unsafe-inline）/ nosniff / DENY。
+- 限流与实时广播走 core.backplane：单实例进程内，配 REDIS_URL 则外置 Redis（可多实例）。
 - 结算走 Oracle（core.oracle），数据导出匿名化（core.data_export）。
 前端演示页见 static/index.html。启动：uvicorn main:app --port 8000
 """
@@ -12,12 +12,14 @@ import json
 import time
 import secrets
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from db import init_db, get_conn
+from core import backplane
 from core import points, markets
 from core import settlement
 from core import mall
@@ -40,11 +42,36 @@ DESCRIPTION = (
     "合规四红线：积分只送不卖、不可用户间流通、不可回兑现金、彻底去加密货币。\n"
     "结算走平台奖励池（非赢家通吃），Oracle 权威源可插拔对接。"
 )
+@asynccontextmanager
+async def lifespan(app):
+    """应用生命周期：启动时建库并拉起实时广播任务，关闭时收尾。
+
+    正规通过 FastAPI(lifespan=...) 传入（v0.7.1），不再用
+    `app.router.lifespan_context = ...` 猴子补丁——那种写法依赖 Starlette
+    内部结构，升级即碎。
+    """
+    init_db()
+    tasks = [asyncio.create_task(_realtime_loop())]
+    # 多实例时消费其它实例的广播；单实例（memory backplane）下本任务空转，开销可忽略
+    tasks.append(asyncio.create_task(_listen_backplane()))
+    try:
+        yield
+    finally:
+        for t in tasks:
+            t.cancel()
+        for t in tasks:
+            try:
+                await t
+            except (asyncio.CancelledError, Exception):
+                pass
+
+
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.0",
+    version="0.7.1",
     description=DESCRIPTION,
     docs_url="/docs",
+    lifespan=lifespan,
 )
 STATIC = os.path.join(os.path.dirname(__file__), "static", "index.html")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "dev-admin-token")  # 演示用，生产请环境变量注入
@@ -60,38 +87,38 @@ MAX_BODY_BYTES = int(os.environ.get("MAX_BODY_BYTES", "1048576"))  # 默认 1MB
 # ---------------- 安全响应头 ----------------
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
+    # 每请求生成一次性 nonce：页面里的 <script> 带 nonce 才能执行，
+    # 注入进来的 <script> 没有 nonce，浏览器直接拒执行。
+    nonce = secrets.token_urlsafe(16)
+    request.state.csp_nonce = nonce
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
+    # v0.7.1：script-src 去掉 'unsafe-inline'，改为 nonce 白名单。
+    # style-src 暂留 'unsafe-inline'：197 处内联样式属既有代码，
+    # CSS 注入的危害面远小于脚本执行，留到下一轮再一并收敛。
     resp.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data:; "
-        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
-        "connect-src 'self'; frame-ancestors 'none'"
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net; "
+        "connect-src 'self'; object-src 'none'; base-uri 'self'; "
+        "form-action 'self'; frame-ancestors 'none'"
     )
     return resp
 
 # ---------------- 轻量限流 ----------------
-# 注：进程内 dict 仅适用于单实例；多实例部署应外置 Redis（见 v0.7.0 提升方案 P2）。
-_RATE = {}
-_RATE_LAST_PRUNE = 0.0
-RATE_LIMIT = 120  # 每 IP 每路径每 60s 上限
+# v0.7.1：计数外置到 backplane。单实例走进程内 dict（行为不变）；
+# 配了 REDIS_URL 就走 Redis，多实例时限额不会被实例数放大。
+RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "120"))  # 每 IP 每路径每 60s 上限
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
-    global _RATE_LAST_PRUNE
     ip = request.client.host if request.client else "x"
     key = f"{ip}:{request.url.path}"
-    now = time.time()
-    # 周期全量清理，避免 key 只增不减导致内存泄漏
-    if now - _RATE_LAST_PRUNE > 60:
-        _RATE.clear()
-        _RATE_LAST_PRUNE = now
-    wins = _RATE.get(key, [])
-    wins = [t for t in wins if now - t < 60]
-    if len(wins) >= RATE_LIMIT:
+    allowed, _remaining = await backplane.get_backplane().rate_check(
+        key, RATE_LIMIT, window=60)
+    if not allowed:
         return Response("Too Many Requests", status_code=429)
-    wins.append(now)
-    _RATE[key] = wins
     return await call_next(request)
 
 # ---------------- CORS（仅允许配置来源，默认 localhost） ----------------
@@ -125,6 +152,8 @@ def api_health():
     return {
         "status": "ok",
         "version": app.version,
+        # memory=单实例进程内；redis=已外置，可多实例水平扩展
+        "backplane": backplane.get_backplane().name,
         "oracle_sources": oracle_sources.list_sources(),
         "counts": counts,
     }
@@ -734,6 +763,18 @@ def api_ugc_submit(req: UgcSubmit, request: Request):
     _auth_user(req.creator, request)
     if not req.options or len(req.options) < 2:
         raise HTTPException(400, "至少需要两个选项")
+    # 声誉门槛（白银 50）：tiers.can_create_market 早已有，但端点没调用，
+    # 等于「文档说有门槛、代码没门槛」。v0.7.1 补上——供给放开靠降门槛，
+    # 不靠取消门槛，否则垃圾市场会淹没四道闸审核。
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT reputation FROM users WHERE id=?", (req.creator,)).fetchone()
+    rep = (row["reputation"] if row else 0) or 0
+    if not tiers.can_create_market(rep):
+        need = tiers.TIERS[1]["min_rep"]
+        raise HTTPException(
+            403, f"发起事件需达到白银预测者（声誉 {need}，当前 {round(rep, 1)}）："
+                 f"先多做几次准确预测攒声誉，既是防垃圾，也让发起的事件更有分量")
     sub = {
         "title": req.title, "description": req.description,
         "category": req.category, "options": req.options,
@@ -921,7 +962,12 @@ class RealtimeManager:
     def disconnect(self, ws: WebSocket):
         self.connections.discard(ws)
 
-    async def broadcast(self, payload: dict):
+    async def broadcast(self, payload: dict, _echo: bool = False):
+        """向本实例连接推送；并（可选）投递到 backplane 供其它实例转发。
+
+        `_echo=True` 表示这条消息来自别的实例，只在本实例落地，不再回灌
+        backplane，否则会形成实例间无限回声。
+        """
         dead = set()
         for ws in list(self.connections):
             try:
@@ -930,8 +976,30 @@ class RealtimeManager:
                 dead.add(ws)
         for ws in dead:
             self.connections.discard(ws)
+        if not _echo:
+            await backplane.get_backplane().publish(
+                MARKETS_CHANNEL, {"origin": backplane.INSTANCE_ID, "payload": payload})
 
 
+async def _listen_backplane():
+    """消费其它实例广播的市场快照，转发给本实例的连接。"""
+    bp = backplane.get_backplane()
+    try:
+        async for msg in bp.subscribe(MARKETS_CHANNEL):
+            if not isinstance(msg, dict):
+                continue
+            if msg.get("origin") == backplane.INSTANCE_ID:
+                continue  # 自己发的，本实例已推过
+            payload = msg.get("payload")
+            if isinstance(payload, dict):
+                await manager.broadcast(payload, _echo=True)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        pass
+
+
+MARKETS_CHANNEL = "realcast:markets"
 manager = RealtimeManager()
 
 # 脏标记：仅在有下注/结算等市场状态变化时重算并广播（v0.7.0，避免无变化也每 5s 全量重算）
@@ -996,22 +1064,6 @@ async def ws_markets(ws: WebSocket):
         manager.disconnect(ws)
 
 
-def _startup_tasks():
-    init_db()
-
-
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app):
-    _startup_tasks()
-    asyncio.create_task(_realtime_loop())
-    yield
-
-
-app.router.lifespan_context = lifespan
-
-
 async def _realtime_loop():
     while True:
         try:
@@ -1022,9 +1074,33 @@ async def _realtime_loop():
 
 
 # ---------- 前端 ----------
-@app.get("/")
-def index():
-    return FileResponse(STATIC)
+_INDEX_CACHE = {"mtime": 0.0, "body": ""}
+
+
+def _render_index(nonce: str):
+    """读取 index.html 并把一次性 nonce 注入唯一的 <script> 标签。
+
+    CSP 已去掉 script-src 'unsafe-inline'，不带 nonce 的脚本浏览器不会执行。
+    按 mtime 缓存，避免每个请求都读盘。
+    """
+    try:
+        mt = os.path.getmtime(STATIC)
+    except OSError:
+        return None
+    if _INDEX_CACHE["mtime"] != mt or not _INDEX_CACHE["body"]:
+        with open(STATIC, encoding="utf-8") as f:
+            _INDEX_CACHE["body"] = f.read()
+        _INDEX_CACHE["mtime"] = mt
+    return _INDEX_CACHE["body"].replace("<script>", f'<script nonce="{nonce}">', 1)
+
+
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    nonce = getattr(request.state, "csp_nonce", None) or secrets.token_urlsafe(16)
+    html = _render_index(nonce)
+    if html is None:
+        raise HTTPException(404, "index.html not found")
+    return HTMLResponse(html)
 
 
 COMPLIANCE_TOS = """《用户协议》（摘要）

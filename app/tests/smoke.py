@@ -52,6 +52,39 @@ def check(name, cond, detail=""):
         print(f"  FAIL  {name}  {detail}")
 
 
+def raw_get(path):
+    """返回 (状态码, 响应头 dict, 响应体 str)，用于校验 CSP 头与 HTML 原文。
+    响应头统一小写化 key，避免服务器发出小写头名（uvicorn/h11 默认小写）
+    与测试里大写 key 不匹配导致误报。"""
+    def _hdrs(msg):
+        return {k.lower(): v for k, v in msg.items()}
+    req = urllib.request.Request(BASE + path, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, _hdrs(r.headers), r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, _hdrs(e.headers), e.read().decode("utf-8", "replace")
+    except Exception as e:
+        return 0, {}, repr(e)
+
+
+def bump_reputation(user_id, value=60.0):
+    """测试夹具：直接把用户声誉抬到白银以上。
+
+    声誉只能通过「预测被结算且判准」累积（单次封顶 2.0），走真实链路攒到 50
+    要几十次结算，冒烟测试里不现实，故直接落库。仅用于测试，不进生产代码。
+    """
+    import sqlite3
+    app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    conn = sqlite3.connect(os.environ.get("DB_PATH") or os.path.join(app_dir, "platform.db"),
+                           timeout=10)
+    try:
+        conn.execute("UPDATE users SET reputation=? WHERE id=?", (value, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def main():
     print("== 冒烟测试 ==")
     # 注册
@@ -84,11 +117,19 @@ def main():
     s, j = call("POST", "/api/signin?user_id=" + str(uid), token=tok)
     check("签到", s == 200 and "reward" in j, f"{s} {j}")
 
-    # UGC 提交（安全+有Oracle→auto）
+    # UGC 声誉门槛：新注册用户（声誉 0）应被白银门槛挡在外面。
+    # 之前 tiers.can_create_market 写了却没在端点调用，等于「文档有门槛、代码没门槛」。
     s, j = call("POST", "/api/ugc/submit", {
         "creator": uid, "title": "本周末德甲某队能否取胜", "options": ["会", "不会"],
         "oracle_source": "官方联赛战报", "settlement_criteria": "以官方结果为准"}, token=tok)
-    check("UGC提交返回路由", s == 200 and j.get("route") in ("auto", "review", "reject"), f"{s} {j}")
+    check("UGC声誉门槛拦截新用户(403)", s == 403, f"{s} {j}")
+
+    # 抬到白银（50）后放行（安全+有Oracle→auto）
+    bump_reputation(uid, 60)
+    s, j = call("POST", "/api/ugc/submit", {
+        "creator": uid, "title": "本周末德甲某队能否取胜", "options": ["会", "不会"],
+        "oracle_source": "官方联赛战报", "settlement_criteria": "以官方结果为准"}, token=tok)
+    check("UGC提交返回路由(白银以上)", s == 200 and j.get("route") in ("auto", "review", "reject"), f"{s} {j}")
 
     # 参与市场1（带token）
     s, j = call("POST", "/api/markets/1/participate", {"user_id": uid, "option": 0, "stake": 20}, token=tok)
@@ -452,6 +493,38 @@ def main():
     from core import tiers as _tiers
     check("v0.7 UGC门槛降至白银(rep50可建)", _tiers.can_create_market(50) is True)
     check("v0.7 UGC门槛(rep0不可建)", _tiers.can_create_market(0) is False)
+
+    # ===== v0.7.1 生产化收尾回归 =====
+    # (1) CSP：script-src 去 unsafe-inline，改用每请求 nonce，且 HTML 里的 nonce 与响应头一致
+    st, hdrs, html = raw_get("/")
+    csp = hdrs.get("content-security-policy", "")
+    script_src = ""
+    for d in csp.split(";"):
+        if d.strip().startswith("script-src"):
+            script_src = d.strip()
+    check("v0.7.1 CSP script-src 已去 unsafe-inline",
+          st == 200 and script_src and "'unsafe-inline'" not in script_src,
+          f"{st} script_src={script_src!r}")
+    check("v0.7.1 CSP script-src 使用 nonce", "'nonce-" in script_src, script_src)
+    import re as _re
+    m = _re.search(r"'nonce-([^']+)'", script_src)
+    hn = _re.search(r'<script nonce="([^"]+)"', html or "")
+    check("v0.7.1 页面 script 带与响应头一致的 nonce",
+          bool(m and hn and m.group(1) == hn.group(1)),
+          f"header={m.group(1) if m else None} html={hn.group(1) if hn else None}")
+
+    # (2) 页面无内联事件处理器（否则 CSP 会全部拦掉，点了没反应）
+    inline_on = len(_re.findall(r'\son[a-z]+="', html or ""))
+    check("v0.7.1 前端已无内联事件属性(事件委托)", st == 200 and inline_on == 0,
+          f"inline_on={inline_on}")
+
+    # (3) backplane：默认 memory，配了 REDIS_URL 才走 redis
+    s, j = call("GET", "/api/health")
+    check("v0.7.1 health 暴露 backplane", s == 200 and j.get("backplane") in ("memory", "redis"),
+          f"{s} {j.get('backplane')}")
+
+    # (4) 版本号
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.1", str(j.get("version")))
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:

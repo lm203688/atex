@@ -141,7 +141,7 @@
 </head>
 <body>
 <div class="app">
-  <div class="scrim" id="scrim" onclick="toggleMenu()"></div>
+  <div class="scrim" id="scrim" data-call="toggleMenu()"></div>
   <aside class="side" id="side">
     <div class="logo">🔮 真测 Realcast <small>真实预测游戏</small></div>
     <button class="navbtn active" data-v="home"><span class="ic">🏠</span>首页</button>
@@ -162,9 +162,9 @@
 
   <div class="main">
     <div class="topbar">
-      <h2><button id="menuBtn" onclick="toggleMenu()">☰</button><span id="pageTitle">首页</span></h2>
+      <h2><button id="menuBtn" data-call="toggleMenu()">☰</button><span id="pageTitle">首页</span></h2>
       <div class="chip" id="topUser"></div>
-      <button class="bell" id="bellBtn" onclick="toggleNotif()" title="站内通知">🔔<span id="notifBadge" class="notif-badge hide">0</span></button>
+      <button class="bell" id="bellBtn" data-call="toggleNotif()" title="站内通知">🔔<span id="notifBadge" class="notif-badge hide">0</span></button>
       <div class="notif-panel" id="notifPanel" style="display:none"></div>
     </div>
     <div class="view" id="view"></div>
@@ -223,11 +223,11 @@ async function refreshMe(){
 function renderUser(){
   const tu=$('topUser'); const sm=$('sideMe');
   if(me){
-    tu.innerHTML=`<span class="pill">${esc(me.username)}</span><span class="muted">${me.balance} 积分</span><button class="btn ghost" style="padding:5px 10px" onclick="logout()">退出</button>`;
+    tu.innerHTML=`<span class="pill">${esc(me.username)}</span><span class="muted">${me.balance} 积分</span><button class="btn ghost" style="padding:5px 10px" data-call="logout()">退出</button>`;
     sm.innerHTML=`<div class="nm">${esc(me.username)}</div><div class="muted">余额 ${me.balance} · 声誉 ${Math.round(me.reputation||0)}</div>`;
   }else{
-    tu.innerHTML=`<button class="btn" onclick="openAuth()">登录 / 注册</button>`;
-    sm.innerHTML=`<div class="muted">未登录</div><button class="navbtn" onclick="openAuth()"><span class="ic">🔑</span>登录</button>`;
+    tu.innerHTML=`<button class="btn" data-call="openAuth()">登录 / 注册</button>`;
+    sm.innerHTML=`<div class="muted">未登录</div><button class="navbtn" data-call="openAuth()"><span class="ic">🔑</span>登录</button>`;
   }
 }
 function logout(){ localStorage.removeItem(LS); me=null; renderUser(); go('home'); toast('已退出'); }
@@ -251,12 +251,12 @@ async function renderNotif(){
   const list=await api('/api/users/'+me.id+'/notifications?limit=30')||[];
   if(!list.length){ p.innerHTML='<div class="notif-empty">暂无通知</div>'; return; }
   const items=list.map(n=>`
-    <div class="notif-item ${n.is_read?'':'unread'}" onclick="markNotifRead(${n.id})">
+    <div class="notif-item ${n.is_read?'':'unread'}" data-call="markNotifRead(${n.id})">
       <div class="nt">${esc(n.title)}</div>
       <div class="nb">${esc(n.body)}</div>
       <div class="ntime">${esc(n.created_at)}</div>
     </div>`).join('');
-  p.innerHTML=`<div class="notif-head"><b>通知</b><a class="link" style="font-size:12px" onclick="markAllRead()">全部已读</a></div>
+  p.innerHTML=`<div class="notif-head"><b>通知</b><a class="link" style="font-size:12px" data-call="markAllRead()">全部已读</a></div>
     <div class="notif-list">${items}</div>`;
 }
 async function markNotifRead(id){
@@ -270,12 +270,12 @@ async function markAllRead(){
 
 function openAuth(){
   $('modalRoot').innerHTML=`
-  <div class="mask" onclick="if(event.target===this)closeAuth()">
+  <div class="mask" data-call="closeAuth()" data-backdrop="1">
     <div class="modal">
       <h3>欢迎来到真测 Realcast</h3>
       <div class="seg">
-        <button id="segReg" class="on" onclick="authSeg('reg')">注册</button>
-        <button id="segLogin" onclick="authSeg('login')">登录</button>
+        <button id="segReg" class="on" data-call="authSeg('reg')">注册</button>
+        <button id="segLogin" data-call="authSeg('login')">登录</button>
       </div>
       <div id="authBody"></div>
     </div>
@@ -296,9 +296,9 @@ function authSeg(m){
       <div style="height:8px"></div>
       <input id="a_code" placeholder="邀请码（可选，填了双方都得奖励）">
       <div style="height:10px"></div>
-      <label class="muted" style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="a_age" style="width:auto;margin-top:2px"> 我已满18周岁，已阅读并同意<a class="link" onclick="showCompliance('tos')">用户协议</a></label>
+      <label class="muted" style="display:flex;gap:6px;align-items:flex-start"><input type="checkbox" id="a_age" style="width:auto;margin-top:2px"> 我已满18周岁，已阅读并同意<a class="link" data-call="showCompliance('tos')">用户协议</a></label>
       <div style="height:14px"></div>
-      <button class="btn" style="width:100%" onclick="doRegister()">注册并领取 500 积分</button>
+      <button class="btn" style="width:100%" data-call="doRegister()">注册并领取 500 积分</button>
       <div class="muted" style="margin-top:10px">注册即送 500 积分；积分仅限平台内参与预测与兑换，不可交易/回兑。</div>`;
   }else{
     $('authBody').innerHTML=`
@@ -306,7 +306,7 @@ function authSeg(m){
       <div style="height:8px"></div>
       <input id="a_pw" type="password" placeholder="登录密码">
       <div style="height:14px"></div>
-      <button class="btn" style="width:100%" onclick="doLogin()">登录</button>
+      <button class="btn" style="width:100%" data-call="doLogin()">登录</button>
       <div class="muted" style="margin-top:10px">演示账户密码均为 <b>demo1234</b>（生产环境请使用你自己的密码）。</div>`;
   }
 }
@@ -370,18 +370,18 @@ async function renderHome(){
       </div>
     </div>
     <div class="banner"><div><b>📣 ${esc(bm.advertiser)}</b><br><small>${esc(bm.position)} · ${esc(bm.industry||'')}</small></div>
-      <button class="btn sec" onclick="go('ads')">了解广告合作</button></div>
+      <button class="btn sec" data-call="go('ads')">了解广告合作</button></div>
     ${streakHTML}
     ${me&&fy.length?`<div class="card"><h3>🎯 为你推荐 <span class="muted" style="font-weight:400">按你的参与偏好</span></h3><div class="grid" id="fyGrid"></div></div>`:''}
     <div class="card"><h3>🔥 热门预测</h3><div class="grid" id="hotGrid"></div>
-      <div class="row" style="margin-top:12px"><button class="btn sec" onclick="go('markets')">查看全部市场</button></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn sec" data-call="go('markets')">查看全部市场</button></div></div>
     <div class="card" style="margin-top:16px"><h3>⏳ 即将截止 <span class="muted" style="font-weight:400">抓住最后机会</span></h3><div class="grid" id="endGrid"></div></div>
     <div class="card" style="margin-top:16px" id="taskCard"></div>
     <div class="card" style="margin-top:16px"><h3>🏅 竞猜联赛</h3><div id="homeLeagues"></div>
-      <div class="row" style="margin-top:8px"><button class="btn sec" onclick="go('league')">查看全部联赛</button></div></div>
+      <div class="row" style="margin-top:8px"><button class="btn sec" data-call="go('league')">查看全部联赛</button></div></div>
     <div class="card" style="margin-top:16px"><h3>🏆 排行榜（Top 5）</h3><div id="homeBoard"></div>
-      <div class="row" style="margin-top:8px"><button class="btn sec" onclick="go('board')">完整排行榜</button></div></div>
-    <div class="card" style="margin-top:16px"><div class="muted">真测 Realcast 为合规积分预测游戏，不涉及现金赌博与加密货币。查看 <a class="link" onclick="showCompliance('tos')">用户协议</a> · <a class="link" onclick="showCompliance('privacy')">隐私政策</a></div></div>`;
+      <div class="row" style="margin-top:8px"><button class="btn sec" data-call="go('board')">完整排行榜</button></div></div>
+    <div class="card" style="margin-top:16px"><div class="muted">真测 Realcast 为合规积分预测游戏，不涉及现金赌博与加密货币。查看 <a class="link" data-call="showCompliance('tos')">用户协议</a> · <a class="link" data-call="showCompliance('privacy')">隐私政策</a></div></div>`;
   paintGrid('hotGrid', hot);
   if(me&&fy.length) paintGrid('fyGrid', fy);
   paintGrid('endGrid', end);
@@ -393,7 +393,7 @@ async function loadHomeLeagues(){
   const el=$('homeLeagues'); if(!el)return;
   el.innerHTML=(ts.slice(0,3).map(t=>`<div class="row" style="justify-content:space-between;margin:6px 0">
     <span><b>${esc(t.title)}</b> <span class="muted">奖励池 ${t.prize_pool}</span></span>
-    <button class="btn ghost" onclick="go('league')">查看</button></div>`).join('')||'<div class="empty">暂无进行中联赛</div>');
+    <button class="btn ghost" data-call="go('league')">查看</button></div>`).join('')||'<div class="empty">暂无进行中联赛</div>');
 }
 async function loadHomeBoard(){
   const lb=await api('/api/leaderboard?limit=5')||[];
@@ -413,7 +413,7 @@ async function paintGrid(elId, list){
 /* ---------- 每日任务中心 ---------- */
 async function loadTaskCenter(){
   const box=$('taskCard'); if(!box) return;
-  if(!me){ box.innerHTML=`<h3>🎯 每日任务</h3><div class="muted">登录后每天完成任务可领积分奖励。<button class="btn" style="margin-top:8px" onclick="openAuth()">登录 / 注册</button></div>`; return; }
+  if(!me){ box.innerHTML=`<h3>🎯 每日任务</h3><div class="muted">登录后每天完成任务可领积分奖励。<button class="btn" style="margin-top:8px" data-call="openAuth()">登录 / 注册</button></div>`; return; }
   const ts=await api('/api/users/'+me.id+'/tasks')||[];
   if(!ts.length){ box.innerHTML='<h3>🎯 每日任务</h3><div class="empty">暂无任务</div>'; return; }
   box.innerHTML=`<h3>🎯 每日任务 <span class="muted" style="font-weight:400">完成任务领积分</span></h3>
@@ -425,7 +425,7 @@ async function loadTaskCenter(){
           <span class="pill">+${t.reward} 积分</span>
           ${t.claimed?'<span class="tag cat">已领取</span>':t.done?'<span class="tag cat">已完成</span>':'<span class="muted">未完成</span>'}
         </div>
-        <button class="btn" style="width:100%;padding:6px" ${t.claimable?'':'disabled'} onclick="claimTask('${t.id}')">${t.claimed?'已领取':t.done?'领取奖励':'去完成'}</button>
+        <button class="btn" style="width:100%;padding:6px" ${t.claimable?'':'disabled'} data-call="claimTask('${t.id}')">${t.claimed?'已领取':t.done?'领取奖励':'去完成'}</button>
       </div>`).join('')}</div>`;
 }
 async function claimTask(id){
@@ -439,8 +439,8 @@ let mkState={cat:'全部',q:'',sort:'newest'};
 async function renderMarkets(){
   $('view').innerHTML=`<div class="card"><h3>📊 预测市场 <span class="muted" style="font-weight:400">（概率为声誉加权社区共识）</span></h3>
     <div class="row">
-      <input id="mkSearch" placeholder="🔍 搜索事件关键词…" style="flex:1" oninput="mkSearchInput()">
-      <select id="mkSort" style="width:160px" onchange="mkSortChange()">
+      <input id="mkSearch" placeholder="🔍 搜索事件关键词…" style="flex:1" data-on="input:mkSearchInput()">
+      <select id="mkSort" style="width:160px" data-on="change:mkSortChange()">
         <option value="newest">最新发布</option>
         <option value="closing">即将截止</option>
         <option value="participants">最热参与</option>
@@ -454,7 +454,7 @@ async function renderMarkets(){
 async function loadCategories(){
   const cats=await api('/api/categories')||[];
   const list=['全部',...cats.map(c=>c.category)];
-  $('catRow').innerHTML=list.map(c=>`<button class="btn ghost catbtn ${c===mkState.cat?'sec':''}" data-c="${esc(c)}" onclick="mkCat('${esc(c)}')">${esc(c)}</button>`).join('');
+  $('catRow').innerHTML=list.map(c=>`<button class="btn ghost catbtn ${c===mkState.cat?'sec':''}" data-c="${esc(c)}" data-call="mkCat('${esc(c)}')">${esc(c)}</button>`).join('');
 }
 function mkCat(c){ mkState.cat=c; document.querySelectorAll('.catbtn').forEach(b=>b.classList.toggle('sec',b.dataset.c===c)); loadMarkets(); }
 function mkSearchInput(){ mkState.q=$('mkSearch').value.trim(); loadMarkets(); }
@@ -529,7 +529,7 @@ function marketCard(m){
   const spark=sparkSVG(m._hist, lead);
   return `<div class="card">
     <div class="row" style="justify-content:space-between;align-items:center">
-      <b style="cursor:pointer" onclick="openMarket(${m.id})">${esc(m.title)}</b>
+      <b style="cursor:pointer" data-call="openMarket(${m.id})">${esc(m.title)}</b>
       ${spark?`<span class="muted">${spark}</span>`:''}
     </div>
     <span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>
@@ -539,9 +539,9 @@ function marketCard(m){
     ${canPlay?`<div class="row">
       <select id="opt_${m.id}" style="width:140px">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
       <input id="stake_${m.id}" type="number" value="20" min="10" max="50" style="width:90px">积分
-      <button class="btn" onclick="participate(${m.id})">参与预测</button>
-      <button class="btn ghost" onclick="openMarket(${m.id})">详情</button></div>`
-      :`<div class="muted">${me?'市场已结束':'登录后可参与'} · <a class="link" onclick="openMarket(${m.id})">查看详情</a></div>`}
+      <button class="btn" data-call="participate(${m.id})">参与预测</button>
+      <button class="btn ghost" data-call="openMarket(${m.id})">详情</button></div>`
+      :`<div class="muted">${me?'市场已结束':'登录后可参与'} · <a class="link" data-call="openMarket(${m.id})">查看详情</a></div>`}
   </div>`;
 }
 
@@ -564,7 +564,7 @@ async function openMarket(id){
       <div class="bar"><span style="width:${p}%"></span></div></div>`;
   }).join('');
   $('view').innerHTML=`
-    <button class="btn ghost" onclick="go('markets')">← 返回市场</button>
+    <button class="btn ghost" data-call="go('markets')">← 返回市场</button>
     <div class="card" style="margin-top:10px">
       <b style="font-size:18px">${esc(m.title)}</b><span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>
       <div class="muted" style="margin:6px 0">${esc(m.description||'')}</div>
@@ -574,7 +574,7 @@ async function openMarket(id){
       ${canPlay?`<div class="row" style="margin-top:10px">
         <select id="dopt_${m.id}" style="width:160px">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
         <input id="dstake_${m.id}" type="number" value="20" min="10" max="50" style="width:90px">积分
-        <button class="btn" onclick="participateDetail(${m.id})">参与预测</button></div>`
+        <button class="btn" data-call="participateDetail(${m.id})">参与预测</button></div>`
         :`<div class="muted" style="margin-top:8px">${me?'市场已结束':'登录后可参与'}</div>`}
       <h4 style="margin:16px 0 6px">📈 概率趋势（声誉加权社区共识随时间变化）</h4>
       ${trendChart(hist, m.options)}
@@ -587,14 +587,14 @@ async function openMarket(id){
         ${resol.oracle&&resol.oracle.note?`<div class="muted" style="font-size:12px">来源备注：${esc(resol.oracle.note)}</div>`:''}`
         :`<div class="muted" style="font-size:12px">${esc(resol.hint||'市场进行中，结算后在此公开依据。')}</div>`}
       <div id="disputeBox" style="margin-top:10px">${renderDisputes(resol.disputes||[])}</div>
-      ${resol.status==='settled'?`<button class="btn ghost" style="margin-top:8px" onclick="openDispute(${m.id})">对结果有异议？发起争议</button>`
+      ${resol.status==='settled'?`<button class="btn ghost" style="margin-top:8px" data-call="openDispute(${m.id})">对结果有异议？发起争议</button>`
         :`<div class="muted" style="margin-top:8px">结算前不能发起争议。</div>`}
     </div>
     <div class="card" style="margin-top:16px">
       <h4>💬 社区讨论 · 分享你的理由</h4>
       <div id="cmtThread">${renderComments(cmts)}</div>
       ${me?`<div class="row" style="margin-top:10px"><input id="cmtBody" style="flex:1" placeholder="写下你的判断与理由…" maxlength="600">
-        <button class="btn" onclick="postComment(${m.id})">发布</button></div>`
+        <button class="btn" data-call="postComment(${m.id})">发布</button></div>`
         :`<div class="muted">登录后可参与讨论</div>`}
     </div>`;
 }
@@ -606,8 +606,8 @@ function renderDisputes(list){
     const tally=ok?`<span class="pill" style="background:#fef2f2;color:#b91c1c">维持 ${d.uphold||0}</span> <span class="pill" style="background:#eff6ff;color:#1d4ed8">驳回 ${d.reject||0}</span>`
       :`<span class="pill">争议已${d.status==='upheld'?'维持原判':'驳回'}</span>`;
     const voteBtns=ok&&me?`<div style="margin-top:6px">
-        <button class="btn ghost" style="font-size:12px" onclick="voteDispute(${d.dispute_id},'uphold')">👍 维持(${d.uphold||0})</button>
-        <button class="btn ghost" style="font-size:12px" onclick="voteDispute(${d.dispute_id},'reject')">👎 驳回(${d.reject||0})</button>
+        <button class="btn ghost" style="font-size:12px" data-call="voteDispute(${d.dispute_id},'uphold')">👍 维持(${d.uphold||0})</button>
+        <button class="btn ghost" style="font-size:12px" data-call="voteDispute(${d.dispute_id},'reject')">👎 驳回(${d.reject||0})</button>
         ${d.my_vote?`<span class="muted" style="font-size:12px">（你已投：${d.my_vote==='uphold'?'维持':'驳回'}）</span>`:''}</div>`:'';
     return `<div class="card" style="margin-top:8px;padding:10px 12px">
       <div class="row" style="justify-content:space-between"><b style="font-size:13px">争议 #${d.dispute_id}</b>${tally}</div>
@@ -662,9 +662,7 @@ function trendChart(probs, options){
     legend+=`<span style="display:inline-block;margin-right:10px"><span style="display:inline-block;width:10px;height:10px;background:${c};border-radius:2px;margin-right:4px"></span>${esc((options&&options[o])||('选项'+(o+1)))}</span>`;
   }
   return `<div class="trendwrap">
-    <svg class="trendsvg" viewBox="0 0 ${W} ${H}"
-         onmousemove="trendHover(event)" onmouseleave="trendLeave()"
-         ontouchstart="trendHover(event)" ontouchmove="trendHover(event)" ontouchend="trendLeave()">
+    <svg class="trendsvg" viewBox="0 0 ${W} ${H}" data-on="mousemove:trendHover(event) mouseleave:trendLeave() touchstart:trendHover(event) touchmove:trendHover(event) touchend:trendLeave()">
       ${grid}${marks}${paths}${dots}
       <line id="trendCursor" x1="0" y1="${pad-8}" x2="0" y2="${H-pad}" stroke="#4f46e5" stroke-width="1" style="display:none"/>
     </svg>
@@ -673,11 +671,15 @@ function trendChart(probs, options){
   </div>`;
 }
 function trendHover(e){
-  const svg=e.currentTarget, r=svg.getBoundingClientRect();
+  // v0.7.1：改为事件委托后 currentTarget 是 document，需自行回溯到 svg 本体
+  const svg=(e.target&&e.target.closest)?e.target.closest('svg.trendsvg'):null;
+  if(!svg) return;
+  const r=svg.getBoundingClientRect();
   const t=_trend; if(!t.probs.length) return;
   const cx=(e.touches&&e.touches[0]?e.touches[0].clientX:e.clientX);
   if(cx==null) return;
-  if(e.touches) e.preventDefault();
+  // touch 监听注册为 passive（滚动性能优先），仅在仍可取消时阻止页面滚动
+  if(e.touches&&e.cancelable) e.preventDefault();
   const relX=(cx-r.left)/Math.max(1,r.width)*t.W;
   const span=(t.W-2*t.pad)||1;
   let i=Math.round((relX-t.pad)/span*(t.probs.length-1));
@@ -698,8 +700,8 @@ function trendLeave(){
 }
 function renderComments(cmts){
   if(!cmts||!cmts.length) return '<div class="muted">还没有讨论，来分享你的理由吧。</div>';
-  const acts=c=>`${me?`<a class="link" style="font-size:12px" onclick="showReply(${c.id})">回复</a>
-      <a class="link muted" style="font-size:12px;margin-left:10px" onclick="reportComment(${c.id})">举报</a>`:''}`;
+  const acts=c=>`${me?`<a class="link" style="font-size:12px" data-call="showReply(${c.id})">回复</a>
+      <a class="link muted" style="font-size:12px;margin-left:10px" data-call="reportComment(${c.id})">举报</a>`:''}`;
   return cmts.map(c=>`
     <div style="border-top:1px solid #eee;padding:8px 0">
       <div><b>${esc(c.username)}</b> <span class="muted" style="font-size:12px">${esc(c.created_at)}</span></div>
@@ -709,7 +711,7 @@ function renderComments(cmts){
       ${(c.replies||[]).map(r=>`<div class="cmt-reply" style="margin:6px 0 0 18px;padding-left:10px;border-left:2px solid #e5e7eb">
         <div><b>${esc(r.username)}</b> <span class="muted" style="font-size:12px">${esc(r.created_at)}</span></div>
         <div style="margin:2px 0">${esc(r.body)}</div>
-        ${me?`<a class="link muted" style="font-size:12px" onclick="reportComment(${r.id})">举报</a>`:''}</div>`).join('')}
+        ${me?`<a class="link muted" style="font-size:12px" data-call="reportComment(${r.id})">举报</a>`:''}</div>`).join('')}
     </div>`).join('');
 }
 async function reportComment(cid){
@@ -724,7 +726,7 @@ async function reportComment(cid){
 function showReply(cid){
   const box=$('reply_'+cid); if(!box)return;
   box.innerHTML=`<div class="row" style="margin-top:6px"><input id="rb_${cid}" style="flex:1" placeholder="回复…" maxlength="600">
-    <button class="btn ghost" onclick="postComment(${curMarketId},${cid})">发送</button></div>`;
+    <button class="btn ghost" data-call="postComment(${curMarketId},${cid})">发送</button></div>`;
 }
 async function postComment(mid, parentId=null){
   if(!me){openAuth();return;}
@@ -843,7 +845,7 @@ async function renderLeague(){
     el.innerHTML=`<div class="row" style="justify-content:space-between">
         <div><b>${esc(d.title)}</b> <span class="tag ${d.status==='open'?'cat':'rev'}">${d.status==='open'?'进行中':'已结束'}</span>
           <span class="pill">奖励池 ${d.prize_pool}</span> <span class="muted">参赛 ${d.participants} 人 · 市场 ${d.market_count}</span></div>
-        ${me&&d.status==='open'?`<button class="btn" onclick="joinLeague(${d.id})">参加联赛</button>`:''}
+        ${me&&d.status==='open'?`<button class="btn" data-call="joinLeague(${d.id})">参加联赛</button>`:''}
       </div>
       <div class="muted" style="margin:4px 0 8px">${esc(d.description||'')}</div>
       <div style="margin:8px 0">${mktHtml}</div>
@@ -871,7 +873,7 @@ async function renderMall(){
       <div class="row" style="justify-content:space-between">
         <span class="prob" style="color:var(--primary)">${it.cost} 积分</span>
         <span class="muted">库存 ${it.stock}</span></div>
-      <button class="btn" style="width:100%;margin-top:6px" ${it.stock>0?'':'disabled'} onclick="redeem(${it.id})">${it.stock>0?'立即兑换':'已售罄'}</button>
+      <button class="btn" style="width:100%;margin-top:6px" ${it.stock>0?'':'disabled'} data-call="redeem(${it.id})">${it.stock>0?'立即兑换':'已售罄'}</button>
     </div>`).join('')||'<div class="empty">商城暂无商品</div>';
 }
 async function redeem(itemId){
@@ -882,7 +884,20 @@ async function redeem(itemId){
 
 /* ---------- 发起事件 (UGC) ---------- */
 async function renderUgc(){
-  $('view').innerHTML=`<div class="grid cols2">
+  // 声誉门槛提示（白银 50）：与其让人提交完才吃 403，不如进门先说清楚
+  let gateHTML='';
+  if(me){
+    const t=await api('/api/users/'+me.id+'/tier');
+    if(t&&t.can_create_market===false){
+      const need=(t.next&&t.next.rep_to_next!=null)?t.next.rep_to_next:50;
+      gateHTML=`<div class="card" style="margin-bottom:12px;border-left:3px solid #f59e0b">
+        <b>🔒 发起事件需「白银预测者」</b>
+        <div class="muted" style="margin-top:6px">当前 <b>${esc(t.tier_name||'青铜预测者')}</b>（声誉 ${t.reputation||0}），
+        距白银还需 <b>${need}</b> 点声誉。声誉靠「预测被结算且判准」累积——先攒战绩，
+        你发起的事件也会更有分量。</div></div>`;
+    }
+  }
+  $('view').innerHTML=`${gateHTML}<div class="grid cols2">
     <div class="card"><h3>✍️ 发起预测事件</h3>
       <div class="muted" style="margin-bottom:10px">提交后由 AI 分级审核：可结算且有可信数据源 → 自动上线；缺数据源 → 人工复核；含赌博话术/主权红线 → 驳回。</div>
       <input id="utitle" placeholder="事件标题，如：哪支队赢得本周联赛？">
@@ -899,7 +914,7 @@ async function renderUgc(){
       <div style="height:8px"></div>
       <input id="ucloses" placeholder="截止日期（可选，如 2026-08-13）">
       <div style="height:12px"></div>
-      <button class="btn" style="width:100%" onclick="submitUgc()">提交审核</button>
+      <button class="btn" style="width:100%" data-call="submitUgc()">提交审核</button>
       <div id="ugcOut" style="margin-top:10px"></div>
     </div>
     <div class="card"><h3>我的发起 / 审核队列</h3><div id="ugcQueue"></div></div>
@@ -947,10 +962,10 @@ async function renderMe(){
       <div class="row" style="justify-content:space-between"><span>声誉</span><b>${Math.round(me.reputation||0)}</b></div>
       <div class="row" style="justify-content:space-between"><span>连续签到</span><b>${me.streak||0} 天</b></div>
       <div class="row" style="justify-content:space-between"><span>邀请好友</span><b>${me.invited_count||0} 人</b></div>
-      <div class="row"><button class="btn sec" onclick="signin()">每日签到 +积分</button>
-        <button class="btn ghost" onclick="copyInvite()">复制邀请码</button>
-        <button class="btn ghost" onclick="go('mypred')">我的预测</button>
-        <button class="btn ghost" onclick="shareMe()">分享战绩</button></div>
+      <div class="row"><button class="btn sec" data-call="signin()">每日签到 +积分</button>
+        <button class="btn ghost" data-call="copyInvite()">复制邀请码</button>
+        <button class="btn ghost" data-call="go('mypred')">我的预测</button>
+        <button class="btn ghost" data-call="shareMe()">分享战绩</button></div>
       <div class="muted">我的邀请码：</div>
       <div class="codebox">${esc(me.invite_code||'-')}</div>
       <div class="muted" style="margin-top:6px">好友用此码注册，双方各得积分奖励（邀请人+30，被邀人+20）。</div>
@@ -980,19 +995,19 @@ async function renderOps(){
   $('view').innerHTML=`<div class="card"><h3>⚙️ 自动化运营台</h3>
     <div class="muted" style="margin-bottom:10px">选题流水线：真实公开源抓取 → 白名单过滤 → 主权/敏感度校验 → 成稿 → 分级入队（低风险自动发布，中风险人工复核）。</div>
     <div class="row">
-      <button class="btn" onclick="runScout()">① 触发选题扫描</button>
-      <button class="btn sec" onclick="publishAuto()">② 自动发布安全选题</button>
-      <button class="btn ghost" onclick="loadQueue()">刷新队列</button>
-      <button class="btn ghost" onclick="loadCmtQueue()">💬 评论待审</button>
-      <button class="btn ghost" onclick="loadSentiment()">群体情绪指数</button>
+      <button class="btn" data-call="runScout()">① 触发选题扫描</button>
+      <button class="btn sec" data-call="publishAuto()">② 自动发布安全选题</button>
+      <button class="btn ghost" data-call="loadQueue()">刷新队列</button>
+      <button class="btn ghost" data-call="loadCmtQueue()">💬 评论待审</button>
+      <button class="btn ghost" data-call="loadSentiment()">群体情绪指数</button>
     </div>
     <div id="scoutOut" class="muted" style="margin:8px 0"></div>
     <div id="queueList"></div>
     <div id="cmtQueue" style="margin-top:12px"></div>
     <div id="sentimentBox" class="muted" style="margin-top:12px"></div>
     <div class="card" style="margin-top:14px"><h3>🤖 Agent 编排台</h3>
-      <div class="row"><button class="btn" onclick="loadAgentDashboard()">刷新状态</button>
-        <button class="btn sec" onclick="agentOrchestrate()">自然语言派发任务</button></div>
+      <div class="row"><button class="btn" data-call="loadAgentDashboard()">刷新状态</button>
+        <button class="btn sec" data-call="agentOrchestrate()">自然语言派发任务</button></div>
       <div id="agentDash" class="muted" style="margin-top:10px">点击刷新查看各专业 Agent 实时状态。</div></div></div>`;
   loadQueue();
   loadCmtQueue();
@@ -1007,8 +1022,8 @@ async function loadCmtQueue(){
       <div><b>${esc(c.username)}</b> <span class="muted" style="font-size:12px">${esc(c.created_at)} · 市场《${esc(c.market_title)}》</span>
         <span class="tag rev">${esc(c.audit_note||'待审')}</span>${c.flags?`<span class="tag rej">举报 ${c.flags}</span>`:''}</div>
       <div style="margin:6px 0">${esc(c.body)}</div>
-      <div class="row"><button class="btn sec" onclick="reviewCmt(${c.id},true)">放行</button>
-        <button class="btn ghost" onclick="reviewCmt(${c.id},false)">下架</button></div></div>`).join('')
+      <div class="row"><button class="btn sec" data-call="reviewCmt(${c.id},true)">放行</button>
+        <button class="btn ghost" data-call="reviewCmt(${c.id},false)">下架</button></div></div>`).join('')
       : '<div class="empty">无待审评论 ✅</div>');
 }
 async function reviewCmt(cid, approve){
@@ -1022,7 +1037,7 @@ async function loadQueue(){
   $('queueList').innerHTML=qs.filter(q=>q.status!=='discarded').map(q=>`<div class="card" style="margin-bottom:8px">
     <b>${esc(q.title)}</b><span class="tag ${q.route==='auto'?'':q.route==='review'?'rev':'rej'}">${q.route==='auto'?'自动发布':q.route==='review'?'人工复核':'驳回'}</span>
     <span class="muted">${esc(q.sensitivity)}</span>
-    ${q.route==='review'&&q.status==='pending'?`<button class="btn sec" onclick="approve(${q.id})">admin 放行</button>`:''}
+    ${q.route==='review'&&q.status==='pending'?`<button class="btn sec" data-call="approve(${q.id})">admin 放行</button>`:''}
     <span class="muted">${esc(q.status)}</span></div>`).join('')||'<div class="empty">队列空</div>';
 }
 async function approve(id){ const r=await adminPost('/api/admin/approve?queue_id='+id,{}); if(r){toast('已发布为市场 #'+r.market_id);loadQueue();renderMarkets();} }
@@ -1056,7 +1071,7 @@ async function renderSupport(){
   $('view').innerHTML=`<div class="card"><h3>💬 客服 Agent</h3>
     <div class="muted" style="margin-bottom:10px">意图识别 → FAQ/建单/升级人工。涉及合规与法律风险会自动升级并生成开发工单。</div>
     <div class="row"><input id="smsg" style="flex:1" placeholder="输入你的问题或投诉…"><input id="suser" placeholder="昵称（可选）" style="width:140px">
-      <button class="btn" onclick="sendSupport()">发送</button></div>
+      <button class="btn" data-call="sendSupport()">发送</button></div>
     <div id="supportOut"></div></div>`;
 }
 async function sendSupport(){
@@ -1074,7 +1089,7 @@ async function renderAds(){
       <input id="adv" placeholder="广告主" style="width:130px"><input id="ind" placeholder="行业" style="width:120px">
       <select id="afmt" style="width:100px"><option value="cpm">CPM</option><option value="fixed">固定位</option></select>
       <select id="apos" style="width:120px"><option>首页banner</option><option>信息流</option><option>开屏</option><option>品牌礼品格</option></select>
-      <button class="btn" onclick="adInquire()">咨询报价</button>
+      <button class="btn" data-call="adInquire()">咨询报价</button>
     </div>
     <div id="adsOut"></div></div>`;
 }
@@ -1083,17 +1098,17 @@ async function adInquire(){
   if(!r)return;
   $('adsOut').innerHTML=`<div class="card"><b>状态：${esc(r.status)}</b><div style="margin-top:6px">${esc(r.message)}</div>
     ${r.quote?`<pre style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;font-size:12px">${esc(JSON.stringify(r.quote,null,2))}</pre>`:''}
-    ${r.order_id?`<button class="btn" onclick="adConfirm(${r.order_id})">确认并投放（模拟预付）</button>`:''}</div>`;
+    ${r.order_id?`<button class="btn" data-call="adConfirm(${r.order_id})">确认并投放（模拟预付）</button>`:''}</div>`;
   window._oid=r.order_id;
 }
-async function adConfirm(oid){ const r=await post('/api/agents/ads/confirm',{order_id:oid,method:'预付'}); if(r)$('adsOut').innerHTML+=`<div class="card"><b>投放状态：${esc(r.status)}</b><div>${esc(r.message)}</div><button class="btn sec" onclick="adStmt(${oid})">查看对账单</button></div>`; }
+async function adConfirm(oid){ const r=await post('/api/agents/ads/confirm',{order_id:oid,method:'预付'}); if(r)$('adsOut').innerHTML+=`<div class="card"><b>投放状态：${esc(r.status)}</b><div>${esc(r.message)}</div><button class="btn sec" data-call="adStmt(${oid})">查看对账单</button></div>`; }
 async function adStmt(oid){ const r=await api('/api/agents/ads/statement/'+oid); if(r)$('adsOut').innerHTML+=`<pre style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;font-size:12px">${esc(JSON.stringify(r,null,2))}</pre>`; }
 
 /* ---------- 开发看板 ---------- */
 async function renderDev(){
   $('view').innerHTML=`<div class="card"><h3>🛠️ 开发看板</h3>
     <div class="muted" style="margin-bottom:10px">客服/广告/运营告警/争议统一汇入开发工单，形成「反馈→开发→验证关闭」闭环。</div>
-    <button class="btn ghost" onclick="loadTickets()">刷新工单</button><div id="ticketList" style="margin-top:10px"></div></div>`;
+    <button class="btn ghost" data-call="loadTickets()">刷新工单</button><div id="ticketList" style="margin-top:10px"></div></div>`;
   loadTickets();
 }
 async function loadTickets(){
@@ -1107,10 +1122,10 @@ async function loadTickets(){
 function showCompliance(kind){
   const url = kind==='tos'?'/api/compliance/tos':'/api/compliance/privacy';
   fetch(url).then(r=>r.text()).then(t=>{
-    $('modalRoot').innerHTML=`<div class="mask" onclick="if(event.target===this)closeAuth()"><div class="modal">
+    $('modalRoot').innerHTML=`<div class="mask" data-call="closeAuth()" data-backdrop="1"><div class="modal">
       <h3>${kind==='tos'?'用户协议':'隐私政策'}（摘要）</h3>
       <pre style="white-space:pre-wrap;font-size:13px;max-height:60vh;overflow:auto">${esc(t)}</pre>
-      <button class="btn" style="width:100%;margin-top:12px" onclick="closeAuth()">关闭</button></div></div>`;
+      <button class="btn" style="width:100%;margin-top:12px" data-call="closeAuth()">关闭</button></div></div>`;
   });
 }
 
@@ -1118,7 +1133,7 @@ function showCompliance(kind){
 function showOnboarding(){
   if(localStorage.getItem('rc_onboarded')) return;
   $('modalRoot').innerHTML=`
-  <div class="mask" onclick="if(event.target===this)closeOnboarding()">
+  <div class="mask" data-call="closeOnboarding()" data-backdrop="1">
     <div class="modal">
       <h3>👋 欢迎来到 真测 Realcast</h3>
       <div style="line-height:1.7">
@@ -1129,11 +1144,86 @@ function showOnboarding(){
            🎁 <b>积分商城</b>：用积分换实物 / 虚拟权益。</p>
         <p class="muted">年满 18 周岁方可参与。预测娱乐化、理性参与。</p>
       </div>
-      <button class="btn" style="width:100%;margin-top:8px" onclick="closeOnboarding()">开始预测</button>
+      <button class="btn" style="width:100%;margin-top:8px" data-call="closeOnboarding()">开始预测</button>
     </div>
   </div>`;
 }
 function closeOnboarding(){ localStorage.setItem('rc_onboarded','1'); closeAuth(); }
+
+/* ---------- 事件委托引擎（v0.7.1） ----------
+   页面上所有可点元素用 data-call="fn(a,'b')" 声明动作，非点击类用
+   data-on="input:fn() change:g() mousemove:h(event)" 声明。
+   这里只挂少量 document 级监听，统一解析并派发。
+   目的：彻底消除内联事件处理器，让 CSP 可以去掉 script-src 'unsafe-inline'。 */
+const ACTIONS={adConfirm,adInquire,adStmt,agentOrchestrate,approve,authSeg,claimTask,
+  closeAuth,closeOnboarding,copyInvite,doLogin,doRegister,go,joinLeague,loadAgentDashboard,
+  loadCmtQueue,loadQueue,loadSentiment,loadTickets,logout,markAllRead,markNotifRead,mkCat,
+  mkSearchInput,mkSortChange,openAuth,openDispute,openMarket,participate,participateDetail,
+  postComment,publishAuto,redeem,reportComment,reviewCmt,runScout,sendSupport,shareMe,
+  showCompliance,showReply,signin,submitUgc,toggleMenu,toggleNotif,trendHover,trendLeave,
+  voteDispute};
+
+/* 字面量解析：只认 数字 / 引号字符串 / true|false|null / event，不做 eval。 */
+function _lit(s,evt){
+  if(s==='') return undefined;
+  if(s==='event') return evt;
+  if((s[0]==="'"&&s[s.length-1]==="'")||(s[0]==='"'&&s[s.length-1]==='"')) return s.slice(1,-1);
+  if(s==='true') return true;
+  if(s==='false') return false;
+  if(s==='null') return null;
+  const n=Number(s);
+  return Number.isNaN(n)?s:n;
+}
+function _parseArgs(inner,evt){
+  const args=[]; let cur=''; let q=null; let depth=0;
+  for(let i=0;i<inner.length;i++){
+    const ch=inner[i];
+    if(q){ cur+=ch; if(ch===q) q=null; continue; }
+    if(ch==="'"||ch==='"'){ q=ch; cur+=ch; continue; }
+    if(ch==='('){ depth++; cur+=ch; continue; }
+    if(ch===')'){ depth--; cur+=ch; continue; }
+    if(ch===','&&depth===0){ args.push(_lit(cur.trim(),evt)); cur=''; continue; }
+    cur+=ch;
+  }
+  if(cur.trim()!=='') args.push(_lit(cur.trim(),evt));
+  return args;
+}
+function _invoke(raw,evt){
+  const m=/^([A-Za-z0-9_]+)\s*\(([\s\S]*)\)\s*$/.exec(raw||'');
+  if(!m) return;
+  const fn=ACTIONS[m[1]];
+  if(typeof fn!=='function'){ console.warn('[realcast] 未注册的动作: '+m[1]); return; }
+  if(evt.type==='click'&&evt.cancelable) evt.preventDefault();
+  fn.apply(null,_parseArgs(m[2],evt));
+}
+function _delegate(type){
+  return function(evt){
+    const t=evt.target;
+    const el=(t&&t.closest)?t.closest('[data-call],[data-on]'):null;
+    if(!el) return;
+    if(type==='click'){
+      const raw=el.getAttribute('data-call');
+      if(raw===null) return;
+      // data-backdrop：只有点在遮罩本身（而非内部卡片）才触发关闭
+      if(el.getAttribute('data-backdrop')==='1'&&t!==el) return;
+      _invoke(raw,evt);
+      return;
+    }
+    const spec=el.getAttribute('data-on');
+    if(!spec) return;
+    const parts=spec.split(/\s+/);
+    for(let i=0;i<parts.length;i++){
+      const p=parts[i], k=p.indexOf(':');
+      if(k<0||p.slice(0,k)!==type) continue;
+      _invoke(p.slice(k+1),evt);
+    }
+  };
+}
+['click','input','change','mousemove','mouseleave','touchstart','touchmove','touchend']
+  .forEach(function(t){
+    const passive=(t==='touchstart'||t==='touchmove'||t==='touchend');
+    document.addEventListener(t,_delegate(t),passive?{passive:true}:false);
+  });
 
 /* ---------- 启动 ---------- */
 renderUser();
