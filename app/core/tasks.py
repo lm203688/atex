@@ -33,7 +33,8 @@ def _done_status(user_id):
             "SELECT COUNT(*) c FROM users WHERE invited_by=?", (user_id,)
         ).fetchone()["c"]
         pos_today = conn.execute(
-            "SELECT COUNT(*) c FROM positions WHERE user_id=? AND date(created_at)=date('now')",
+            "SELECT COUNT(*) c FROM positions WHERE user_id=? "
+            "AND created_at >= date('now') AND created_at < date('now','+1 day')",
             (user_id,),
         ).fetchone()["c"]
     return {

@@ -14,14 +14,15 @@ def kpi():
     with get_conn() as conn:
         total_users = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
         new_users_today = conn.execute(
-            "SELECT COUNT(*) c FROM users WHERE date(created_at)=?", (today,)
+            "SELECT COUNT(*) c FROM users WHERE created_at >= ? AND created_at < date(?,'+1 day')",
+            (today, today),
         ).fetchone()["c"]
         # DAU：今日有任意行为（签到/参与/登录token存在且今日有活动）— 以今日参与或签到计
         dau = conn.execute(
             "SELECT COUNT(DISTINCT user_id) c FROM ("
-            "SELECT user_id FROM positions WHERE date(created_at)=? "
+            "SELECT user_id FROM positions WHERE created_at >= ? AND created_at < date(?,'+1 day') "
             "UNION SELECT id AS user_id FROM users WHERE last_signin=? "
-            ")", (today, today)
+            ")", (today, today, today)
         ).fetchone()["c"]
         markets_total = conn.execute("SELECT COUNT(*) c FROM markets").fetchone()["c"]
         markets_open = conn.execute(
@@ -39,11 +40,11 @@ def kpi():
         # 积分发放/消耗今日
         issued = conn.execute(
             "SELECT COALESCE(SUM(delta),0) s FROM points_ledger "
-            "WHERE date(created_at)=? AND delta>0", (today,)
+            "WHERE created_at >= ? AND created_at < date(?,'+1 day') AND delta>0", (today, today)
         ).fetchone()["s"]
         consumed = conn.execute(
             "SELECT COALESCE(SUM(-delta),0) s FROM points_ledger "
-            "WHERE date(created_at)=? AND delta<0", (today,)
+            "WHERE created_at >= ? AND created_at < date(?,'+1 day') AND delta<0", (today, today)
         ).fetchone()["s"]
         referrals_total = conn.execute(
             "SELECT COUNT(*) c FROM users WHERE invited_by IS NOT NULL").fetchone()["c"]
