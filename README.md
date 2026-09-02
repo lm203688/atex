@@ -24,8 +24,18 @@ docker compose up -d --build
 
 ## 质量门禁
 ```bash
-cd app && python tests/smoke.py --fresh   # 期望 63/63 全绿
+cd app && python tests/smoke.py --fresh   # 期望 97/97 全绿
+cd app && python tests/uat_customer.py    # 期望 90/90 全绿
 ```
+
+> 提示：本机若设了 `HTTP_PROXY`，测试脚本访问 `127.0.0.1` 会被代理拦截（表现为 502），
+> 运行时请加 `env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy` 清除。
+
+## 安全边界（CSP nonce）
+`script-src`（v0.7.1 起）与 `style-src`（v0.7.5 起）均已去掉 `'unsafe-inline'`，
+改为每请求生成的一次性 nonce。nonce 只能由后端在渲染 HTML 时注入，因此：
+- SPA 首页**必须**由 FastAPI 渲染下发（`_render_index`），不能由 nginx 等静态托管；
+- CSP 头**只能**由应用层下发，nginx 不得重复下发（见 `deploy/nginx.conf` 文件头说明）。
 
 ## 上线硬性前提（未满足不得公开运营）
 - 服务器 ICP 备案（腾讯云）

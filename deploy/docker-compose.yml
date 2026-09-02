@@ -6,7 +6,9 @@
 #   ../app        应用代码（构建上下文）
 #   ./data        持久化 SQLite（与 DB_PATH=/data/platform.db 对应）
 #   ./certs       TLS 证书 fullchain.pem + privkey.pem
-#   ../app/static 单文件 SPA，由 nginx 静态托管
+#
+# 注意：SPA 由后端 FastAPI 渲染下发（注入 CSP nonce），nginx 仅做反向代理，
+# 不再挂载 ../app/static —— 否则会返回无 nonce 的静态页导致安全加固失效。
 
 services:
   app:
@@ -41,4 +43,3 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
-      - ../app/static:/usr/share/nginx/html:ro
