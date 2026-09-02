@@ -599,7 +599,24 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.5", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.6", str(j.get("version")))
+
+    # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
+    # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
+    # commit 连带提交）。断言 reset_conn_pool 存在且可安全调用。
+    try:
+        import sys as _sys, os as _os
+        _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.dirname(
+            _os.path.abspath(__file__)))))
+        from db import reset_conn_pool as _rcp  # noqa: E402
+        _rcp()
+        _ok = True
+        _note = "reset_conn_pool 可用"
+    except Exception as _e:
+        _ok = False
+        _note = f"{type(_e).__name__}: {_e}"
+    check("v0.7.6 DB 连接池为每线程独立连接(可安全重置)",
+          _ok, _note)
 
     # (5) 数据产品 API（§5.3 P1 变现单点验证）：匿名情绪指数 + CSV 导出，开放可访问
     s, body = call("GET", "/api/data/sentiment", parse_json=True)

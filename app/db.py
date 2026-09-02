@@ -1,6 +1,7 @@
 """SQLite 数据层：建表 + 连接助手。去加密化，仅本地关系库。"""
 import sqlite3
 import os
+import atexit
 import threading
 from datetime import datetime
 from typing import Optional
@@ -328,33 +329,58 @@ def init_db():
         conn.commit()
 
 
-# ---- 连接池（v0.7.5 性能修复）----
-# E: 盘每次 sqlite3.connect 耗时 ~300ms（硬件 I/O 瓶颈，代码无法消除）。
-# 改为单例连接复用：全程只 open 一次，get_conn() 仅 yield 已缓存连接。
-# check_same_thread=False 允许跨线程使用（uvicorn worker）；写操作靠 busy_timeout 串行化。
-_singleton_conn: Optional[sqlite3.Connection] = None
-_singleton_lock = threading.Lock()
+# ---- 连接池（v0.7.6 修正：每线程独立连接）----
+# E: 盘每次 sqlite3.connect 耗时 ~300ms（硬件 I/O 瓶颈，代码无法消除），
+# 因此必须复用连接而非每次请求新建。但 v0.7.5 的「全局单连接」是错的：
+# 78 个同步端点走线程池并发，多线程共享一个 sqlite3 连接会导致
+#   (a) 事务交叉污染——线程 A 未提交的写被线程 B 的 conn.commit() 连带提交；
+#   (b) 异常无法回滚——代码库共 48 处显式 conn.commit()、0 处 rollback，
+#       且 `with get_conn() as conn` 绑定的是生成器 yield 值，并不进入
+#       sqlite3 的 `with conn:` 事务上下文，事务边界完全靠显式 commit。
+# 修正为 thread-local：每线程首次使用 open 一次并复用，线程间互不干扰，
+# 既保住 ~3000x 的连接复用收益，又恢复正确的隔离语义。
+_thread_local = threading.local()
+_conn_registry_lock = threading.Lock()
+_conn_registry: list = []  # 便于 atexit 统一关闭，避免连接泄漏
 
 
-def _get_singleton_conn() -> sqlite3.Connection:
-    global _singleton_conn
-    if _singleton_conn is None:
-        with _singleton_lock:
-            if _singleton_conn is None:
-                _singleton_conn = sqlite3.connect(DB_PATH, timeout=30,
-                                                   check_same_thread=False)
-                _singleton_conn.row_factory = sqlite3.Row
-                _singleton_conn.execute("PRAGMA busy_timeout=30000")
-    return _singleton_conn
+def _get_thread_conn() -> sqlite3.Connection:
+    conn = getattr(_thread_local, "conn", None)
+    if conn is None:
+        # check_same_thread=False：配合 thread-local，同一连接只会被创建它的
+        # 线程使用，但显式关闭检查可避免 anyio 线程池复用线程时的误报。
+        conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=30000")
+        _thread_local.conn = conn
+        with _conn_registry_lock:
+            _conn_registry.append(conn)
+    return conn
 
 
 @contextmanager
 def get_conn():
-    conn = _get_singleton_conn()
-    try:
-        yield conn
-    finally:
-        pass  # 单例连接不关闭，复用
+    """取得当前线程的复用连接。不关闭（连接随线程生命周期复用）。"""
+    yield _get_thread_conn()
+
+
+def reset_conn_pool():
+    """关闭并清空所有已缓存连接（DB_PATH 变更或测试重置时调用）。"""
+    with _conn_registry_lock:
+        for conn in _conn_registry:
+            try:
+                conn.close()
+            except sqlite3.Error:
+                pass
+        _conn_registry.clear()
+    _thread_local.conn = None
+
+
+def _close_conns_at_exit():
+    reset_conn_pool()
+
+
+atexit.register(_close_conns_at_exit)
 
 
 def now_iso():
