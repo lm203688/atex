@@ -1,0 +1,38 @@
+# 构建上下文排除项（Railway / Docker 构建时不需要的内容）
+# 目的：减小上传体积、避免把本地数据库与报告文档打进镜像。
+.git
+.github
+.gitignore
+.dockerignore
+.workbuddy
+
+# 本地数据库与运行时产物（数据应在部署平台上用持久化卷承载）
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+app/platform.db*
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 日志与临时文件
+*.log
+server.log
+app/_trash_db/
+
+# 项目报告文档（本地留档，不进镜像）
+*.md
+!app/README.md
+
+# 编辑器 / 系统杂项
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

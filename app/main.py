@@ -42,6 +42,24 @@ DESCRIPTION = (
     "合规四红线：积分只送不卖、不可用户间流通、不可回兑现金、彻底去加密货币。\n"
     "结算走平台奖励池（非赢家通吃），Oracle 权威源可插拔对接。"
 )
+def _seed_if_empty():
+    """库为空时播种演示数据（仅在 SEED_ON_BOOT=1 时由 lifespan 调用）。
+
+    seed.py 是模块级脚本，本身不具备幂等性——重复执行会撞用户名唯一约束。
+    所以这里先判断库里是否已有用户，已有则直接跳过，保证重启/重部署不会
+    重复播种。播种失败只打日志，绝不让应用起不来。
+    """
+    try:
+        with get_conn() as conn:
+            n = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
+        if n:
+            return
+        import seed  # noqa: F401  —— 模块级代码执行即完成播种
+        print("[info] 演示数据已播种（SEED_ON_BOOT=1，库为空）")
+    except Exception as e:
+        print(f"[warn] 演示数据播种失败，不影响启动：{type(e).__name__}: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app):
     """应用生命周期：启动时建库并拉起实时广播任务，关闭时收尾。
@@ -51,6 +69,10 @@ async def lifespan(app):
     内部结构，升级即碎。
     """
     init_db()
+    # 部署到演示/联调环境时（SEED_ON_BOOT=1）自动播种演示数据。
+    # 正式运营环境不要开：演示市场与演示用户会混进真实数据。
+    if os.environ.get("SEED_ON_BOOT") == "1":
+        _seed_if_empty()
     tasks = [asyncio.create_task(_realtime_loop())]
     # 多实例时消费其它实例的广播；单实例（memory backplane）下本任务空转，开销可忽略
     tasks.append(asyncio.create_task(_listen_backplane()))
@@ -68,7 +90,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.6",
+    version="0.7.7",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,

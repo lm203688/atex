@@ -6,7 +6,7 @@
 - 奖励为平台小额积分（grants，受日发放硬上限约束），量级低于注册礼，仅作日活引导。
 - 每任务每日仅可领取一次（task_claims 按 user+task+date 去重）。
 """
-from db import get_conn, today_str, now_iso
+from db import get_conn, today_str, now_iso, day_bounds_utc
 from core import points
 
 # 任务定义：id / 名称 / 说明 / 奖励积分
@@ -34,8 +34,8 @@ def _done_status(user_id):
         ).fetchone()["c"]
         pos_today = conn.execute(
             "SELECT COUNT(*) c FROM positions WHERE user_id=? "
-            "AND created_at >= date('now') AND created_at < date('now','+1 day')",
-            (user_id,),
+            "AND created_at >= ? AND created_at < ?",
+            (user_id, *day_bounds_utc()),
         ).fetchone()["c"]
     return {
         "signin": signed_today,

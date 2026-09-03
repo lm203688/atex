@@ -6,7 +6,7 @@
 import json
 import math
 from datetime import datetime
-from db import get_conn, now_iso
+from db import get_conn, now_iso, day_bounds_utc, utc_now
 from core import lmsr
 from core import points
 from core import scoring
@@ -225,7 +225,7 @@ def for_you(user_id, limit=8, pool=80):
     并硬性排除：已参与过的市场、自己发起的市场（防自肥）。
     每条附 `reco_reason`（推荐理由），前端直接展示，提升可解释性与点击率。
     """
-    now = datetime.now()
+    now = utc_now()
     with get_conn() as conn:
         pref_rows = conn.execute(
             "SELECT m.whitelist_tag AS tag, COUNT(*) c FROM positions p "
@@ -334,8 +334,8 @@ def participate(user_id, market_id, option_index, stake):
         # 防刷：单用户每日参与上限（范围查询，命中索引）
         day_cnt = conn.execute(
             "SELECT COUNT(*) AS c FROM positions "
-            "WHERE user_id=? AND created_at >= date('now') AND created_at < date('now','+1 day')",
-            (user_id,),
+            "WHERE user_id=? AND created_at >= ? AND created_at < ?",
+            (user_id, *day_bounds_utc()),
         ).fetchone()["c"]
         if day_cnt >= DAILY_PARTICIPATE_CAP:
             raise ValueError(f"今日参与已达上限（{DAILY_PARTICIPATE_CAP}）")

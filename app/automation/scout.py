@@ -15,7 +15,7 @@ import re
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from db import get_conn, now_iso
+from db import get_conn, now_iso, utc_now
 from core import whitelist
 
 # 真实公开 RSS/Atom（服务端可抓取；按可用性自动择优，失败即跳过）
@@ -107,7 +107,7 @@ def generate_draft(text, cls):
     options = ["会", "不会"] if category in (
         "体育", "娱乐", "影视", "科技", "消费", "天气", "宏观经济", "企业", "游戏"
     ) else ["是", "否"]
-    closes = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
+    closes = (utc_now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
     draft = {
         "title": f"{text}？",
         "description": f"群体预测：大家对「{text}」的判断。结算以权威公开信息为准。",

@@ -9,7 +9,7 @@
 import secrets
 import hashlib
 import os
-from db import get_conn, now_iso, today_str
+from db import get_conn, now_iso, today_str, day_bounds_utc, today_date
 
 REGISTER_BONUS = 500
 SIGNIN_SCHEDULE = [10, 20, 30, 40, 50, 60, 70]  # 第1~7天
@@ -26,8 +26,8 @@ def _ledger_sum_today(conn, user_id, positive_only=True):
     sign = "AND delta > 0" if positive_only else ""
     row = conn.execute(
         "SELECT COALESCE(SUM(delta),0) AS s FROM points_ledger "
-        "WHERE user_id=? AND created_at >= date('now') AND created_at < date('now','+1 day') "
-        + sign, (user_id,)
+        "WHERE user_id=? AND created_at >= ? AND created_at < ? "
+        + sign, (user_id, *day_bounds_utc())
     ).fetchone()
     return row["s"] or 0
 
@@ -237,7 +237,7 @@ def daily_signin(user_id):
         if last:
             try:
                 last_d = datetime.strptime(last, "%Y-%m-%d").date()
-                if last_d == datetime.now().date() - timedelta(days=1):
+                if last_d == today_date() - timedelta(days=1):
                     streak += 1
                 else:
                     streak = 0
@@ -296,7 +296,7 @@ def record_prediction_streak(user_id):
         if last:
             try:
                 last_d = datetime.strptime(last, "%Y-%m-%d").date()
-                if last_d == datetime.now().date() - timedelta(days=1):
+                if last_d == today_date() - timedelta(days=1):
                     streak += 1
                 else:
                     streak = 1

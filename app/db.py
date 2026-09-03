@@ -3,8 +3,8 @@ import sqlite3
 import os
 import atexit
 import threading
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
 from contextlib import contextmanager
 
 # 默认库位于应用目录；生产可通过 DB_PATH 指向挂载卷（如 /data/platform.db）
@@ -265,6 +265,20 @@ CREATE INDEX IF NOT EXISTS idx_comments_market ON comments(market_id);
 
 
 def init_db():
+    # 数据库目录必须已存在，否则**刻意报错退出，绝不自动创建**。
+    # 原因：容器部署时若持久化卷没挂上，自动建目录会让 SQLite 静默写进容器的
+    # 临时可写层——表面能跑，重启后全部数据（含用户积分余额）归零，对预测平台
+    # 是灾难性的。宁可启动失败让人立刻发现，也不能静默丢数据。
+    _dir = os.path.dirname(DB_PATH)
+    if _dir and not os.path.isdir(_dir):
+        raise RuntimeError(
+            f"数据库目录不存在，拒绝启动（避免数据写进临时层后丢失）：{_dir}\n"
+            f"  当前 DB_PATH = {DB_PATH}\n"
+            "  排查：\n"
+            "    - Railway：确认已 Add Volume 并挂载到 /data（见 README 部署章节）\n"
+            "    - Docker：确认 -v 卷映射路径与 DB_PATH 的目录一致\n"
+            "    - 本地：手动创建该目录，或改用默认路径（应用目录下 platform.db）"
+        )
     # WAL 模式在此设一次（每次连接都设 PRAGMA journal_mode 在 Windows 上极慢，
     # 见 v0.7.5 性能排查：get_conn 250ms→2ms）。busy_timeout 仍在 get_conn 设。
     _wal_conn = sqlite3.connect(DB_PATH, timeout=30)
@@ -383,9 +397,90 @@ def _close_conns_at_exit():
 atexit.register(_close_conns_at_exit)
 
 
+# ---- 应用时区（v0.7.7：海外部署必修）----
+# 坑：SQLite 的 date('now') / datetime('now') **恒返回 UTC，完全不受 TZ 环境变量
+# 影响**；而 Python 的 datetime.now() 返回容器本地时间。二者混用会直接导致日期
+# 边界错乱——例如容器为 UTC+8 时，每天 00:00–08:00 之间「今日签到 / 今日参与 /
+# 日活统计」都会被算成昨天，日任务直接归零。
+#
+# 约定（与时区彻底解耦）：
+#   1. 落库时间戳一律 UTC（now_iso 用 utcnow，与容器 TZ 无关）；
+#   2. 「业务上的今天」由 APP_TZ 定义（相对 UTC 的小时偏移，支持小数，默认 0=UTC）；
+#   3. 按天范围查询一律走 day_bounds_utc() 返回的 UTC 边界绑定参数，
+#      既保住 v0.7.2 建立的「范围查询命中索引」特性，又不再依赖 SQLite 的 now。
+def _parse_app_tz() -> float:
+    raw = (os.environ.get("APP_TZ") or "0").strip()
+    try:
+        v = float(raw)
+    except ValueError:
+        v = 0.0
+    if v < -14 or v > 14:      # 超出合法时区范围则安全回落 UTC
+        v = 0.0
+    return v
+
+
+APP_TZ_HOURS = _parse_app_tz()
+
+
+def _utcnow_naive():
+    """UTC 当前时间的 naive datetime。
+
+    用 datetime.now(timezone.utc).replace(tzinfo=None) 而非已弃用的
+    utcnow()（Python 3.12+ 告警，后续版本会移除）；naive 是为了与库里的
+    时间字符串格式保持一致，避免 aware/naive 比较抛 TypeError。
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def now_iso():
-    return datetime.now().isoformat(timespec='seconds')
+    """落库时间戳：始终 UTC，与容器 TZ 设置无关。
+
+    格式统一为 '%Y-%m-%d %H:%M:%S'（空格分隔），而非 isoformat() 的 'T' 分隔：
+    库里所有时间都是按字符串做字典序比较（到期判定、按天范围查询），
+    而空格(0x20) < 'T'(0x54)，两种格式混排会让同一天内的排序错乱。
+    """
+    return _utcnow_naive().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def utc_now():
+    """返回 UTC 的 naive datetime，与 now_iso() 同源。
+
+    用于 Python 侧需要与落库时间字符串直接比较的场景（如 closes_at 到期判定、
+    推荐流的紧迫度打分）——用 datetime.now() 会在非 UTC 容器上差出整个时区偏移。
+    """
+    return _utcnow_naive()
 
 
 def today_str():
-    return datetime.now().strftime('%Y-%m-%d')
+    """业务时区下的今天（YYYY-MM-DD），用于 last_signin 等按天去重字段。"""
+    return (_utcnow_naive() + timedelta(hours=APP_TZ_HOURS)).strftime('%Y-%m-%d')
+
+
+def today_date():
+    """业务时区下的今天，返回 datetime.date，便于与 strptime 结果直接比较。"""
+    return (_utcnow_naive() + timedelta(hours=APP_TZ_HOURS)).date()
+
+
+def day_bounds_utc(hours: Optional[float] = None) -> Tuple[str, str]:
+    """业务时区「今天」[00:00, 次日 00:00) 在 UTC 下的边界字符串。
+
+    返回 (start, end)，可直接作为绑定参数做范围查询。相比 date('now') 的好处：
+    既能按目标市场的日历日切分，又保持列上无函数包裹（索引可用）。
+    """
+    h = APP_TZ_HOURS if hours is None else hours
+    biz_now = _utcnow_naive() + timedelta(hours=h)
+    biz_start = biz_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_utc = biz_start - timedelta(hours=h)
+    end_utc = start_utc + timedelta(days=1)
+    return (start_utc.strftime('%Y-%m-%d %H:%M:%S'),
+            end_utc.strftime('%Y-%m-%d %H:%M:%S'))
+
+
+def tz_modifier(hours: Optional[float] = None) -> str:
+    """返回 SQLite 时间修饰符（如 '+8 hours' / '-5.5 hours'）。
+
+    用于 DATE(created_at, ?) 这类需要按业务时区切分日期的聚合查询——
+    因为落库是 UTC，直接 DATE(created_at) 得到的是 UTC 日历日。
+    """
+    h = APP_TZ_HOURS if hours is None else hours
+    return f"{'+' if h >= 0 else '-'}{abs(h)} hours"

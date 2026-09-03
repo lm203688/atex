@@ -3,7 +3,7 @@
 用途：向投资人 / 运营展示「平台是否健康、数据是否真实、单位经济是否可控」。
 所有指标均从既有真实数据聚合，无任何虚构。
 """
-from db import get_conn, today_str
+from db import get_conn, today_str, today_date, tz_modifier
 from datetime import datetime, timedelta
 from core import data_export
 from core import scoring
@@ -112,13 +112,14 @@ def retention():
     """
     from collections import defaultdict
     from datetime import timedelta
-    today = datetime.now().date()
+    today = today_date()
+    _tz = tz_modifier()
     with get_conn() as conn:
         users = conn.execute(
-            "SELECT id, DATE(created_at) AS rd FROM users"
+            "SELECT id, DATE(created_at, ?) AS rd FROM users", (_tz,)
         ).fetchall()
         pos = conn.execute(
-            "SELECT DISTINCT user_id, DATE(created_at) AS d FROM positions"
+            "SELECT DISTINCT user_id, DATE(created_at, ?) AS d FROM positions", (_tz,)
         ).fetchall()
         sign = conn.execute(
             "SELECT id, last_signin FROM users WHERE last_signin IS NOT NULL"

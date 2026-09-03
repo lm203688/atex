@@ -1,0 +1,47 @@
+# 真测 Realcast —— Railway 部署镜像
+#
+# 与 deploy/Dockerfile 的区别（两点，都是为了适配 Railway）：
+#   1. 构建上下文是**仓库根目录**（Railway 默认行为），所以 COPY 路径带 app/ 前缀。
+#      deploy/Dockerfile 的上下文是 app/ 子目录，直接拿去给 Railway 用会 COPY 失败。
+#   2. 监听 Railway 动态注入的 $PORT，而非硬编码 8000。
+#      Railway 每次部署分配的端口不固定，写死会导致健康检查失败、部署被判失败。
+#
+# 本地验证：
+#   docker build -f deploy/Dockerfile.railway -t realcast-railway .
+#   docker run --rm -p 8000:8000 -e PORT=8000 realcast-railway
+#
+# 配套 railway.json 里有一项关键安全设置，改动前务必了解：
+#   deploy.overlapSeconds = 0
+# Railway 默认在新旧容器之间做短暂重叠（overlap）以实现零停机部署。但 SQLite
+# 是单文件数据库，重叠窗口内会有两个进程同时写同一个库文件，轻则锁竞争、
+# 重则数据损坏。设为 0 表示「先停旧容器，再起新容器」——代价是每次部署有几秒
+# 中断，换来数据完整性。改回非零前请先迁移到 Postgres。
+FROM python:3.13-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# 先装依赖，利用 Docker 层缓存（改代码不会触发重装依赖）
+COPY app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 再拷代码
+COPY app/ .
+
+# SQLite 数据落到 Railway Volume（挂到 /data）。
+# 不挂卷 = 容器每次重建数据归零，务必在 Railway 控制台 Add Volume 并挂载到 /data。
+ENV DB_PATH=/data/platform.db
+VOLUME /data
+
+# Railway 动态注入 PORT；本地/CI 未注入时回落 8000。
+ENV PORT=8000
+
+# UVICORN_WORKERS 默认 1，不要随便调大：
+#   - SQLite 单文件写本就串行，多 worker 换不来吞吐；
+#   - 更关键：实时广播默认走进程内 memory backplane，多 worker 时 A 进程的
+#     状态变更推不到连在 B 进程上的客户端，各用户看到的概率会不一致。
+#   要上多 worker，必须先配 REDIS_URL 走 Redis backplane，并改用 Postgres。
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${UVICORN_WORKERS:-1}"]

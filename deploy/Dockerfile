@@ -19,6 +19,10 @@ COPY . .
 # 应用启动时会自动 init_db() 建表；生产数据请通过 DB_PATH 指向挂载卷（见 docker-compose.yml）
 EXPOSE 8000
 
-# 多 worker（SQLite + WAL，配合 busy_timeout 抗并发）。生产建议 2~4 个 worker。
-# UVICORN_WORKERS 可由 compose/.env 注入。
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-3}"]
+# worker 数默认 **1**——这不是保守，是正确性要求。
+# 未配 REDIS_URL 时，实时广播走进程内 MemoryBackplane（见 app/core/backplane.py）：
+# 一个 worker 就是一个独立广播域。worker>1 时，A 进程里的市场状态变更推不到
+# 连在 B 进程上的客户端，不同用户看到的概率会不一致——对预测平台是致命的。
+# 要扩容必须先配 REDIS_URL 切到 RedisBackplane（并建议同时迁 Postgres），
+# 再调大 UVICORN_WORKERS。
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-1}"]

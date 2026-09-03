@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.6", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.7", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
@@ -625,6 +625,40 @@ def main():
     s2, csv_body = call("GET", "/api/data/export?kind=category", parse_json=False)
     ok_csv = s2 == 200 and csv_body.strip().startswith("category,")
     check("数据产品·品类聚合 CSV 导出可用", ok_csv, f"{s2} {csv_body[:60]!r}")
+
+    # (6) v0.7.7 时区正确性（海外部署必修，本机 UTC+8 也受影响）
+    # 旧代码用 Python datetime.now()（容器本地时间）写库、却用 SQLite
+    # date('now')（恒为 UTC，不受 TZ 环境变量影响）查询，二者在非 UTC 服务器上
+    # 差出整个时区偏移——导致每天本地 00:00 起、长达偏移窗口内「今日签到 /
+    # 今日参与 / 日活统计」全被算成昨天。现统一为：落库一律 UTC，业务上的
+    # 「今天」由 APP_TZ 定义，按天查询走 day_bounds_utc() 的 UTC 边界参数。
+    _ts = ""
+    try:
+        import sys as _sys, os as _os
+        _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.dirname(
+            _os.path.abspath(__file__)))))
+        from db import now_iso as _now_iso, day_bounds_utc as _bounds  # noqa: E402
+        _bad = []
+        for _h in (0, 8, -5, 5.5, 13):
+            # 跨零点时两次取时可能落在不同天，给一次重试，避免测试偶发抖动
+            for _ in range(2):
+                _s, _e = _bounds(_h)
+                _ts = _now_iso()
+                if _s <= _ts < _e:
+                    break
+            else:
+                _bad.append(f"APP_TZ={_h}: {_ts} 不在 [{_s}, {_e})")
+        _ok_tz = not _bad
+        _note_tz = "; ".join(_bad) if _bad else f"5 个时区下 {_ts} 均落在今日区间内"
+    except Exception as _e:
+        _ok_tz = False
+        _note_tz = f"{type(_e).__name__}: {_e}"
+    check("v0.7.7 任意 APP_TZ 下「此刻写入」都计入今日", _ok_tz, _note_tz)
+
+    # (6b) 落库格式统一为空格分隔：'T'(0x54) > 空格(0x20)，与 strftime 系混排
+    # 会让同一天内的字符串比较（到期判定、按天范围查询）排序错乱。
+    check("v0.7.7 落库时间格式为 '%Y-%m-%d %H:%M:%S'(空格分隔)",
+          "T" not in _ts and len(_ts) == 19, f"now_iso()={_ts!r}")
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
@@ -676,10 +710,20 @@ def _port_in_use():
 
 def fresh_start():
     """Wipe DB, re-seed, and start a local server for an idempotent run.
-    通过 DROP TABLE 清空（避免删除文件触发安全删除拦截）。
-    健壮性：先杀干净 8000 端口残留进程（PowerShell 兜底），再启动新服务，
-    并验证 v0.4.1 端点存在，避免连到残留旧进程导致假绿。
+
+    顺序很关键：**先杀残留进程，再清库播种**。
+    曾经把 kill_port_8000() 放在 wipe 之后，结果上一轮遗留的服务仍持有
+    platform.db 的写锁，DROP TABLE 直接 `database is locked` 失败，随后
+    seed.py 撞残留数据报 UNIQUE 约束冲突——表现为一堆无法解释的级联失败。
+    先把端口清干净、等端口真正释放，再动数据库，才是幂等的。
     """
+    # 先杀干净 8000 端口残留进程，并等待端口与文件锁真正释放
+    kill_port_8000()
+    for _ in range(20):
+        if not _port_in_use():
+            break
+        time.sleep(0.5)
+
     try:
         import sqlite3
         app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -698,14 +742,6 @@ def fresh_start():
 
     print("[fresh] seeding ...")
     subprocess.run([sys.executable, "seed.py"], check=True)
-
-    # 杀干净残留进程（netstat + taskkill + PowerShell 三重兜底）
-    kill_port_8000()
-    # 等待端口真正释放，避免 uvicorn 绑定竞态
-    for _ in range(20):
-        if not _port_in_use():
-            break
-        time.sleep(0.5)
 
     print("[fresh] starting server ...")
     subprocess.Popen(

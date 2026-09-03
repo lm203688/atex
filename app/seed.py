@@ -1,9 +1,9 @@
 """种子数据：演示核心闭环（注册→签到→参与→结算奖励→商城→邀请→已结算战绩→联赛）。
 运行：python seed.py
 """
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
-from db import init_db, get_conn
+from db import init_db, get_conn, utc_now
 from core import points, markets
 from core import oracle
 from core import mall
@@ -26,27 +26,27 @@ for u in (u1, u2, u3):
 # 2) 安全品类市场（也可由自动化选题生成）
 m1 = markets.create_market(
     "本周末世界杯决赛A队夺冠？", "群体预测：A队能否夺冠。", "体育", "体育",
-    ["会", "不会"], "官方赛事结果", (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "官方赛事结果", (utc_now() + timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"))
 m2 = markets.create_market(
     "某新款手机首销周销量破百万？", "群体预测：首销周销量。", "科技", "科技",
-    ["会", "不会"], "品牌官方战报/第三方统计", (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "品牌官方战报/第三方统计", (utc_now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"))
 # m3 已结束的市场（演示「我的预测」战绩与结算结果展示）
 m3 = markets.create_market(
     "上周末英超焦点战主队取胜？", "已结束的示例市场。", "体育", "体育",
-    ["会", "不会"], "官方联赛战报", (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "官方联赛战报", (utc_now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S"))
 # m4 多结果市场（对标 Manifold/Metaculus 丰富题型）：多选一
 m4 = markets.create_market(
     "下一部票房破30亿的国产片类型？", "群体预测：最先达成票房门槛的国产片类型。", "娱乐", "娱乐",
     ["喜剧", "科幻", "动画", "动作"], "票房统计平台/官方备案",
-    (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"))
+    (utc_now() + timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S"))
 # m5 经济品类（丰富发现维度）
 m5 = markets.create_market(
     "下季度CPI同比破3%？", "群体预测：下季度居民消费价格同比涨幅。", "经济", "经济",
-    ["会", "不会"], "国家统计局公布数据", (datetime.now() + timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "国家统计局公布数据", (utc_now() + timedelta(days=4)).strftime("%Y-%m-%d %H:%M:%S"))
 # m6 娱乐品类（进行中，制造热门/即将截止多样性）
 m6 = markets.create_market(
     "年度最佳剧集会否出自悬疑题材？", "群体预测：年度口碑剧集主力题材。", "娱乐", "娱乐",
-    ["会", "不会"], "主流影视奖项/口碑榜", (datetime.now() + timedelta(days=1, hours=6)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "主流影视奖项/口碑榜", (utc_now() + timedelta(days=1, hours=6)).strftime("%Y-%m-%d %H:%M:%S"))
 
 # 3) 用户参与（含 m3，使 accuracy 有数据）
 markets.participate(u1, m1, 0, 30)
@@ -68,10 +68,10 @@ markets.participate(u3, m6, 1, 20)
 # m7 已结算（即时可见战绩），m8 即将在数小时内结算（制造每日回访紧迫感）
 m7 = markets.create_market(
     "今晚欧冠焦点战主队不败？", "短周期示例：当日赛事，赛果后即结算。", "体育", "体育",
-    ["会", "不会"], "官方赛事战报", (datetime.now() - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "官方赛事战报", (utc_now() - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"))
 m8 = markets.create_market(
     "今夜这部新剧首播热度破百万播放？", "短周期示例：当日文娱事件，数小时内揭晓。", "娱乐", "娱乐",
-    ["会", "不会"], "平台官方热度榜", (datetime.now() + timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "平台官方热度榜", (utc_now() + timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"))
 markets.participate(u1, m7, 0, 20)
 markets.participate(u2, m7, 0, 15)
 markets.participate(u3, m7, 1, 15)
@@ -83,10 +83,10 @@ oracle.set_result(m7, 0, source="官方赛事战报", note="主队常规时间�
 # 3.6) 常驻短周期市场（P1：保证每天有事可做、有回访紧迫感）
 m9 = markets.create_market(
     "明晚NBA焦点战客队逆转取胜？", "短周期示例：次日赛事，赛果后即时结算。", "体育", "体育",
-    ["会", "不会"], "官方赛事战报", (datetime.now() + timedelta(hours=20)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "官方赛事战报", (utc_now() + timedelta(hours=20)).strftime("%Y-%m-%d %H:%M:%S"))
 m10 = markets.create_market(
     "今夜这部剧更新后热度能否再破纪录？", "短周期示例：当日文娱事件，数小时内揭晓。", "娱乐", "娱乐",
-    ["会", "不会"], "平台官方热度榜", (datetime.now() + timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"))
+    ["会", "不会"], "平台官方热度榜", (utc_now() + timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"))
 markets.participate(u1, m9, 0, 20)
 markets.participate(u3, m9, 1, 15)
 markets.participate(u2, m10, 0, 15)
@@ -159,7 +159,7 @@ publish.publish_auto()  # 把低敏 auto 选题自动发布为市场
 tid = tournaments.create_tournament(
     "夏日热点竞猜联赛", "在本联赛的多场热点事件中综合表现最佳者赢得平台奖励池。按平均校准(Brier)排名，越准越靠前。",
     category="综合", entry_fee=0, prize_pool=500,
-    ends_at=(datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"))
+    ends_at=(utc_now() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"))
 tournaments.add_market(tid, m1)
 tournaments.add_market(tid, m2)
 tournaments.add_market(tid, m4)
