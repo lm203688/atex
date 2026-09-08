@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from db import init_db, get_conn
+import db
 from core import backplane
 from core import points, markets
 from core import settlement
@@ -33,6 +34,8 @@ from core import metrics
 from core import comments
 from core import notifications
 from core import tiers
+from core import rating
+from core import external_ref
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
 from agents import orchestrator as agent_orchestrator
@@ -90,7 +93,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.8",
+    version="0.7.9",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -413,6 +416,32 @@ def api_market(market_id: int):
         raise HTTPException(404, "市场不存在")
     return m
 
+@app.get("/api/markets/{market_id}/external_ref")
+def api_market_external_ref(market_id: int):
+    """外部公开概率参考（只读）。
+
+    停用或未配置 EXTERNAL_REF_ENDPOINT 时返回 enabled=false，前端不应展示该模块。
+    返回带明确声明：外部概率**不具结算效力**。
+    """
+    return {
+        "market_id": market_id,
+        "enabled": external_ref.enabled(),
+        "reference": external_ref.get(market_id),
+        "bias": external_ref.bias(market_id),
+        "disclaimer": "外部概率仅供参考与内容分析，不参与本平台任何结算",
+    }
+
+
+@app.post("/api/admin/markets/{market_id}/external_ref/refresh")
+def api_admin_refresh_external_ref(market_id: int, request: Request):
+    """手动触发一次外部参考概率拉取（管理员）。"""
+    _auth_admin(request)
+    ref = external_ref.refresh(market_id)
+    if not ref:
+        raise HTTPException(400, "外部参考源未配置或拉取失败")
+    return {"market_id": market_id, "reference": ref}
+
+
 @app.get("/api/markets/{market_id}/history")
 def api_market_history(market_id: int):
     """概率时间序列（驱动趋势图 / sparkline）。"""
@@ -586,29 +615,72 @@ def api_dispute(market_id: int, user_id: int, reason: str, request: Request):
     return {"dispute_id": did, "status": "open"}
 
 @app.get("/api/leaderboard")
-def api_leaderboard(limit: int = 20):
-    # 关联预测战绩，计算 Pro 预测者分层（已结算≥20 且准确率≥70%）
+def api_leaderboard(limit: int = 20, sort: str = "points", ranked_only: int = 0):
+    """排行榜。
+
+    sort=points（默认，向后兼容）：按积分降序——榜是「活跃度/资产」榜。
+    sort=skill：按**保守下界** (skill_rating - 1.96·skill_rd) 降序——技能榜。
+       用区间下沿而非单点分，是因为新用户 RD 极大，2 注全中的单点分虚高，
+       下沿会把他自然排到后面；随样本积累 RD 收窄，真实水平才浮上来。
+    ranked_only=1：过滤掉 provisional（样本不足/久未参与）用户，只要正式榜位。
+
+    每个条目附带 skill_low/skill_high（95% 区间）与 skill_confidence，
+    前端可据此把低置信度用户渲染为「待定」，避免用户被噪声排名误导。
+    """
+    z = rating.CONSERVATIVE_Z
+    order = ("(u.skill_rating - ? * u.skill_rd) DESC"
+             if sort == "skill" else "u.points_balance DESC")
+    # 候选集取 3 倍，过滤 provisional 后再截断，避免 limit 被临时分占满
+    fetch = limit * 3 if (ranked_only or sort == "skill") else limit
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT u.id, u.username, u.points_balance, u.reputation, u.streak, "
+            "u.skill_rating, u.skill_rd, u.skill_sigma, u.skill_updated_at, "
             "(SELECT COUNT(*) FROM positions p JOIN markets m ON m.id=p.market_id "
             " WHERE p.user_id=u.id AND m.status='settled' AND m.resolution IS NOT NULL) AS resolved, "
             "(SELECT COUNT(*) FROM positions p JOIN markets m ON m.id=p.market_id "
             " WHERE p.user_id=u.id AND m.status='settled' AND m.resolution IS NOT NULL "
             " AND p.option_index=m.resolution) AS correct "
-            "FROM users u ORDER BY u.points_balance DESC LIMIT ?", (limit,)
+            f"FROM users u ORDER BY {order} LIMIT ?", (z, fetch) if sort == "skill" else (fetch,)
         ).fetchall()
     out = []
     for r in rows:
         d = dict(r)
-        resolved = d.pop("resolved", 0) or 0
-        correct = d.pop("correct", 0) or 0
-        d["pro"] = (resolved >= 20 and resolved > 0 and (correct / resolved) >= 0.70)
+        resolved = int(d.pop("resolved", 0) or 0)
+        correct = int(d.pop("correct", 0) or 0)
+        rating_v = d.pop("skill_rating", None)
+        rd_v = d.pop("skill_rd", None)
+        sigma_v = d.pop("skill_sigma", None)
+        updated = d.pop("skill_updated_at", None)
+        # 久未参与 → RD 回升（不确定性回到真实水平）
+        if updated:
+            try:
+                days = (db.utc_now() - db.parse_iso(updated)).days
+            except Exception:
+                days = 0
+            rd_v = rating.rd_decay(rd_v or rating.DEFAULT_RD,
+                                   sigma_v or rating.DEFAULT_SIGMA, days)
+        rating_v = float(rating_v or rating.DEFAULT_RATING)
+        rd_v = float(rd_v or rating.DEFAULT_RD)
+        low, high = rating.rating_interval(rating_v, rd_v, z)
+        d["pro"] = (resolved >= 20 and (correct / resolved) >= 0.70) if resolved else False
         d["accuracy"] = round(correct / resolved, 3) if resolved else None
+        # 保守命中率：小样本下比裸命中率稳健（2/2 的下界远低于 100%）
+        d["accuracy_conservative"] = (round(rating.wilson_lower_bound(correct, resolved, z), 3)
+                                      if resolved else None)
+        d["skill_rating"] = round(rating_v, 1)
+        d["skill_rd"] = round(rd_v, 1)
+        d["skill_low"] = round(low, 1)
+        d["skill_high"] = round(high, 1)
+        d["skill_confidence"] = round(rating.confidence(rd_v), 3)
+        d["provisional"] = rating.is_provisional(resolved, rd_v)
+        d["resolved_count"] = resolved
         # 声誉等级标识（公开排行榜展示地位，替代金钱排名）
         d["tier"] = tiers.rep_tier(d.get("reputation", 0))["tier_name"]
         out.append(d)
-    return out
+    if ranked_only:
+        out = [x for x in out if not x["provisional"]]
+    return out[:limit]
 
 # ---------- 竞猜联赛（Tournaments，Metaculus 式组合智力赛）----------
 @app.get("/api/tournaments")

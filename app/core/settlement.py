@@ -17,6 +17,7 @@ from core import points
 from core import markets
 from core import scoring
 from core import numeric
+from core import rating
 
 # 奖励池预算 = 该市场总参与消耗 × 该率（平台额外出资，覆盖本金返还 + 技能溢价）
 REWARD_POOL_RATE = 2.0
@@ -119,7 +120,7 @@ def settle_market(market_id, winning_option, oracle_note=None, oracle_source=Non
         except Exception:
             pass
 
-        return {
+        result = {
             "market_id": market_id,
             "winning_option": winning_option,
             "budget": budget,
@@ -130,6 +131,14 @@ def settle_market(market_id, winning_option, oracle_note=None, oracle_source=Non
             "oracle_note": oracle_note,
             "oracle_source": oracle_source,
         }
+
+    # 技能评级在独立事务里更新：与上面的结算写事务分开，避免嵌套连接引发 SQLite
+    # 锁竞争；评级失败不影响已完成的结算（积分/声誉已落库）。
+    try:
+        result["rating_updated"] = rating.apply_market_result(market_id)
+    except Exception:
+        result["rating_updated"] = 0
+    return result
 
 
 def settle_numeric_market(market_id, true_value, oracle_note=None, oracle_source=None):
@@ -216,6 +225,11 @@ def settle_numeric_market(market_id, true_value, oracle_note=None, oracle_source
         conn.commit()
 
     skills = [d["skill"] for d in paid_detail]
+    # 与分类市场一致：评级在结算事务提交后的独立事务里更新
+    try:
+        rating_updated = rating.apply_market_result(market_id)
+    except Exception:
+        rating_updated = 0
     return {
         "market_id": market_id,
         "true_value": y,
@@ -227,4 +241,5 @@ def settle_numeric_market(market_id, true_value, oracle_note=None, oracle_source
         "avg_skill": round(sum(skills) / len(skills), 4) if skills else None,
         "oracle_note": oracle_note,
         "oracle_source": oracle_source,
+        "rating_updated": rating_updated,
     }

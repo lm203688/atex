@@ -23,7 +23,11 @@ CREATE TABLE IF NOT EXISTS users (
   token TEXT,
   invite_code TEXT UNIQUE,
   invited_by INTEGER,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  skill_rating REAL NOT NULL DEFAULT 1500.0,
+  skill_rd REAL NOT NULL DEFAULT 350.0,
+  skill_sigma REAL NOT NULL DEFAULT 0.06,
+  skill_updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS points_ledger (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -344,6 +348,11 @@ def init_db():
             ("numeric_upper", "REAL", "NULL"),
             ("numeric_unit", "TEXT", "NULL"),
             ("resolution_value", "REAL", "NULL"),
+            # 外部公开概率的只读参考（v0.7.9）：仅供展示/播种/偏差分析，
+            # 绝不参与结算——结算只读 oracle_log，与本列无任何依赖。
+            ("external_ref_prob", "REAL", "NULL"),
+            ("external_ref_json", "TEXT", "NULL"),
+            ("external_ref_at", "TEXT", "NULL"),
         ):
             try:
                 conn.execute(
@@ -379,6 +388,19 @@ def init_db():
             conn.execute("ALTER TABLE users ADD COLUMN pw_hash TEXT")
         except sqlite3.OperationalError:
             pass
+        # 不确定性感知技能评级（v0.7.9，Glicko-2）：skill_rd = 评分偏差，
+        # 量化「对这个人的技能估计有多不确定」，供排行榜保守排序与临时分判定用。
+        for col, ctype, default in (
+            ("skill_rating", "REAL", "1500.0"),
+            ("skill_rd", "REAL", "350.0"),
+            ("skill_sigma", "REAL", "0.06"),
+            ("skill_updated_at", "TEXT", "NULL"),
+        ):
+            try:
+                conn.execute(
+                    f"ALTER TABLE users ADD COLUMN {col} {ctype} DEFAULT {default}")
+            except sqlite3.OperationalError:
+                pass
         conn.commit()
 
 
@@ -488,6 +510,23 @@ def utc_now():
     推荐流的紧迫度打分）——用 datetime.now() 会在非 UTC 容器上差出整个时区偏移。
     """
     return _utcnow_naive()
+
+
+def parse_iso(s):
+    """解析落库时间戳（'%Y-%m-%d %H:%M:%S'）为 naive UTC datetime；无法解析返回 None。
+
+    库里的时间既有 now_iso()（空格分隔）也有 SQLite datetime('now')/'T' 分隔的
+    历史值，故两种都接受；解析一律按 UTC 处理，与落库约定一致。
+    """
+    if not s:
+        return None
+    txt = str(s).strip().replace("T", " ")
+    txt = txt.split(".")[0]          # 去掉小数秒
+    txt = txt.split("+")[0].strip()  # 去掉时区后缀
+    try:
+        return datetime.strptime(txt, '%Y-%m-%d %H:%M:%S')
+    except (ValueError, TypeError):
+        return None
 
 
 def today_str():

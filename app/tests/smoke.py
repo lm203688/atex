@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.8", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.9", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
@@ -728,6 +728,127 @@ def main():
         _ok_math, _note_math = False, f"{type(_e).__name__}: {_e}"
     check("v0.7.8 CRPS 技能分区分好坏预测且随误差单调递增", _ok_math, _note_math)
 
+    # (8) v0.7.9 不确定性感知技能评级（Glicko-2 + 保守排序）
+    # 原排行榜是「积分降序 + 裸命中率 correct/resolved」：新用户下 2 注全中就是
+    # 100% 直冲榜首，样本一多又暴跌——技能信号被噪声淹没。本版给每人一个
+    # (rating, RD) 而非单点，排序用区间下沿，低样本用户自然排后面。
+    s, jA = call("POST", "/api/register",
+                 {"username": "评级用户甲", "age_confirmed": True, "password": PW})
+    s2, jB = call("POST", "/api/register",
+                  {"username": "评级用户乙", "age_confirmed": True, "password": PW})
+    check("v0.7.9 评级场景可创建对照用户", s == 200 and s2 == 200, f"{s} {s2}")
+    _ua, _ub = jA.get("user_id"), jB.get("user_id")
+    # 注册接口只返回 user_id，token 必须走登录拿（否则参与请求会因未鉴权被拒，
+    # 市场 0 注 → 结算 total_stakes=0 → 评级无从更新，形成误导性假绿）
+    _, _lA = call("POST", "/api/login", {"username": "评级用户甲", "password": PW})
+    _, _lB = call("POST", "/api/login", {"username": "评级用户乙", "password": PW})
+    _ta, _tb = _lA.get("token"), _lB.get("token")
+    check("v0.7.9 对照用户可登录取 token", bool(_ta and _tb), f"{_lA} {_lB}")
+
+    if _ua and _ub:
+        s, jM = call("POST", "/api/admin/markets", {
+            "title": "评级对照市场", "category": "体育",
+            "options": ["主队胜", "客队胜"], "oracle_source": "manual"}, admin=True)
+        _rm_id = jM.get("market_id") if s == 200 else None
+
+        if _rm_id:
+            _s1, _p1 = call("POST", f"/api/markets/{_rm_id}/participate",
+                            {"user_id": _ua, "option": 0, "stake": 20}, token=_ta)
+            _s2, _p2 = call("POST", f"/api/markets/{_rm_id}/participate",
+                            {"user_id": _ub, "option": 1, "stake": 20}, token=_tb)
+            check("v0.7.9 对照双方均成功参与（结算前必须）",
+                  _s1 == 200 and _s2 == 200, f"{_s1} {_s2} {str(_p1)[:80]}")
+            # 结算为 option 0：甲押中（Brier=(1-p)^2 小），乙未中（Brier=p^2 大）
+            s, jS = call("POST", "/api/admin/settle", {
+                "market_id": _rm_id, "winning_option": 0, "source": "manual"}, admin=True)
+            check("v0.7.9 结算后触发技能评级更新",
+                  s == 200 and jS.get("rating_updated") == 2, f"{s} {str(jS)[:200]}")
+
+            s, jL = call("GET", "/api/leaderboard?sort=skill&limit=50")
+            _eA = next((x for x in (jL or []) if x.get("username") == "评级用户甲"), {})
+            _eB = next((x for x in (jL or []) if x.get("username") == "评级用户乙"), {})
+            check("v0.7.9 排行榜带技能区间与置信度",
+                  s == 200 and all(k in _eA for k in
+                                   ("skill_rating", "skill_rd", "skill_low", "skill_high",
+                                    "skill_confidence", "provisional")),
+                  f"{s} {str(_eA)[:200]}")
+            check("v0.7.9 区间包含单点分且 RD 收窄（已参与→不确定性下降）",
+                  _eA.get("skill_low", 0) <= _eA.get("skill_rating", 0) <= _eA.get("skill_high", 0)
+                  and _eA.get("skill_rd", 999) < 350, f"{str(_eA)[:200]}")
+            check("v0.7.9 押中者技能分高于未中者（成对比较生效）",
+                  _eA.get("skill_rating", 0) > _eB.get("skill_rating", 0),
+                  f"甲={_eA.get('skill_rating')} 乙={_eB.get('skill_rating')}")
+            # 只结算 1 场 → 样本不足，应标 provisional，且不占正式榜位
+            check("v0.7.9 样本不足标记为 provisional",
+                  _eA.get("provisional") is True, f"{str(_eA)[:200]}")
+            s, jR = call("GET", "/api/leaderboard?sort=skill&limit=50&ranked_only=1")
+            _names = [x.get("username") for x in (jR or [])]
+            check("v0.7.9 ranked_only 过滤临时分用户",
+                  s == 200 and "评级用户甲" not in _names, f"{s} {_names[:5]}")
+            # 保守命中率：2/2 的 Wilson 下界必须远低于 100%，不能靠运气冲顶
+            check("v0.7.9 保守命中率不高于裸命中率",
+                  (_eA.get("accuracy_conservative") or 0) <= (_eA.get("accuracy") or 1),
+                  f"acc={_eA.get('accuracy')} conservative={_eA.get('accuracy_conservative')}")
+
+    # (8b) 评级纯函数不变量（脱离 HTTP 直接验算法）
+    try:
+        import sys as _sys3, os as _os3
+        _sys3.path.insert(0, _os3.path.join(_os3.path.dirname(_os3.path.dirname(
+            _os3.path.abspath(__file__)))))
+        from core import rating as _rt  # noqa: E402
+        # 成对得分必须零和且对称，否则一场比较会凭空造分
+        _sym = all(abs(_rt.pair_score(a, b) + _rt.pair_score(b, a) - 1.0) < 1e-9
+                   for a, b in [(0.0, 1.0), (0.25, 0.25), (0.01, 0.81), (0.0, 0.0)])
+        # 与同分对手反复打平，分数不得漂移（Glicko-2 无偏性）
+        _r, _rd, _sg = 1500.0, 350.0, 0.06
+        for _ in range(10):
+            _r, _rd, _sg = _rt.update_rating(_r, _rd, _sg, [(1500.0, 60.0, 0.5)])
+        _neutral = abs(_r - 1500.0) < 1.0
+        # 打赢高分对手应涨分、输给低分对手应跌分
+        _w = 1500.0
+        for _ in range(5):
+            _w, _, _ = _rt.update_rating(_w, 350.0, 0.06, [(1700.0, 60.0, 1.0)])
+        _l = 1500.0
+        for _ in range(5):
+            _l, _, _ = _rt.update_rating(_l, 350.0, 0.06, [(1300.0, 60.0, 0.0)])
+        # 小样本保护：2/2 的 Wilson 下界必须显著低于 1.0
+        _wilson = _rt.wilson_lower_bound(2, 2) < 0.5
+        # 久未参与 → 不确定性回升
+        _decay = _rt.rd_decay(80.0, 0.06, 0) < _rt.rd_decay(80.0, 0.06, 60)
+        # 「跑赢共识」方向必须正确：押中>0>未中，逆势押中>从众押中，热门翻车<冷门未中
+        _sk = _rt.consensus_skill
+        _dirn = (_sk(0.2, True) > _sk(0.8, True) > 0 > _sk(0.2, False) > _sk(0.8, False))
+        _ok_rt = _sym and _neutral and _w > 1500 and _l < 1500 and _wilson and _decay and _dirn
+        _note_rt = (f"symmetric={_sym} neutral={_neutral}({round(_r,2)}) "
+                    f"win={round(_w,1)} loss={round(_l,1)} wilson2of2="
+                    f"{round(_rt.wilson_lower_bound(2,2),3)} decay={_decay} direction={_dirn}")
+    except Exception as _e:
+        _ok_rt, _note_rt = False, f"{type(_e).__name__}: {_e}"
+    check("v0.7.9 Glicko-2 无偏/成对零和/小样本保护/RD 回升", _ok_rt, _note_rt)
+
+    # (8c) 外部概率只读喂价：合规隔离（未配置即停用，且绝不参与结算）
+    s, jX = call("GET", "/api/markets/1/external_ref")
+    check("v0.7.9 外部参考未配置时停用且不伪造",
+          s == 200 and jX.get("enabled") is False and jX.get("reference") is None,
+          f"{s} {str(jX)[:160]}")
+    check("v0.7.9 外部参考附「不具结算效力」声明",
+          "不参与本平台任何结算" in (jX.get("disclaimer") or ""), f"{str(jX)[:160]}")
+    try:
+        import os as _os4
+        _root = _os4.path.dirname(_os4.path.dirname(_os4.path.abspath(__file__)))
+        _leak = []
+        for _fn in ("settlement.py", "oracle.py", "oracle_sources.py"):
+            _p = _os4.path.join(_root, "core", _fn)
+            if _os4.path.exists(_p):
+                with open(_p, encoding="utf-8") as _f:
+                    if "external_ref" in _f.read():
+                        _leak.append(_fn)
+        _ok_iso = not _leak
+        _note_iso = f"泄漏文件={_leak}" if _leak else "结算/Oracle 路径零引用"
+    except Exception as _e:
+        _ok_iso, _note_iso = False, f"{type(_e).__name__}: {_e}"
+    check("v0.7.9 外部参考与结算路径代码级隔离", _ok_iso, _note_iso)
+
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
         print("失败项：", FAIL)
@@ -776,6 +897,24 @@ def _port_in_use():
         return False
 
 
+def _listener_pid():
+    """返回占用 BASE 端口的进程 PID；无人监听返回 None。"""
+    try:
+        out = subprocess.check_output(["netstat", "-ano", "-p", "TCP"],
+                                      stderr=subprocess.DEVNULL).decode(errors="ignore")
+    except Exception:
+        return None
+    for line in out.splitlines():
+        if ":8000" in line and "LISTENING" in line.upper():
+            parts = line.split()
+            if parts:
+                try:
+                    return int(parts[-1])
+                except ValueError:
+                    return None
+    return None
+
+
 def fresh_start():
     """Wipe DB, re-seed, and start a local server for an idempotent run.
 
@@ -785,12 +924,21 @@ def fresh_start():
     seed.py 撞残留数据报 UNIQUE 约束冲突——表现为一堆无法解释的级联失败。
     先把端口清干净、等端口真正释放，再动数据库，才是幂等的。
     """
-    # 先杀干净 8000 端口残留进程，并等待端口与文件锁真正释放
+    # 先杀干净 8000 端口残留进程，并等待端口与文件锁真正释放。
+    # 关键点：**清不干净就必须响亮失败**。曾经这里失败后只是继续往下跑，结果
+    # 新服务绑定失败、测试全程打在上一轮的残留进程上——旧代码配新测试，
+    # 既会产生假绿（断言恰好对旧行为也成立）也会产生假红（v0.7.9 评级方向
+    # 修正后，实测值仍是旧算法的结果，排查了很久才定位到是残留进程）。
     kill_port_8000()
     for _ in range(20):
         if not _port_in_use():
             break
+        kill_port_8000()  # taskkill 首次可能失败，边等边重试
         time.sleep(0.5)
+    if _port_in_use():
+        raise RuntimeError(
+            "[fresh] 端口 8000 仍被占用且无法清理。继续跑会打在残留进程上，"
+            "得到不可信的结果。请手动结束占用进程后重跑。")
 
     try:
         import sqlite3
@@ -812,7 +960,7 @@ def fresh_start():
     subprocess.run([sys.executable, "seed.py"], check=True)
 
     print("[fresh] starting server ...")
-    subprocess.Popen(
+    child = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "main:app", "--port", "8000",
          "--log-level", "warning"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -829,6 +977,16 @@ def fresh_start():
                 # 守卫②：v0.4.1 端点（404=残留旧进程）
                 st2, _ = call("GET", "/api/admin/comments/pending")
                 if st2 != 404:
+                    # 守卫③：确认本轮启动的进程还活着。端口被占用时 uvicorn
+                    # 会 bind 失败直接退出，此时应答的必是残留服务；
+                    # 用 child.poll() 判断比比对 PID 可靠（Windows 下
+                    # python.exe 与实际解释器的进程身份可能不一致）。
+                    if child.poll() is not None:
+                        print(f"[fresh] 本轮进程已退出(rc={child.returncode})，"
+                              f"说明端口被占用、应答来自残留服务；killing & retrying...")
+                        kill_port_8000()
+                        time.sleep(1)
+                        continue
                     print("[fresh] server up (v0.4.1 verified)")
                     return
                 print("[fresh] v0.4.1 endpoint missing (stale server); killing & retrying...")
