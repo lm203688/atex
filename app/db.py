@@ -49,15 +49,25 @@ CREATE TABLE IF NOT EXISTS markets (
   settled_at TEXT,
   creator INTEGER,
   settlement_criteria TEXT,
-  oracle_meta TEXT
+  oracle_meta TEXT,
+  -- 连续型市场（v0.7.8，Metaculus 连续型问题范式）：
+  -- market_type: 'categorical'(默认，押选项) / 'numeric'(预测一个数值区间内的值)
+  market_type TEXT NOT NULL DEFAULT 'categorical',
+  numeric_lower REAL,
+  numeric_upper REAL,
+  numeric_unit TEXT,
+  -- 数值型市场的官方结果值；分类市场仍用 resolution(选项下标)
+  resolution_value REAL
 );
 CREATE TABLE IF NOT EXISTS positions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   market_id INTEGER NOT NULL,
-  option_index INTEGER NOT NULL,
+  option_index INTEGER NOT NULL,   -- 数值型市场固定为 -1，用 forecast_value/sigma
   stake INTEGER NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  forecast_value REAL,             -- v0.7.8 连续型：预测的数值
+  forecast_sigma REAL              -- v0.7.8 连续型：声明的不确定性(越小=越自信)
 );
 CREATE TABLE IF NOT EXISTS reward_pool (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,7 +131,8 @@ CREATE TABLE IF NOT EXISTS redemptions (
 CREATE TABLE IF NOT EXISTS oracle_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   market_id INTEGER NOT NULL,
-  winning_option INTEGER NOT NULL,
+  winning_option INTEGER NOT NULL,   -- 数值型市场固定为 -1，真实值存 numeric_value
+  numeric_value REAL,                -- v0.7.8 连续型：Oracle 给出的数值结果
   source TEXT,
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -324,6 +335,34 @@ def init_db():
             conn.execute("ALTER TABLE markets ADD COLUMN oracle_meta TEXT")
         except sqlite3.OperationalError:
             pass
+        # 连续型市场（v0.7.8）：既有库补列。
+        # market_type 带 DEFAULT 'categorical'，保证历史市场被正确归类为分类市场
+        # （否则 NULL 会让所有既有市场在数值分支里被误判）。
+        for col, ctype, default in (
+            ("market_type", "TEXT", "'categorical'"),
+            ("numeric_lower", "REAL", "NULL"),
+            ("numeric_upper", "REAL", "NULL"),
+            ("numeric_unit", "TEXT", "NULL"),
+            ("resolution_value", "REAL", "NULL"),
+        ):
+            try:
+                conn.execute(
+                    f"ALTER TABLE markets ADD COLUMN {col} {ctype} DEFAULT {default}")
+            except sqlite3.OperationalError:
+                pass
+        for col, ctype in (("forecast_value", "REAL"), ("forecast_sigma", "REAL")):
+            try:
+                conn.execute(f"ALTER TABLE positions ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass
+        # Oracle 数值结果留痕（数值型市场：winning_option=-1，真实值存此列）
+        try:
+            conn.execute("ALTER TABLE oracle_log ADD COLUMN numeric_value REAL")
+        except sqlite3.OperationalError:
+            pass
+        # 历史行兜底：若 market_type 为空（早期库手工改过），统一归为分类市场
+        conn.execute("UPDATE markets SET market_type='categorical' "
+                     "WHERE market_type IS NULL")
         # 评论层合规：审核状态 / 举报计数 / 命中原因（人工兜底）
         for col, ctype, default in (
             ("status", "TEXT", "'ok'"),        # ok / review / rejected

@@ -34,13 +34,45 @@ def set_result(market_id, winning_option, source=None, note=None, by=None):
     return settlement.settle_market(market_id, winning_option, oracle_note=note, oracle_source=source)
 
 
+def set_numeric_result(market_id, value, source=None, note=None, by=None):
+    """写入数值型市场的 Oracle 结果（如"最终票房 12.4 亿"）并触发 CRPS 结算。
+
+    与 set_result 的区别：结果不是选项下标而是真实数值，留痕到
+    oracle_log.numeric_value（winning_option 置 -1 占位，保持列 NOT NULL 兼容）。
+    结算走 settlement.settle_numeric_market，按预测分布与真实值的 CRPS 技能分给付。
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, status, market_type FROM markets WHERE id=?", (market_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError("市场不存在")
+        if row["status"] != "open":
+            raise ValueError("市场非进行中，无法结算")
+        if (row["market_type"] or "categorical") != "numeric":
+            raise ValueError("该市场不是数值型市场")
+        conn.execute(
+            "INSERT INTO oracle_log (market_id, winning_option, numeric_value, source, note) "
+            "VALUES (?,?,?,?,?)",
+            (market_id, -1, float(value), source, note),
+        )
+        conn.commit()
+    return settlement.settle_numeric_market(
+        market_id, float(value), oracle_note=note, oracle_source=source)
+
+
 def auto_settle_due():
-    """对「已到期且已预载 Oracle 结果但未结算」的市场批量自动结算。返回结算数量。"""
+    """对「已到期且已预载 Oracle 结果但未结算」的市场批量自动结算。返回结算数量。
+
+    数值型市场不在此路径结算（它按数值结果走 set_numeric_result），
+    故显式排除，避免把 -1 当选项下标传给分类结算。
+    """
     with get_conn() as conn:
         due = conn.execute(
             "SELECT m.id, o.winning_option, o.source, o.note FROM markets m "
             "JOIN oracle_log o ON o.market_id=m.id "
             "WHERE m.status='open' AND m.closes_at IS NOT NULL AND m.closes_at <= ? "
+            "AND COALESCE(m.market_type,'categorical')='categorical' "
             "AND NOT EXISTS (SELECT 1 FROM oracle_log x WHERE x.market_id=m.id AND x.id>o.id)",
             (now_iso(),),
         ).fetchall()
@@ -64,7 +96,8 @@ def resolve_due_from_sources():
     with get_conn() as conn:
         due = conn.execute(
             "SELECT id FROM markets WHERE status='open' "
-            "AND closes_at IS NOT NULL AND closes_at <= ?",
+            "AND closes_at IS NOT NULL AND closes_at <= ? "
+            "AND COALESCE(market_type,'categorical')='categorical'",
             (now_iso(),),
         ).fetchall()
     tried = len(due)

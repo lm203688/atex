@@ -90,7 +90,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.7",
+    version="0.7.8",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -554,6 +554,28 @@ def api_participate(market_id: int, req: PartReq, request: Request):
     mark_markets_dirty()  # 概率变化，触发实时广播
     return m
 
+class NumPartReq(BaseModel):
+    user_id: int
+    value: float
+    stake: int
+    sigma: float = None
+
+@app.post("/api/markets/{market_id}/participate_numeric")
+def api_participate_numeric(market_id: int, req: NumPartReq, request: Request):
+    """数值市场参与（v0.7.8）：预测一个数值，可声明不确定性 sigma。
+
+    sigma 越小=越自信。CRPS 是严格适当评分规则，所以"自认很准就把 sigma 报小"
+    只有在真的准时才划算——瞎报窄区间会被重罚。
+    """
+    _auth_user(req.user_id, request)
+    try:
+        m = markets.participate_numeric(req.user_id, market_id, req.value,
+                                        req.stake, req.sigma)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    mark_markets_dirty()
+    return m
+
 @app.post("/api/markets/{market_id}/dispute")
 def api_dispute(market_id: int, user_id: int, reason: str, request: Request):
     _auth_user(user_id, request)
@@ -714,6 +736,42 @@ def api_settle(req: SettleReq, request: Request):
     mark_markets_dirty()  # 市场状态变化，触发实时广播
     return res
 
+class SettleNumericReq(BaseModel):
+    market_id: int
+    value: float              # 真实数值结果（如票房 44.2 亿）
+    source: str = None
+    note: str = None
+
+@app.post("/api/admin/settle_numeric")
+def api_settle_numeric(req: SettleNumericReq, request: Request):
+    """数值市场结算（v0.7.8）：写入真实数值并按 CRPS 技能分给付。"""
+    _auth_admin(request)
+    try:
+        res = oracle.set_numeric_result(req.market_id, req.value, req.source, req.note)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    try:
+        with get_conn() as conn:
+            mkt = conn.execute(
+                "SELECT title, resolution_value, numeric_unit FROM markets WHERE id=?",
+                (req.market_id,)).fetchone()
+            parts = conn.execute(
+                "SELECT DISTINCT user_id FROM positions WHERE market_id=? "
+                "AND user_id IS NOT NULL", (req.market_id,)).fetchall()
+        if mkt:
+            unit = mkt["numeric_unit"] or ""
+            for p in parts:
+                notifications.notify(
+                    p["user_id"], "market_resolved",
+                    "你参与的市场已结算 🏁",
+                    f"「{mkt['title']}」结果为 {mkt['resolution_value']}{unit}，"
+                    f"快去看看你的预测有多准。",
+                    ref_type="market", ref_id=req.market_id)
+    except Exception:
+        pass
+    mark_markets_dirty()
+    return res
+
 @app.post("/api/oracle/auto")
 def api_oracle_auto(request: Request):
     _auth_admin(request)
@@ -767,19 +825,29 @@ class AdminCreateMarket(BaseModel):
     title: str
     description: str = ""
     category: str = "未分类"
-    options: list
+    options: list = []
     oracle_source: str = ""
     closes_at: str = None
+    # v0.7.8 连续型市场：market_type='numeric' 时用区间预测，options 留空
+    market_type: str = "categorical"
+    numeric_lower: float = None
+    numeric_upper: float = None
+    numeric_unit: str = None
 
 @app.post("/api/admin/markets")
 def api_admin_create_market(req: AdminCreateMarket, request: Request):
     _auth_admin(request)
-    if not req.options or len(req.options) < 2:
-        raise HTTPException(400, "至少需要两个选项")
-    mid = markets.create_market(
-        req.title, req.description, req.category, req.category,
-        req.options, req.oracle_source, req.closes_at,
-    )
+    if req.market_type == "categorical" and (not req.options or len(req.options) < 2):
+        raise HTTPException(400, "分类市场至少需要两个选项")
+    try:
+        mid = markets.create_market(
+            req.title, req.description, req.category, req.category,
+            req.options or [], req.oracle_source, req.closes_at,
+            market_type=req.market_type, numeric_lower=req.numeric_lower,
+            numeric_upper=req.numeric_upper, numeric_unit=req.numeric_unit,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     return {"market_id": mid}
 
 # ---------- UGC：用户发起事件 ----------

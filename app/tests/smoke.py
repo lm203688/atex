@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.7", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.8", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
@@ -659,6 +659,74 @@ def main():
     # 会让同一天内的字符串比较（到期判定、按天范围查询）排序错乱。
     check("v0.7.7 落库时间格式为 '%Y-%m-%d %H:%M:%S'(空格分隔)",
           "T" not in _ts and len(_ts) == 19, f"now_iso()={_ts!r}")
+
+    # (7) v0.7.8 连续型（数值区间）市场 + CRPS 严格评分（借鉴 Metaculus 连续型问题）
+    # 此前平台只能表达离散选项，无法承载"票房多少亿/气温多少度"这类连续量。
+    # CRPS 是**严格适当**评分规则：只有如实报出自己的真实分布才最优，
+    # 因此同时奖励"准"与"不确定性诚实"，瞎报极窄区间会被重罚。
+    s, j = call("POST", "/api/admin/markets", {
+        "title": "2026贺岁档总票房", "category": "娱乐",
+        "market_type": "numeric", "numeric_lower": 0, "numeric_upper": 80,
+        "numeric_unit": "亿元", "oracle_source": "官方票房数据"}, admin=True)
+    _nm_id = j.get("market_id") if s == 200 else None
+    check("v0.7.8 创建数值型市场", s == 200 and _nm_id, f"{s} {j}")
+
+    if _nm_id:
+        s, j = call("GET", f"/api/markets/{_nm_id}")
+        check("v0.7.8 数值市场返回 market_type/区间/单位",
+              s == 200 and j.get("market_type") == "numeric"
+              and j.get("numeric_upper") == 80 and j.get("numeric_unit") == "亿元",
+              f"{s} {str(j)[:160]}")
+
+        s, j = call("POST", f"/api/markets/{_nm_id}/participate_numeric",
+                    {"user_id": uid, "value": 45.0, "stake": 20, "sigma": 3.0}, token=tok)
+        check("v0.7.8 数值参与(预测值+不确定性)",
+              s == 200 and j.get("numeric_consensus"), f"{s} {str(j)[:200]}")
+        _cons = (j.get("numeric_consensus") or {}) if s == 200 else {}
+        check("v0.7.8 共识含加权均值/中位数/离散度",
+              "mean" in _cons and "median" in _cons and "sd" in _cons, f"{_cons}")
+
+        # 分类市场的参与端点不能用于数值市场（防路径串台）
+        s, _ = call("POST", f"/api/markets/{_nm_id}/participate",
+                    {"user_id": uid, "option": 0, "stake": 20}, token=tok)
+        check("v0.7.8 数值市场拒绝选项式参与", s == 400, f"{s}")
+
+        s, j = call("POST", "/api/admin/settle_numeric",
+                    {"market_id": _nm_id, "value": 44.0, "source": "官方票房数据"}, admin=True)
+        check("v0.7.8 数值结算写入真实值并给付",
+              s == 200 and j.get("true_value") == 44.0 and j.get("avg_skill") is not None,
+              f"{s} {j}")
+        _skill = j.get("avg_skill") if s == 200 else None
+        check("v0.7.8 命中附近技能分高(>0.9)", _skill is not None and _skill > 0.9,
+              f"avg_skill={_skill}")
+
+        s, j = call("GET", f"/api/markets/{_nm_id}")
+        check("v0.7.8 结算后 resolution_value 落库且状态为 settled",
+              s == 200 and j.get("resolution_value") == 44.0
+              and j.get("status") == "settled", f"{s} {str(j)[:160]}")
+
+        s, j = call("GET", f"/api/users/{uid}/predictions", token=tok)
+        _npr = [p for p in (j or []) if p.get("market_type") == "numeric"]
+        check("v0.7.8 我的预测含数值条目与技能分",
+              s == 200 and bool(_npr) and _npr[0].get("skill") is not None,
+              f"{s} {str(_npr[:1])[:200]}")
+
+    # (7b) CRPS 纯函数不变量：好预测得分高、差预测得分低（脱离 HTTP 直接验算法）
+    try:
+        import sys as _sys2, os as _os2
+        _sys2.path.insert(0, _os2.path.join(_os2.path.dirname(_os2.path.dirname(
+            _os2.path.abspath(__file__)))))
+        from core import numeric as _nm2  # noqa: E402
+        _sp = _nm2.numeric_skill(44.0, 1.0, 44.0, 0, 80)   # 几乎完美
+        _sb = _nm2.numeric_skill(0.0, 1.0, 80.0, 0, 80)    # 差到极点
+        _mono = all(
+            _nm2.crps_normal(50, 5, y) <= _nm2.crps_normal(50, 5, y2)
+            for y, y2 in zip([50, 52, 55, 60], [52, 55, 60, 70]))
+        _ok_math = _sp > 0.95 and _sb < 0.2 and _mono
+        _note_math = f"perfect={round(_sp,4)} worst={round(_sb,4)} monotonic={_mono}"
+    except Exception as _e:
+        _ok_math, _note_math = False, f"{type(_e).__name__}: {_e}"
+    check("v0.7.8 CRPS 技能分区分好坏预测且随误差单调递增", _ok_math, _note_math)
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:

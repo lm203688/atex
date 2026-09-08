@@ -10,29 +10,151 @@ from db import get_conn, now_iso, day_bounds_utc, utc_now
 from core import lmsr
 from core import points
 from core import scoring
+from core import numeric
 
 PARTICIPATE_MIN = 10
 PARTICIPATE_MAX = 50
 DAILY_PARTICIPATE_CAP = 50  # 反刷：单用户每日参与上限
 
 
+MARKET_TYPE_CATEGORICAL = "categorical"
+MARKET_TYPE_NUMERIC = "numeric"
+
+
 def create_market(title, description, category, whitelist_tag, options,
                   oracle_source, closes_at, creator=None, settlement_criteria="",
-                  oracle_meta=None):
+                  oracle_meta=None, market_type=MARKET_TYPE_CATEGORICAL,
+                  numeric_lower=None, numeric_upper=None, numeric_unit=None):
+    """创建市场。market_type 决定后续参与/结算走哪条路径：
+
+    - categorical（默认，完全沿用既有 LMSR 份额逻辑）：options 为选项数组；
+    - numeric（v0.7.8 新增，Metaculus 连续型问题范式）：options 为空数组，
+      改由 numeric_lower/numeric_upper 定义预测区间，用户预测一个数值 + 不确定性。
+
+    数值市场不做 LMSR 概率快照（没有离散选项可算），故跳过初始历史快照。
+    """
+    if market_type not in (MARKET_TYPE_CATEGORICAL, MARKET_TYPE_NUMERIC):
+        raise ValueError("market_type 必须是 categorical 或 numeric")
+    if market_type == MARKET_TYPE_NUMERIC:
+        try:
+            lo, hi = float(numeric_lower), float(numeric_upper)
+        except (TypeError, ValueError):
+            raise ValueError("数值市场必须提供 numeric_lower / numeric_upper")
+        if not (hi > lo):
+            raise ValueError("数值市场的上界必须大于下界")
+        options = []          # 数值市场没有离散选项
+        numeric_lower, numeric_upper = lo, hi
+    else:
+        if not options:
+            raise ValueError("分类市场必须提供 options")
+        numeric_lower = numeric_upper = numeric_unit = None
+
     opts = json.dumps(options, ensure_ascii=False)
     meta = json.dumps(oracle_meta, ensure_ascii=False) if isinstance(oracle_meta, (dict, list)) else None
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO markets (title, description, category, whitelist_tag, options_json, "
-            "oracle_source, closes_at, creator, settlement_criteria, oracle_meta) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "oracle_source, closes_at, creator, settlement_criteria, oracle_meta, "
+            "market_type, numeric_lower, numeric_upper, numeric_unit) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (title, description, category, whitelist_tag, opts, oracle_source, closes_at,
-             creator, settlement_criteria, meta),
+             creator, settlement_criteria, meta,
+             market_type, numeric_lower, numeric_upper, numeric_unit),
         )
         conn.commit()
         mid = cur.lastrowid
-    # 初始概率快照（让趋势图从创建起就有数据）
-    record_probability_history(mid, reason="create")
+    # 初始概率快照（让趋势图从创建起就有数据）——仅分类市场适用
+    if market_type == MARKET_TYPE_CATEGORICAL:
+        record_probability_history(mid, reason="create")
     return mid
+
+
+def numeric_consensus(market_id):
+    """数值市场的社区共识：声誉加权均值/中位数/离散度。
+
+    与分类市场「声誉加权概率」同构（meritocratic 聚合，抑制免费积分下的噪声），
+    只是聚合对象从份额向量变成数值分布。
+    """
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT p.forecast_value AS v, p.forecast_sigma AS s, u.reputation AS rep "
+            "FROM positions p JOIN users u ON u.id=p.user_id "
+            "WHERE p.market_id=? AND p.forecast_value IS NOT NULL",
+            (market_id,),
+        ).fetchall()
+    forecasts = [
+        (r["v"], r["s"] or 0.0, scoring.weight_from_reputation(r["rep"]))
+        for r in rows
+    ]
+    return numeric.weighted_consensus(forecasts)
+
+
+def participate_numeric(user_id, market_id, value, stake, sigma=None):
+    """数值市场参与：预测一个数值（可声明不确定性 sigma）。
+
+    sigma 越小代表越自信；未声明时按区间的 10% 取默认值——避免 sigma=0
+    导致 CRPS 退化为纯绝对误差、使"瞎报极窄区间"反而占便宜。
+    """
+    stake = int(stake)
+    if stake < PARTICIPATE_MIN or stake > PARTICIPATE_MAX:
+        raise ValueError(f"参与消耗需在 {PARTICIPATE_MIN}~{PARTICIPATE_MAX} 积分之间")
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, status, market_type, numeric_lower, numeric_upper, creator "
+            "FROM markets WHERE id=?", (market_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError("市场不存在")
+        if row["market_type"] != MARKET_TYPE_NUMERIC:
+            raise ValueError("该市场不是数值型市场")
+        if row["status"] != "open":
+            raise ValueError("市场已关闭/已结算")
+        if row["creator"] is not None and row["creator"] == user_id:
+            raise ValueError("发起者不能参与自己发起的事件")
+        lo, hi = float(row["numeric_lower"]), float(row["numeric_upper"])
+        v = numeric.clamp_forecast(value, lo, hi)
+        if v is None:
+            raise ValueError("预测值必须是有限数值")
+        s = float(sigma) if sigma else numeric.default_sigma(lo, hi)
+        if s <= 0:
+            raise ValueError("不确定性 sigma 必须为正数")
+        cnt = conn.execute(
+            "SELECT COUNT(*) AS c FROM positions WHERE user_id=? AND market_id=?",
+            (user_id, market_id),
+        ).fetchone()["c"]
+        if cnt >= 3:
+            raise ValueError("同一市场最多参与3次")
+        day_cnt = conn.execute(
+            "SELECT COUNT(*) AS c FROM positions "
+            "WHERE user_id=? AND created_at >= ? AND created_at < ?",
+            (user_id, *day_bounds_utc()),
+        ).fetchone()["c"]
+        if day_cnt >= DAILY_PARTICIPATE_CAP:
+            raise ValueError(f"今日参与已达上限（{DAILY_PARTICIPATE_CAP}）")
+
+    points.consume(user_id, stake, f"参与市场#{market_id}", ref_type="market", ref_id=market_id)
+    try:
+        points.record_prediction_streak(user_id)
+    except Exception:
+        pass
+    # 新手引导：与分类市场保持一致
+    try:
+        with get_conn() as conn:
+            prior = conn.execute(
+                "SELECT COUNT(*) AS c FROM positions WHERE user_id=?", (user_id,)
+            ).fetchone()["c"]
+        if prior == 0:
+            points.grant_reputation(user_id, 15, "新手首次预测引导")
+    except Exception:
+        pass
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO positions (user_id, market_id, option_index, stake, "
+            "forecast_value, forecast_sigma) VALUES (?,?,?,?,?,?)",
+            (user_id, market_id, -1, stake, v, s),
+        )
+        conn.commit()
+    return get_market(market_id)
 
 
 def record_probability_history(market_id, reason="trade"):
@@ -116,6 +238,19 @@ def get_market(market_id):
         if not row:
             return None
         m = dict(row)
+        # 兼容既有库：market_type 为空时按分类市场处理（迁移已兜底，此处再保险）
+        m["market_type"] = m.get("market_type") or MARKET_TYPE_CATEGORICAL
+        if m["market_type"] == MARKET_TYPE_NUMERIC:
+            m["options"] = []
+            m["shares"] = []
+            m["raw_probabilities"] = []
+            m["probabilities"] = []
+            m["numeric_consensus"] = numeric_consensus(market_id)
+            m["participants"] = conn.execute(
+                "SELECT COUNT(DISTINCT user_id) AS c FROM positions WHERE market_id=?",
+                (market_id,),
+            ).fetchone()["c"]
+            return m
         options = json.loads(m["options_json"])
         simple, wtd = _q_vector(conn, market_id)
         raw = [simple.get(i, 0) for i in range(len(options))]
@@ -391,13 +526,38 @@ def my_predictions(user_id, limit=50):
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT p.id, p.market_id, p.option_index, p.stake, p.prob_at_bet, p.created_at, "
-            "m.title, m.options_json, m.status, m.resolution "
+            "p.forecast_value, p.forecast_sigma, "
+            "m.title, m.options_json, m.status, m.resolution, m.resolution_value, "
+            "m.market_type, m.numeric_unit "
             "FROM positions p JOIN markets m ON m.id=p.market_id "
             "WHERE p.user_id=? ORDER BY p.id DESC LIMIT ?",
             (user_id, limit),
         ).fetchall()
         out = []
         for r in rows:
+            # 数值市场：没有离散选项，展示预测值与真实值（option_index 固定为 -1）
+            if (r["market_type"] or MARKET_TYPE_CATEGORICAL) == MARKET_TYPE_NUMERIC:
+                true_val = r["resolution_value"]
+                skill = None
+                if r["status"] == "settled" and true_val is not None:
+                    row = conn.execute(
+                        "SELECT numeric_lower, numeric_upper FROM markets WHERE id=?",
+                        (r["market_id"],),
+                    ).fetchone()
+                    if row:
+                        skill = round(numeric.numeric_skill(
+                            r["forecast_value"], r["forecast_sigma"] or 0.0,
+                            true_val, row["numeric_lower"], row["numeric_upper"]), 4)
+                out.append({
+                    "market_id": r["market_id"], "title": r["title"],
+                    "market_type": MARKET_TYPE_NUMERIC,
+                    "my_forecast": r["forecast_value"],
+                    "my_sigma": r["forecast_sigma"],
+                    "true_value": true_val, "skill": skill,
+                    "unit": r["numeric_unit"], "stake": r["stake"],
+                    "status": r["status"],
+                })
+                continue
             opts = json.loads(r["options_json"])
             won = None
             if r["status"] == "settled" and r["resolution"] is not None:
