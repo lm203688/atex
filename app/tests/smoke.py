@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.9", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.10", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的

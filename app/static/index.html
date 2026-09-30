@@ -76,6 +76,7 @@
   textarea{resize:vertical;min-height:54px}
   .muted{color:var(--muted);font-size:13px}
   .tag{display:inline-block;background:#ecfdf5;color:var(--green);font-size:12px;padding:2px 9px;border-radius:7px;margin-left:6px}
+  .ext-ref{background:#f1f5f9;border:1px solid #e2e8f0;color:#334155;font-size:12px;padding:7px 11px;border-radius:9px;margin:8px 0}
   .tag.rev{background:#fef3c7;color:var(--amber)}
   .tag.rej{background:#fee2e2;color:var(--red)}
   .tag.cat{background:var(--soft);color:var(--primary)}
@@ -552,6 +553,7 @@ async function loadMarkets(){
 
 /* ---------- 实时概率推送（WebSocket，离线自动回落到服务端渲染值）---------- */
 let liveProbs = {};
+const mtCache = {};   // 市场类型缓存（marketCard 写入，participate 读取以判别数值市场）
 let _wsRetry = 0;
 function applyLive(){
   // 用最新快照原地更新概率条，不重渲染整页
@@ -595,8 +597,10 @@ function sparkSVG(hist, idx){
   return `<svg class="spark" width="${w}" height="${h}" title="概率趋势"><polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="1.5"/></svg>`;
 }
 function marketCard(m){
+  const isNum = m.market_type==='numeric';
+  mtCache[m.id]=m.market_type; // 供 participate() 判别数值市场
   const lead=(m.probabilities||[]).reduce((bi,v,i,a)=>v>a[bi]?i:bi,0);
-  const opts=m.options.map((o,i)=>{
+  const opts = isNum ? '' : m.options.map((o,i)=>{
     const p=(m.probabilities[i]||0)*100;
     return `<div class="rs23">
       <div class="row rs66"><span class="rs14">${esc(o)}</span>
@@ -605,59 +609,98 @@ function marketCard(m){
   }).join('');
   let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
   if(m.status==='settled' && m.resolution!=null){
-    statusLine=`<span class="res">已结算：${esc(m.options[m.resolution])}</span>`;
+    statusLine=`<span class="res">已结算：${isNum?esc(String(m.resolution_value)):esc(m.options[m.resolution])}</span>`;
   }
+  const typeTag = isNum?`<span class="tag" style="background:#e0f2fe;color:#0369a1">📐 数值</span>`:`<span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>`;
   const canPlay = me && m.status==='open';
   const spark=sparkSVG(m._hist, lead);
+  let numSummary='';
+  if(isNum && m.numeric_consensus){
+    const c=m.numeric_consensus;
+    numSummary=`<div class="rs23"><div class="row rs66"><span class="rs14">共识中位数</span><span class="prob">${esc(String(c.median))}</span></div>
+      <div class="muted rs45">均值 ${esc(String(c.mean))} · ±${esc(String(c.sd))} · ${c.n} 人预测</div></div>`;
+  }
   return `<div class="card">
     <div class="row rs41">
       <b class="rs68" data-call="openMarket(${m.id})">${esc(m.title)}</b>
       ${spark?`<span class="muted">${spark}</span>`:''}
     </div>
-    <span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>
+    ${typeTag}
     ${m.reco_reason?`<span class="pill rs67">推荐 · ${esc(m.reco_reason)}</span>`:''}
     <div class="muted rs45">${statusLine}</div>
     ${opts}
+    ${numSummary}
     ${canPlay?`<div class="row">
-      <select id="opt_${m.id}" class="rs13">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
-      <input id="stake_${m.id}" type="number" value="20" min="10" max="50" class="rs62">积分
-      <button class="btn" data-call="participate(${m.id})">参与预测</button>
+      ${isNum
+        ? `<input id="nval_${m.id}" type="number" class="rs13" placeholder="数值预测">
+           <input id="stake_${m.id}" type="number" value="20" min="10" max="50" class="rs62">积分
+           <button class="btn" data-call="participate(${m.id})">参与预测</button>`
+        : `<select id="opt_${m.id}" class="rs13">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
+           <input id="stake_${m.id}" type="number" value="20" min="10" max="50" class="rs62">积分
+           <button class="btn" data-call="participate(${m.id})">参与预测</button>`}
       <button class="btn ghost" data-call="openMarket(${m.id})">详情</button></div>`
       :`<div class="muted">${me?'市场已结束':'登录后可参与'} · <a class="link" data-call="openMarket(${m.id})">查看详情</a></div>`}
   </div>`;
 }
 
 /* ---------- 市场详情：趋势图 + 社区讨论 ---------- */
-let curMarketId=null;
+let curMarketId=null, curMarket=null;
 async function openMarket(id){
   curMarketId=id;
   const m=await api('/api/markets/'+id); if(!m){toast('市场不存在');return;}
+  curMarket=m;
+  const isNum = m.market_type==='numeric';
   const hist=await api('/api/markets/'+id+'/history')||[];
   const cmts=await api('/api/markets/'+id+'/comments')||[];
   const resol=await api('/api/markets/'+id+'/resolution')||{};
   $('pageTitle').textContent='市场详情';
   let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
-  if(m.status==='settled' && m.resolution!=null) statusLine=`<span class="res">已结算：${esc(m.options[m.resolution])}</span>`;
+  if(m.status==='settled' && m.resolution!=null) statusLine=`<span class="res">已结算：${isNum?esc(String(m.resolution_value)):esc(m.options[m.resolution])}</span>`;
   const canPlay=me&&m.status==='open';
-  const opts=m.options.map((o,i)=>{
+  const typeTag = isNum?`<span class="tag" style="background:#e0f2fe;color:#0369a1">📐 数值市场</span>`:`<span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>`;
+  const opts = isNum ? '' : m.options.map((o,i)=>{
     const p=(m.probabilities[i]||0)*100;
     return `<div class="rs23"><div class="row rs66"><span class="rs14">${esc(o)}</span>
       <span class="prob">${p.toFixed(1)}%</span><span class="muted">(${m.shares[i]}份)</span></div>
       <div class="bar"><span data-rs-style="width:${p}%"></span></div></div>`;
   }).join('');
+  let numBlock='';
+  if(isNum){
+    const c=m.numeric_consensus;
+    numBlock = c
+      ? `<div class="rs23"><div class="row rs66"><span class="rs14">社区共识中位数</span><span class="prob">${esc(String(c.median))}</span></div>
+         <div class="muted rs45">均值 ${esc(String(c.mean))} · 离散度 ±${esc(String(c.sd))} · ${c.n} 人预测${m.numeric_unit?(' · 单位 '+esc(m.numeric_unit)):''}</div>
+         <div class="muted rs45">区间范围 ${esc(String(m.numeric_lower))} ~ ${esc(String(m.numeric_upper))}</div></div>`
+      : `<div class="muted">尚无数值预测，来当第一个播种者。</div>`;
+  }
+  let extBlock='';
+  if(m.external_ref_prob!=null){
+    let em={}; try{ em=JSON.parse(typeof m.external_ref_json==='string'?m.external_ref_json:'{}'); }catch(e){ em={}; }
+    const src=em.source||'外部源';
+    extBlock=`<div class="ext-ref rs16">🌐 外部市场共识参考：<b>${(m.external_ref_prob*100).toFixed(1)}%</b> <span class="muted">（${esc(src)}）</span> · <span class="muted">仅参考，不具结算效力</span></div>`;
+  }
+  const playBlock = canPlay ? (isNum
+    ? `<div class="row rs6">
+        <input id="ndval_${m.id}" type="number" class="rs62" placeholder="你的数值预测">
+        <input id="ndsig_${m.id}" type="number" class="rs62" placeholder="σ不确定性(可选)" step="any">
+        <input id="dstake_${m.id}" type="number" value="20" min="10" max="50" class="rs62">积分
+        <button class="btn" data-call="participateDetail(${m.id})">参与预测</button></div>`
+    : `<div class="row rs6">
+        <select id="dopt_${m.id}" class="rs63">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
+        <input id="dstake_${m.id}" type="number" value="20" min="10" max="50" class="rs62">积分
+        <button class="btn" data-call="participateDetail(${m.id})">参与预测</button></div>`)
+    : `<div class="muted rs16">${me?'市场已结束':'登录后可参与'}</div>`;
   $('view').innerHTML=`
     <button class="btn ghost" data-call="go('markets')">← 返回市场</button>
     <div class="card rs6">
-      <b class="rs65">${esc(m.title)}</b><span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>
+      <b class="rs65">${esc(m.title)}</b>${typeTag}
       <div class="muted rs18">${esc(m.description||'')}</div>
       <div>${statusLine}</div>
-      <h4 class="rs64">各选项概率（声誉加权社区共识）</h4>
+      ${extBlock}
+      <h4 class="rs64">${isNum?'数值共识（声誉加权）':'各选项概率（声誉加权社区共识）'}</h4>
       ${opts}
-      ${canPlay?`<div class="row rs6">
-        <select id="dopt_${m.id}" class="rs63">${m.options.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>
-        <input id="dstake_${m.id}" type="number" value="20" min="10" max="50" class="rs62">积分
-        <button class="btn" data-call="participateDetail(${m.id})">参与预测</button></div>`
-        :`<div class="muted rs16">${me?'市场已结束':'登录后可参与'}</div>`}
+      ${numBlock}
+      ${playBlock}
       <h4 class="rs61">📈 概率趋势（声誉加权社区共识随时间变化）</h4>
       ${trendChart(hist, m.options)}
     </div>
@@ -823,13 +866,26 @@ async function postComment(mid, parentId=null){
 }
 async function participateDetail(id){
   if(!me){openAuth();return;}
+  if(curMarket && curMarket.market_type==='numeric'){ await participateNumeric(id, true); return; }
   const r=await post('/api/markets/'+id+'/participate',{user_id:me.id,option:+($('dopt_'+id).value),stake:+($('dstake_'+id).value)});
   if(r&&r.id){ toast('参与成功！'); refreshMe(); openMarket(id); }
 }
 async function participate(id){
   if(!me){openAuth();return;}
+  if(mtCache[id]==='numeric'){ await participateNumeric(id, false); return; }
   const r=await post('/api/markets/'+id+'/participate',{user_id:me.id,option:+($('opt_'+id).value),stake:+($('stake_'+id).value)});
   if(r&&r.id){ toast('参与成功！'); refreshMe(); renderMarkets(); }
+}
+async function participateNumeric(id, fromDetail){
+  const valId = fromDetail? 'ndval_'+id : 'nval_'+id;
+  const stakeEl = fromDetail? $('dstake_'+id) : $('stake_'+id);
+  const stake = +(stakeEl.value);
+  const value = parseFloat($(valId).value);
+  if(isNaN(value)){ toast('请输入有效的数值预测'); return; }
+  let sigma=null;
+  if(fromDetail){ const s=($('ndsig_'+id).value||'').trim(); if(s) sigma=parseFloat(s); }
+  const r=await post('/api/markets/'+id+'/participate_numeric',{user_id:me.id,value:value,stake:stake,sigma:sigma});
+  if(r&&r.id){ toast('数值预测已记录！'); refreshMe(); fromDetail?openMarket(id):renderMarkets(); }
 }
 
 /* ---------- 我的预测 ---------- */
@@ -896,17 +952,39 @@ async function renderMypred(){
 }
 
 /* ---------- 排行榜 ---------- */
+let boardSort='points';
 async function renderBoard(){
-  const rows=await api('/api/leaderboard')||[];
-  $('view').innerHTML=`<div class="card"><h3>🏆 预测者排行榜 <span class="muted rs35">（按积分；⭐Pro=已结算≥20 且准确率≥70%；等级由声誉决定，替代金钱排名）</span></h3>
-    <table><tr><th class="rs37">#</th><th>用户</th><th>等级</th><th>积分</th><th>连胜</th><th>声誉</th><th>准确率</th></tr>
-    ${rows.map((r,i)=>`<tr><td><span class="lb-num">${i+1}</span></td>
-      <td>${esc(r.username)}${r.pro?' <span class="badge rs36">⭐ Pro</span>':''}</td>
-      <td>${esc(r.tier||'青铜预测者')}</td>
-      <td class="pos">${r.points_balance}</td><td>${r.streak}</td><td>${Math.round(r.reputation||0)}</td>
-      <td>${r.accuracy!=null?(r.accuracy*100).toFixed(0)+'%':'-'}</td></tr>`).join('')}
-    </table></div>`;
+  const rows=await api('/api/leaderboard?sort='+boardSort+(boardSort==='skill'?'&ranked_only=0':'')+'&limit=30')||[];
+  const isSkill = boardSort==='skill';
+  const head = isSkill
+    ? `<tr><th class="rs37">#</th><th>用户</th><th>等级</th><th>技能分 (95% 区间)</th><th>置信度</th><th>积分</th><th>声誉</th><th>准确率</th></tr>`
+    : `<tr><th class="rs37">#</th><th>用户</th><th>等级</th><th>积分</th><th>连胜</th><th>声誉</th><th>准确率</th></tr>`;
+  const body = rows.map((r,i)=> isSkill
+    ? `<tr><td><span class="lb-num">${i+1}</span></td>
+        <td>${esc(r.username)}${r.pro?' <span class="badge rs36">⭐ Pro</span>':''}${r.provisional?' <span class="pill muted">待定</span>':''}</td>
+        <td>${esc(r.tier||'青铜预测者')}</td>
+        <td class="pos">${r.skill_rating} <span class="muted">(${r.skill_low}~${r.skill_high})</span></td>
+        <td>${(r.skill_confidence*100).toFixed(0)}%</td>
+        <td>${r.points_balance}</td><td>${Math.round(r.reputation||0)}</td>
+        <td>${r.accuracy!=null?(r.accuracy*100).toFixed(0)+'%':'-'}</td></tr>`
+    : `<tr><td><span class="lb-num">${i+1}</span></td>
+        <td>${esc(r.username)}${r.pro?' <span class="badge rs36">⭐ Pro</span>':''}</td>
+        <td>${esc(r.tier||'青铜预测者')}</td>
+        <td class="pos">${r.points_balance}</td><td>${r.streak}</td><td>${Math.round(r.reputation||0)}</td>
+        <td>${r.accuracy!=null?(r.accuracy*100).toFixed(0)+'%':'-'}</td></tr>`).join('');
+  $('view').innerHTML=`<div class="card"><h3>🏆 预测者排行榜 <span class="muted rs35">（⭐Pro=已结算≥20 且准确率≥70%；等级由声誉决定，替代金钱排名）</span></h3>
+    <div class="row"><span class="muted">排序：</span>
+      <select id="boardSort" class="rs63" data-on="change:boardSortChange()">
+        <option value="points" ${isSkill?'':'selected'}>按积分（活跃/资产榜）</option>
+        <option value="skill" ${isSkill?'selected':''}>按技能（保守下界·不确定性感知）</option>
+      </select>
+      ${isSkill?'<span class="pill rs67">新用户 RD 大，按区间下沿排名更公平</span>':''}
+    </div>
+    <table>${head}${body}</table>
+    <div class="muted rs16">技能分采用 Glicko-2（借鉴 propagon 不确定性感知排名）：区间越窄=越可信；带「待定」者为样本不足/久未参与，其排名仅供参考。</div>
+  </div>`;
 }
+function boardSortChange(){ boardSort=$('boardSort').value; renderBoard(); }
 
 /* ---------- 竞猜联赛（Tournaments） ---------- */
 async function renderLeague(){
@@ -1241,6 +1319,7 @@ const ACTIONS={adConfirm,adInquire,adStmt,agentOrchestrate,approve,authSeg,claim
   closeAuth,closeOnboarding,copyInvite,doLogin,doRegister,go,joinLeague,loadAgentDashboard,
   loadCmtQueue,loadQueue,loadSentiment,loadTickets,logout,markAllRead,markNotifRead,mkCat,
   mkSearchInput,mkSortChange,openAuth,openDispute,openMarket,participate,participateDetail,
+  participateNumeric,boardSortChange,
   postComment,publishAuto,redeem,reportComment,reviewCmt,runScout,sendSupport,shareMe,
   showCompliance,showReply,signin,submitUgc,toggleMenu,toggleNotif,trendHover,trendLeave,
   voteDispute};
