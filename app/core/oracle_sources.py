@@ -277,3 +277,25 @@ def list_sources() -> list:
     for src in SOURCES:
         out.append({"name": src.name, "enabled": src.enabled()})
     return out
+
+
+def candidates(market_id: int):
+    """返回所有**已启用且给出结果**的 Oracle 源候选：(winning_option, source_name)。
+
+    用于多源一致性校验——若各源给出的 option 不一致，说明权威源之间分歧，
+    必须路由人工裁定（见 core/oracle.resolve_due_with_human_fallback），而非贸然自动结算。
+    """
+    market = markets.get_market(market_id)
+    if not market:
+        return []
+    out = []
+    for src in SOURCES:
+        if not src.enabled():
+            continue
+        try:
+            opt = src.resolve(market)
+        except Exception:
+            opt = None
+        if opt is not None and 0 <= opt < len(market.get("options") or []):
+            out.append((opt, src.name))
+    return out

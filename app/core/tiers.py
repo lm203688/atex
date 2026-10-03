@@ -6,6 +6,7 @@
 越高解锁越多特权（高级市场、商城额度、创建权、争议加权票等）。
 """
 from typing import Dict, List, Optional
+from core import rating
 
 # 等级由低到高；min_rep 为进入该档所需声誉阈值。
 TIERS: List[Dict] = [
@@ -80,3 +81,27 @@ def can_create_market(reputation: float) -> bool:
 def dispute_vote_weight(reputation: float) -> int:
     """铂金预测者的争议投票权重 ×2。"""
     return 2 if _index_for_rep(float(reputation or 0)) >= 3 else 1
+
+
+# ---- P4-A3：声誉 × 准确度联动 ----
+def skill_bonus_reputation(reputation, skill_rating, skill_rd):
+    """把「高且自信」的技能分折算成声誉加成（让「准」的用户更快解锁特权）。
+
+    - 仅在技能分高于 Glicko 均值 1500 且 RD 足够小（确信）时给加成；
+    - 加成 = 超额技能(每100分≈1) × 置信度 × 系数，封顶 100，防 runaway；
+    - 低分/噪声大的用户加成趋零——不会因运气或样本少而虚增地位。
+    """
+    rep = float(reputation or 0)
+    sr = float(skill_rating or 1500.0)
+    rd = float(skill_rd or 350.0)
+    excess = max(0.0, (sr - 1500.0) / 100.0)
+    conf = rating.confidence(rd)
+    bonus = min(excess * conf * 10.0, 100.0)
+    return rep + bonus
+
+
+def skill_certified(skill_rating, skill_rd):
+    """技能认证：技能分显著高于均值且足够确信（样本充足）。"""
+    sr = float(skill_rating or 1500.0)
+    rd = float(skill_rd or 350.0)
+    return sr >= 1600.0 and rating.confidence(rd) >= 0.5

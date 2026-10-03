@@ -89,7 +89,7 @@ def numeric_consensus(market_id):
     return numeric.weighted_consensus(forecasts)
 
 
-def participate_numeric(user_id, market_id, value, stake, sigma=None):
+def participate_numeric(user_id, market_id, value, stake, sigma=None, is_ai=False):
     """数值市场参与：预测一个数值（可声明不确定性 sigma）。
 
     sigma 越小代表越自信；未声明时按区间的 10% 取默认值——避免 sigma=0
@@ -150,8 +150,8 @@ def participate_numeric(user_id, market_id, value, stake, sigma=None):
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO positions (user_id, market_id, option_index, stake, "
-            "forecast_value, forecast_sigma) VALUES (?,?,?,?,?,?)",
-            (user_id, market_id, -1, stake, v, s),
+            "forecast_value, forecast_sigma, is_ai) VALUES (?,?,?,?,?,?,?)",
+            (user_id, market_id, -1, stake, v, s, 1 if is_ai else 0),
         )
         conn.commit()
     return get_market(market_id)
@@ -250,6 +250,9 @@ def get_market(market_id):
                 "SELECT COUNT(DISTINCT user_id) AS c FROM positions WHERE market_id=?",
                 (market_id,),
             ).fetchone()["c"]
+            m["ai_participated"] = bool(conn.execute(
+                "SELECT 1 FROM positions WHERE market_id=? AND is_ai=1 LIMIT 1", (market_id,)
+            ).fetchone())
             return m
         options = json.loads(m["options_json"])
         simple, wtd = _q_vector(conn, market_id)
@@ -263,6 +266,10 @@ def get_market(market_id):
         m["participants"] = conn.execute(
             "SELECT COUNT(DISTINCT user_id) AS c FROM positions WHERE market_id=?", (market_id,)
         ).fetchone()["c"]
+        # P4-B1：是否有 AI 预测 Agent 参与（仅标注，不影响结算）
+        m["ai_participated"] = bool(conn.execute(
+            "SELECT 1 FROM positions WHERE market_id=? AND is_ai=1 LIMIT 1", (market_id,)
+        ).fetchone())
         return m
 
 
@@ -440,8 +447,8 @@ def for_you(user_id, limit=8, pool=80):
     return scored[:limit]
 
 
-def participate(user_id, market_id, option_index, stake):
-    """用积分参与预测（消耗，来自免费额度，非购买）。"""
+def participate(user_id, market_id, option_index, stake, is_ai=False):
+    """用积分参与预测（消耗，来自免费额度，非购买）。is_ai 仅作标注，不改变结算逻辑。"""
     stake = int(stake)
     if stake < PARTICIPATE_MIN or stake > PARTICIPATE_MAX:
         raise ValueError(f"参与消耗需在 {PARTICIPATE_MIN}~{PARTICIPATE_MAX} 积分之间")
@@ -511,9 +518,9 @@ def participate(user_id, market_id, option_index, stake):
         pass
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO positions (user_id, market_id, option_index, stake, shares, prob_at_bet) "
-            "VALUES (?,?,?,?,?,?)",
-            (user_id, market_id, option_index, stake, shares, prob_at_bet),
+            "INSERT INTO positions (user_id, market_id, option_index, stake, shares, prob_at_bet, is_ai) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (user_id, market_id, option_index, stake, shares, prob_at_bet, 1 if is_ai else 0),
         )
         conn.commit()
     # 快照概率历史（趋势图 / sparkline）
@@ -611,3 +618,95 @@ def user_accuracy(user_id):
         "avg_brier": round(sum(briers) / total, 3),
         "calibration": cal,
     }
+
+
+def user_calibration(user_id):
+    """可靠性图（reliability diagram）数据：分类预测的下注概率 vs 实际命中率。
+
+    用于前端绘制校准曲线——直观暴露「过度自信 / 过度保守」。
+    返回：
+      - bins: [{predicted:0~1(桶中心), observed:0~1实际命中率或None, n}]
+      - overconfidence: 加权平均(predicted - observed)，>0 表示系统性过度自信
+      - total / avg_brier
+    数值型市场另给 numeric_pit_deviation（PIT 与均匀偏离度，0=完美校准）。
+    """
+    # ---- 分类市场：用下注时的概率做校准分桶 ----
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT p.prob_at_bet, m.resolution, p.option_index FROM positions p "
+            "JOIN markets m ON m.id=p.market_id "
+            "WHERE p.user_id=? AND m.status='settled' AND m.resolution IS NOT NULL "
+            "AND (m.market_type IS NULL OR m.market_type='categorical')",
+            (user_id,),
+        ).fetchall()
+        num = conn.execute(
+            "SELECT p.forecast_value, p.forecast_sigma, m.resolution_value, "
+            "m.numeric_lower, m.numeric_upper FROM positions p "
+            "JOIN markets m ON m.id=p.market_id "
+            "WHERE p.user_id=? AND m.status='settled' AND m.resolution_value IS NOT NULL "
+            "AND m.market_type='numeric' AND p.forecast_value IS NOT NULL",
+            (user_id,),
+        ).fetchall()
+
+    bin_centers = [0.1, 0.3, 0.5, 0.7, 0.9]
+    slots = {c: {"n": 0, "hit": 0} for c in bin_centers}
+    total = 0
+    briers = []
+    for r in rows:
+        won = (r["option_index"] == r["resolution"])
+        p = r["prob_at_bet"] if r["prob_at_bet"] is not None else 0.5
+        briers.append(scoring.brier(p, won))
+        lo = int(min(0.999, p) * 100) // 20 * 20
+        center = (lo + 10) / 100.0
+        if center not in slots:
+            center = min(bin_centers, key=lambda c: abs(c - center))
+        slots[center]["n"] += 1
+        if won:
+            slots[center]["hit"] += 1
+        total += 1
+
+    bins = []
+    w_num = w_den = 0.0
+    for c in bin_centers:
+        n = slots[c]["n"]
+        obs = (slots[c]["hit"] / n) if n else None
+        bins.append({"predicted": c, "observed": obs, "n": n})
+        if n and obs is not None:
+            w_num += n * (c - obs)
+            w_den += n
+    overconf = round(w_num / w_den, 3) if w_den > 0 else None
+
+    # ---- 数值市场：PIT 校准偏离 ----
+    pit_dev = None
+    if num:
+        pits = []
+        for r in num:
+            try:
+                pits.append(numeric.pit(
+                    float(r["forecast_value"]), float(r["forecast_sigma"] or 0.0),
+                    float(r["resolution_value"])))
+            except Exception:
+                pass
+        if pits:
+            pit_dev = numeric.pit_calibration_deviation(pits)
+
+    return {
+        "total": total,
+        "avg_brier": round(sum(briers) / total, 3) if total else None,
+        "bins": bins,
+        "overconfidence": overconfidence_label(overconf),
+        "numeric_pit_deviation": pit_dev,
+    }
+
+
+def overconfidence_label(overconf):
+    """把数值过度自信度转为可读标签（保留数值供前端用）。"""
+    if overconf is None:
+        return {"value": None, "label": None}
+    if overconf > 0.10:
+        label = "过度自信"
+    elif overconf < -0.10:
+        label = "过度保守"
+    else:
+        label = "校准良好"
+    return {"value": overconf, "label": label}

@@ -98,10 +98,10 @@ class OracleAgent(BaseAgent):
         action = inp.get("action")
         self.heartbeat(task.id, f"执行结算动作: {action}")
         if action == "resolve_due":
-            # 调用 oracle_sources 解析到期市场
-            from core import oracle_sources
-            resolved = oracle_sources.resolve_due_from_sources()
-            task.output = {"resolved": resolved}
+            # P4-B2：带人工兜底路由的自动结算（多源分歧/未开自动结算 → 转人工）
+            from core import oracle
+            res = oracle.resolve_due_with_human_fallback()
+            task.output = res
         elif action == "settle":
             market_id = inp.get("market_id")
             winning_option = inp.get("winning_option")

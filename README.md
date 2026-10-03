@@ -57,7 +57,7 @@ worker > 1 时，A 进程的市场状态变更推不到连在 B 进程上的客�
 
 ## 质量门禁
 ```bash
-cd app && python tests/smoke.py --fresh   # 期望 123/123 全绿
+cd app && python tests/smoke.py --fresh   # 期望 154/154 全绿
 cd app && python tests/uat_customer.py    # 期望 90/90 全绿
 ```
 
@@ -120,6 +120,31 @@ cd app && python tests/uat_customer.py    # 期望 90/90 全绿
 - **外部参考徽标**：配置了外部喂价时，详情页显示「🌐 外部市场共识参考 X% · 仅参考，不具结算效力」。
 - **技能榜切换**：排行榜新增「按技能（保守下界·不确定性感知）」排序，展示技能分 95% 区间、置信度与「待定」标记，
   让低样本用户的噪声排名一目了然。
+
+## v0.7.11 — P4 路线图落地（聚合预测 · 校准 · 声誉联动 · 受控 AI · MCP）
+在 v0.7.10 产品级 SPA 基础上，按《项目完整性扫描与改进提升计划》P4 路线图补齐：
+
+- **P4-A1 校准曲线（可靠性图）**：新增 `GET /api/users/{id}/calibration`，按 0.1/0.3/0.5/0.7/0.9 概率桶统计「下注概率 vs 实际命中率」，给出过度自信/保守标签与 Brier；前端「我的预测」以 SVG 可靠性图呈现。
+- **P4-A2 聚合预测层**：新增 `GET /api/markets/{id}/forecast`，统一分类（LMSR 声誉加权）与数值（CRPS 加权共识）两类共识，并附 `deviation_vs_external` 群体 vs 外部参考偏差分析（外部概率**仅参考、绝不结算**，与 `external_ref` 合规隔离一致）。
+- **P4-A3 声誉 × 准确度联动**：技能分折算进声誉（`tiers.skill_bonus_reputation`），让「准」的用户更快解锁 UGC 发起权等特权；`GET /api/users/{id}/tier` 新增 `skill_rating / skill_confidence / skill_certified`，前端展示「🎯 技能认证」徽标。
+- **P4-B1 受控 AI 预测（合规护栏）**：新增 `app/automation/ai_predictor.py` 与 `POST /api/automation/ai_predict`。默认 `AI_PREDICT_ENABLED≠1` 时为安全 no-op；开启后 AI 走与普通用户完全相同的 `participate` 路径、受同样规则约束，全部标注 `is_ai=1`，前端明示「🤖 AI 预测」。无外部参考信号时不预测，避免注入噪声。
+- **P4-B2 Oracle 人工兜底路由**：`POST /api/oracle/resolve-due` 改用 `resolve_due_with_human_fallback()`——多源结果分歧或 `ORACLE_AUTO_SETTLE` 未开启（默认）时一律升级 dev 人工裁定工单，**绝不自动结算**，守住人工兜底红线；单源一致且显式开启 `ORACLE_AUTO_SETTLE=1` 才自动结算并留痕。原源直连结算保留为 `POST /api/oracle/resolve-from-sources`。
+- **P4-B3 MCP 兼容服务（JSON-RPC 2.0）**：新增 `app/mcp/server.py` 与 `POST /mcp`，纯标准库实现无外部依赖。只读工具（list_markets/get_market/get_forecast/get_leaderboard）免鉴权；写工具 `submit_prediction` 必须带 `Authorization: Bearer <token>` 且服务端核验 token 与 user_id 匹配后才走普通 participate 路径。
+
+> 质量门禁：`python tests/smoke.py --fresh` 现为 **154/154 全绿**（含 P4 + P5 全量断言）。
+
+### 真测游戏化（P5）· v0.7.12 · 用 Hook 模型补齐「每天回来」的理由
+> 竞品/市场扫描结论：纯 play-money 预测在亚洲监管面最小、变现不能靠交易抽水，应走「广告 + 品牌众测 + VIP订阅(非买分) + 实物/抽奖(公示概率) + 匿名数据B2B + 引擎白标」复合栈。真测已站对赛道，缺的是**游戏循环**。本轮按 Nir Eyal Hook 模型（触发→行动→可变奖励→投入）落地四循环：
+
+- **P5-A 每日习惯循环**：`core/daily.py` + 端点 `/api/daily/checkin`、`/api/daily/picks`、`/api/daily/picks/claim`、`/api/daily/status`。每日签到（连续递增、断签重置，损失厌恶）、每日一猜（3 场精选、完成领 15 积分）、预测连胜展示。前端「游戏中心」一屏。
+- **P5-G 幸运转盘（可变奖励）**：`POST /api/lucky/spin` 每日免费 1 次，固定概率表（conic 转盘 UI）掉积分/抽奖券/皮肤碎片/连胜加成/近失安慰——Hunt 类爽点，概率后台不可调。
+- **P5-B 赛季通行证（免费轨）**：`core/seasons.py` + `GET /api/season`、`POST /api/season/claim`。当前赛季 10 级免费轨，XP 来自真实活动（预测/评论/签到/每日一猜/转盘），奖励为积分/抽奖券/勋章，全部公示；付费轨禁用（因不可人民币买分）。
+- **P5-D 段位赛 / P5-C 皮肤抽卡（默认关）**：段位展示由声誉驱动；`core/cosmetics.py` 写好外观抽卡（概率公示 + 保底 10 抽 + 单日上限 5 + 仅外观零货币价值），但 `LOOTBOX_ENABLED` 默认 `0` 关闭、前端不开入口，**等律所意见后一键开启**。
+- **P5-H 新手引导**：首次进入「游戏中心」弹 3 步引导（选兴趣→下注→看校准）；注册即送 500 积分 + 每日签到连胜（禀赋进展效应）。
+- **P5-γ 社交：战队 + 好友 PK（积分内闭环，零合规风险）**：`core/social.py` + 端点 `/api/squads`(建)、`/api/squads/{id}/join|leave`、`/api/squads/mine`、`/api/squads`(列表)、`/api/squads/leaderboard`、`/api/pk/challenge`、`/api/pk/mine`、`/api/pk/leaderboard`。战队为**纯荣誉聚合榜**（成员预测活跃度+校准+声誉），不发放/不转移积分；好友 PK 双方对同一市场比准，结算时**由平台奖励池**发放胜者小额积分+「PK之王」勋章，输家不付出、双方积分不互转（非流通、非回兑）。市场结算时自动连带结算该市场上的所有 PK。全程 18+，不涉及人民币/加密/赌博三要素。
+- 合规：所有循环仅服务 18+；积分只送不卖/不可流通/不可回兑；抽卡按最严标准（公示概率+保底+上限）先行写好，不开 UI 入口。
+
+> 质量门禁：`python tests/smoke.py --fresh` 现为 **154/154 全绿**（含 P4 + P5 全量断言）。
 
 ## 上线硬性前提（未满足不得公开运营）
 - 服务器 ICP 备案（腾讯云）

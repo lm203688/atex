@@ -14,7 +14,7 @@ import secrets
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -36,6 +36,9 @@ from core import notifications
 from core import tiers
 from core import rating
 from core import external_ref
+from core import forecast
+from core import daily, seasons, cosmetics, social
+from mcp import server as mcp
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
 from agents import orchestrator as agent_orchestrator
@@ -93,7 +96,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.10",
+    version="0.7.13",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -286,6 +289,13 @@ def api_accuracy(user_id: int, request: Request):
     _auth_user(user_id, request)
     return markets.user_accuracy(user_id)
 
+
+@app.get("/api/users/{user_id}/calibration")
+def api_calibration(user_id: int, request: Request):
+    """可靠性图数据：下注概率 vs 实际命中率 + 过度自信/保守标签（P4-A1）。"""
+    _auth_user(user_id, request)
+    return markets.user_calibration(user_id)
+
 @app.get("/api/users/{user_id}/badges")
 def api_badges(user_id: int, request: Request):
     _auth_user(user_id, request)
@@ -346,18 +356,159 @@ def api_notif_unread(user_id: int, request: Request):
 
 @app.get("/api/users/{user_id}/tier")
 def api_tier(user_id: int, request: Request):
-    """声誉即特权：当前等级、已解锁特权、下一级进度。"""
+    """声誉即特权：当前等级、已解锁特权、下一级进度。
+
+    P4-A3：把「高且自信的技能分」折算进声誉（skill_bonus_reputation），
+    让「准」的用户更快解锁 UGC 发起权等特权——声誉由「活跃/投入」与「技能」共同决定。
+    同时返回技能认证状态供前端展示。
+    """
     _auth_user(user_id, request)
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT reputation FROM users WHERE id=?", (user_id,)
+            "SELECT reputation, skill_rating, skill_rd FROM users WHERE id=?", (user_id,)
         ).fetchone()
     if not row:
         raise HTTPException(404, "用户不存在")
-    tier = tiers.rep_tier(row["reputation"])
-    tier["mall_quota_multiplier"] = tiers.mall_quota_multiplier(row["reputation"])
-    tier["can_create_market"] = tiers.can_create_market(row["reputation"])
+    eff = tiers.skill_bonus_reputation(row["reputation"], row["skill_rating"], row["skill_rd"])
+    tier = tiers.rep_tier(eff)
+    tier["mall_quota_multiplier"] = tiers.mall_quota_multiplier(eff)
+    tier["can_create_market"] = tiers.can_create_market(eff)
+    tier["skill_rating"] = round(float(row["skill_rating"] or 1500.0), 1)
+    tier["skill_confidence"] = round(rating.confidence(row["skill_rd"] or 350.0), 3)
+    tier["skill_certified"] = tiers.skill_certified(row["skill_rating"], row["skill_rd"])
     return tier
+
+
+# ---------------- P5 游戏化：每日习惯 / 转盘 / 赛季 / 外观 ----------------
+@app.get("/api/daily/status")
+def api_daily_status(user_id: int, request: Request):
+    """游戏中心一屏状态：签到连胜、转盘余次、库存、每日一猜进度。"""
+    _auth_user(user_id, request)
+    return daily.daily_status(user_id)
+
+
+@app.post("/api/daily/checkin")
+def api_daily_checkin(user_id: int, request: Request):
+    """每日签到（连续递增、断签重置）。"""
+    _auth_user(user_id, request)
+    return daily.checkin(user_id)
+
+
+@app.get("/api/daily/picks")
+def api_daily_picks(user_id: int, request: Request, limit: int = 3):
+    """每日一猜：今日精选市场 + 是否已完成。"""
+    _auth_user(user_id, request)
+    picks = daily.get_daily_picks(limit)
+    st = daily.daily_status(user_id)
+    return {"picks": picks, "claimed": st["daily_picks_claimed"] if st else False}
+
+
+@app.post("/api/daily/picks/claim")
+def api_daily_picks_claim(user_id: int, request: Request):
+    """完成每日一猜领奖（今日已下注任意市场则发奖，每日限一次）。"""
+    _auth_user(user_id, request)
+    return daily.claim_daily_picks(user_id)
+
+
+@app.post("/api/lucky/spin")
+def api_lucky_spin(user_id: int, request: Request):
+    """幸运转盘：每日免费 1 次，固定概率可变奖励。"""
+    _auth_user(user_id, request)
+    return daily.spin(user_id)
+
+
+@app.get("/api/season")
+def api_season(user_id: int, request: Request):
+    """赛季通行证进度与免费轨奖励状态。"""
+    _auth_user(user_id, request)
+    return seasons.season_state(user_id)
+
+
+@app.post("/api/season/claim")
+def api_season_claim(user_id: int, request: Request, level: int):
+    """领取赛季通行证某级免费轨奖励。"""
+    _auth_user(user_id, request)
+    return seasons.claim(user_id, level)
+
+
+@app.get("/api/lootbox/config")
+def api_lootbox_config():
+    """外观抽卡概率公示（无需鉴权，合规透明度）。默认关闭返回 enabled=False。"""
+    return cosmetics.lootbox_config()
+
+
+@app.post("/api/lootbox/pull")
+def api_lootbox_pull(user_id: int, request: Request):
+    """外观抽卡（消耗抽奖券）。默认 LOOTBOX_ENABLED=0 时不开放。"""
+    _auth_user(user_id, request)
+    return cosmetics.pull(user_id)
+
+
+# ---------------- P5-γ 社交：战队 + 好友 PK（积分内闭环，零合规风险） ----------------
+class SquadCreate(BaseModel):
+    user_id: int
+    name: str
+    tag: str = None
+
+@app.post("/api/squads")
+def api_squad_create(req: SquadCreate, request: Request):
+    """创建战队（创建者自动成为 owner，获「战队队长」勋章）。"""
+    _auth_user(req.user_id, request)
+    return social.create_squad(req.user_id, req.name, req.tag)
+
+@app.post("/api/squads/{squad_id}/join")
+def api_squad_join(squad_id: int, user_id: int, request: Request):
+    _auth_user(user_id, request)
+    return social.join_squad(user_id, squad_id)
+
+@app.post("/api/squads/{squad_id}/leave")
+def api_squad_leave(squad_id: int, user_id: int, request: Request):
+    _auth_user(user_id, request)
+    return social.leave_squad(user_id, squad_id)
+
+@app.get("/api/squads/mine")
+def api_squad_mine(user_id: int, request: Request):
+    _auth_user(user_id, request)
+    return social.my_squad(user_id) or {"joined": False}
+
+@app.get("/api/squads")
+def api_squad_list(limit: int = 30):
+    """全部战队（含成员数、荣誉分）。"""
+    return social.list_squads(limit)
+
+@app.get("/api/squads/leaderboard")
+def api_squad_lb(limit: int = 20):
+    """战队荣誉榜。"""
+    return social.squad_leaderboard(limit)
+
+class PkReq(BaseModel):
+    challenger_id: int
+    opponent_id: int = None
+    opponent_name: str = None
+    market_id: int
+
+@app.post("/api/pk/challenge")
+def api_pk_challenge(req: PkReq, request: Request):
+    """发起好友 PK：比同一市场的预测准度。opponent 可传 id 或 username。"""
+    _auth_user(req.challenger_id, request)
+    opp = req.opponent_id
+    if opp is None and req.opponent_name:
+        opp = social._user_id_by_name(req.opponent_name)
+        if opp is None:
+            raise HTTPException(404, "对手用户不存在")
+    if opp is None:
+        raise HTTPException(400, "需提供 opponent_id 或 opponent_name")
+    return social.pk_challenge(req.challenger_id, opp, req.market_id)
+
+@app.get("/api/pk/mine")
+def api_pk_mine(user_id: int, request: Request):
+    _auth_user(user_id, request)
+    return social.pk_challenges_for(user_id)
+
+@app.get("/api/pk/leaderboard")
+def api_pk_lb(limit: int = 20):
+    """PK 胜场榜（纯荣誉）。"""
+    return social.pk_leaderboard(limit)
 
 
 @app.post("/api/users/{user_id}/notifications/read")
@@ -459,6 +610,19 @@ def api_market_resolution(market_id: int):
     if not res:
         raise HTTPException(404, "市场不存在")
     return res
+
+
+@app.get("/api/markets/{market_id}/forecast")
+def api_market_forecast(market_id: int, weighted: int = 1):
+    """聚合预测层（P4-A2）：统一返回分类/数值共识，并附群体 vs 外部参考的偏差分析。
+
+    外部概率仅作参考与偏差研究，绝不参与结算（合规隔离由 core/external_ref.py 守护）。
+    """
+    fc = forecast.aggregate(market_id, weighted=bool(weighted))
+    if not fc:
+        raise HTTPException(404, "市场不存在")
+    fc["deviation_vs_external"] = forecast.deviation_vs_external(market_id)
+    return fc
 
 
 @app.get("/api/markets/{market_id}/disputes")
@@ -786,6 +950,7 @@ def api_settle(req: SettleReq, request: Request):
         res = oracle.set_result(req.market_id, req.winning_option, req.source, req.note)
     except Exception as e:
         raise HTTPException(400, str(e))
+    social.pk_resolve(req.market_id)  # P5-γ：结算连带结算该市场的好友 PK
     # 回访：市场结算后通知所有参与者（提升回访率，纯站内）
     try:
         with get_conn() as conn:
@@ -822,6 +987,7 @@ def api_settle_numeric(req: SettleNumericReq, request: Request):
         res = oracle.set_numeric_result(req.market_id, req.value, req.source, req.note)
     except Exception as e:
         raise HTTPException(400, str(e))
+    social.pk_resolve(req.market_id)  # P5-γ：结算连带结算该市场的好友 PK
     try:
         with get_conn() as conn:
             mkt = conn.execute(
@@ -851,16 +1017,63 @@ def api_oracle_auto(request: Request):
 
 @app.post("/api/oracle/resolve-due")
 def api_oracle_resolve_due(request: Request):
+    """带人工兜底路由的自动结算（P4-B2）。默认 ORACLE_AUTO_SETTLE 关闭时，
+    任何有 Oracle 结果的市场都转人工复核，不会自动结算（守住人工兜底红线）。"""
+    _auth_admin(request)
+    res = oracle.resolve_due_with_human_fallback()
+    if res.get("resolved"):
+        mark_markets_dirty()
+    return res
+
+@app.post("/api/oracle/resolve-from-sources")
+def api_oracle_resolve_from_sources(request: Request):
+    """直接咨询已接入 Oracle 权威源（manifest/ESPN/HTTP）结算到期市场（无人工兜底，运维手动触发）。
+
+    与 /api/oracle/resolve-due（带人工兜底、默认不自动结算）互补：本端点适用于已确认源
+    可靠、需立即落地的场景（如演示、单源确定性结果）。返回 {resolved, tried}。
+    """
     _auth_admin(request)
     resolved, tried = oracle.resolve_due_from_sources()
-    if resolved:
-        mark_markets_dirty()
     return {"resolved": resolved, "tried": tried}
 
 @app.get("/api/admin/disputes")
 def api_disputes(request: Request, status: str = None):
     _auth_admin(request)
     return oracle.list_disputes(status)
+
+
+@app.post("/api/automation/ai_predict")
+def api_ai_predict(request: Request, limit: int = 20):
+    """受控 AI 预测一轮（P4-B1）。默认 AI_PREDICT_ENABLED 未开启时返回 ran=False 安全 no-op。
+
+    合规：AI 预测走与普通用户完全相同的 participate 路径，仅作参与者，全部标注 is_ai=1。
+    """
+    _auth_admin(request)
+    from automation import ai_predictor
+    return ai_predictor.predict_once(limit=limit)
+
+
+@app.post("/mcp")
+async def api_mcp(request: Request):
+    """MCP 兼容 JSON-RPC 2.0 端点（P4-B3）：initialize / tools/list / tools/call。
+
+    只读工具免鉴权；submit_prediction 需在 Authorization: Bearer <user_token> 中携带有效 token。
+    纯标准库实现，无外部依赖；外部概率仅只读返回，绝不写入结算。
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+            status_code=400,
+        )
+    if not isinstance(payload, (dict, list)):
+        return JSONResponse(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Invalid Request"}},
+            status_code=400,
+        )
+    auth = request.headers.get("Authorization", "").replace("Bearer ", "").strip()
+    return mcp.handle(payload, auth_token=auth or None)
 
 @app.post("/api/admin/disputes/{dispute_id}/resolve")
 def api_resolve(dispute_id: int, request: Request, action: str, note: str = None):

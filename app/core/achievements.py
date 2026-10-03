@@ -15,6 +15,11 @@ BADGES = [
     {"id": "persistent", "name": "七日签到", "icon": "🔥", "desc": "连续签到满7天"},
     {"id": "veteran", "name": "百战老兵", "icon": "🎖️", "desc": "累计参与预测≥50次"},
     {"id": "influencer", "name": "裂变节点", "icon": "🌱", "desc": "成功邀请≥3人"},
+    # P5 赛季通行证勋章（由赛季进度发放，非纯战绩派生）
+    {"id": "season_rookie", "name": "赛季新兵", "icon": "🌟", "desc": "完成赛季通行证第4级"},
+    {"id": "season_pro", "name": "赛季好手", "icon": "🏅", "desc": "完成赛季通行证第8级"},
+    {"id": "pk_champ", "name": "PK 之王", "icon": "⚔️", "desc": "在好友PK中击败对手"},
+    {"id": "squad_captain", "name": "战队队长", "icon": "🛡️", "desc": "创建或统领一个战队"},
 ]
 _DEF = {b["id"]: b for b in BADGES}
 
@@ -66,6 +71,18 @@ def evaluate(user_id):
         "all": [_DEF[b] for b in earned],
         "definitions": BADGES,
     }
+
+
+def award(user_id, badge_id):
+    """显式发放一枚勋章（去重，INSERT OR IGNORE）。用于赛季/活动等非战绩派生的奖励。"""
+    if badge_id not in _DEF:
+        return False
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO badges (user_id, badge_id, awarded_at) VALUES (?,?,?)",
+            (user_id, badge_id, now_iso()))
+        conn.commit()
+    return True
 
 
 def list_badges(user_id):

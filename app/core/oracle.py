@@ -9,6 +9,7 @@ auto_settle_due 用于批量对已预载结果的到期市场自动结算。
 """
 from datetime import datetime
 import json
+import os
 from db import get_conn, now_iso
 from core import settlement
 from core import oracle_sources
@@ -112,6 +113,80 @@ def resolve_due_from_sources():
             except Exception:
                 pass
     return resolved, tried
+
+
+def _has_open_oracle_ticket(market_id):
+    """防止重复告警：该市场已有未关闭的 Oracle 人工复核工单则不再新建。"""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT id FROM dev_tickets WHERE status='open' AND body LIKE ?",
+            (f"%市场#{market_id}%",),
+        ).fetchall()
+    return len(rows) > 0
+
+
+def resolve_due_with_human_fallback():
+    """P4-B2：带人工兜底路由的自动结算。
+
+    对到期未结算的分类市场：
+    - 收集所有权威源候选（oracle_sources.candidates）；
+    - 多源结果**不一致** → 视为高分歧，升级 dev 人工裁定工单，绝不自动结算；
+    - 结果**一致**但 `ORACLE_AUTO_SETTLE` 未开启（默认）→ 升级人工复核工单，不自动结算；
+    - 一致且 `ORACLE_AUTO_SETTLE=1`（显式开启）→ 自动结算并留痕。
+
+    默认 ORACLE_AUTO_SETTLE 为关闭：即「任何自动结算都需人工兜底」，符合
+    《合规就绪自评》第八条「人工兜底」红线。已转人工的市场用 _has_open_oracle_ticket
+    去重，避免重复刷单。
+    返回 {resolved, escalated, tried}。
+    """
+    auto = os.environ.get("ORACLE_AUTO_SETTLE", "0") == "1"
+    with get_conn() as conn:
+        due = conn.execute(
+            "SELECT id, title FROM markets WHERE status='open' "
+            "AND closes_at IS NOT NULL AND closes_at <= ? "
+            "AND COALESCE(market_type,'categorical')='categorical'",
+            (now_iso(),),
+        ).fetchall()
+    tried = len(due)
+    resolved = 0
+    escalated = 0
+    for d in due:
+        mid = d["id"]
+        cands = oracle_sources.candidates(mid)
+        if not cands:
+            continue  # 无源能给结果，保留待结算
+        opts = [o for o, _ in cands]
+        agreed = len(set(opts)) == 1
+        if not agreed:
+            escalated += 1
+            if not _has_open_oracle_ticket(mid):
+                devboard.create_ticket(
+                    source="oracle", type_="oracle_conflict", priority="high",
+                    title=f"市场#{mid} Oracle 多源分歧，需人工裁定",
+                    body=f"市场「{d['title']}」各权威源结果不一致：{cands}。"
+                          f"已暂停自动结算，待人工复核 Oracle 来源后再裁定。",
+                    related_user=None,
+                )
+            continue
+        opt = opts[0]
+        src = cands[0][1]
+        if not auto:
+            escalated += 1
+            if not _has_open_oracle_ticket(mid):
+                devboard.create_ticket(
+                    source="oracle", type_="oracle_review", priority="medium",
+                    title=f"市场#{mid} Oracle 结果待人工复核",
+                    body=f"权威源 {src} 判定 option={opt}（市场「{d['title']}」）。"
+                          f"当前 ORACLE_AUTO_SETTLE 未开启，转人工复核后结算。",
+                    related_user=None,
+                )
+            continue
+        try:
+            set_result(mid, opt, source=f"oracle_source:{src}")
+            resolved += 1
+        except Exception:
+            pass
+    return {"resolved": resolved, "escalated": escalated, "tried": tried}
 
 
 def create_dispute(market_id, user_id, reason):

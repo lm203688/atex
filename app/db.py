@@ -223,6 +223,40 @@ CREATE TABLE IF NOT EXISTS comment_reports (
   PRIMARY KEY (reporter_id, comment_id)
 );
 
+-- P5-γ 社交：战队 + 好友 PK（纯荣誉聚合 / 平台奖励池，积分内闭环，零合规风险）
+CREATE TABLE IF NOT EXISTS squads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  tag TEXT,
+  owner_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY(owner_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS squad_members (
+  squad_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member',
+  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY(squad_id, user_id),
+  FOREIGN KEY(squad_id) REFERENCES squads(id),
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS pk_challenges (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  challenger_id INTEGER NOT NULL,
+  opponent_id INTEGER NOT NULL,
+  market_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',   -- open / done
+  winner_id INTEGER,
+  resolved_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY(challenger_id) REFERENCES users(id),
+  FOREIGN KEY(opponent_id) REFERENCES users(id),
+  FOREIGN KEY(market_id) REFERENCES markets(id)
+);
+CREATE INDEX IF NOT EXISTS idx_pk_market ON pk_challenges(market_id, status);
+
+
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -364,6 +398,11 @@ def init_db():
                 conn.execute(f"ALTER TABLE positions ADD COLUMN {col} {ctype}")
             except sqlite3.OperationalError:
                 pass
+        # 受控 AI 预测标记（P4-B1）：普通用户为 0，AI agent 预测为 1，仅作展示标注
+        try:
+            conn.execute("ALTER TABLE positions ADD COLUMN is_ai INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         # Oracle 数值结果留痕（数值型市场：winning_option=-1，真实值存此列）
         try:
             conn.execute("ALTER TABLE oracle_log ADD COLUMN numeric_value REAL")
@@ -401,6 +440,35 @@ def init_db():
                     f"ALTER TABLE users ADD COLUMN {col} {ctype} DEFAULT {default}")
             except sqlite3.OperationalError:
                 pass
+        # P5 游戏化：用户库存(抽奖券/皮肤碎片) + 转盘日志 + 赛季领取 + 外观抽卡
+        for col, ctype in (("tickets", "INTEGER"), ("shards", "INTEGER")):
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype} DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
+        for sql in (
+            """CREATE TABLE IF NOT EXISTS daily_wheel (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, day TEXT NOT NULL,
+                prize_id TEXT NOT NULL, reward_type TEXT, reward_amount INTEGER,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')))""",
+            """CREATE TABLE IF NOT EXISTS season_claims (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, season_id TEXT NOT NULL, level INTEGER NOT NULL,
+                claimed_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, season_id, level))""",
+            """CREATE TABLE IF NOT EXISTS user_cosmetics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, cosmetic_key TEXT NOT NULL,
+                acquired_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, cosmetic_key))""",
+            """CREATE TABLE IF NOT EXISTS lootbox_pulls (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, day TEXT NOT NULL,
+                cosmetic_key TEXT NOT NULL, rarity TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')))""",
+        ):
+            conn.execute(sql)
         conn.commit()
 
 

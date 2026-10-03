@@ -110,6 +110,12 @@
   .cal{display:flex;gap:6px;align-items:flex-end;height:60px;margin-top:8px}
   .cal .c{flex:1;background:var(--soft);border-radius:6px 6px 0 0;position:relative;min-height:4px}
   .cal .c small{position:absolute;bottom:-18px;left:0;right:0;text-align:center;color:var(--muted);font-size:10px}
+  .relsvg{width:100%;max-width:320px;height:auto;display:block;margin-top:6px;background:#fbfdff;border:1px solid var(--line);border-radius:10px}
+  .cal-tag{display:inline-block;margin-top:8px;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:600}
+  .cal-tag.over{background:#fee2e2;color:var(--red)}
+  .cal-tag.under{background:#fef3c7;color:#92400e}
+  .cal-tag.good{background:#ecfdf5;color:var(--green)}
+  .ai-tag{display:inline-block;background:#eef2ff;border:1px solid #c7d2fe;color:#4338ca;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600}
   .res{background:#ecfdf5;color:var(--green);font-size:12px;padding:3px 9px;border-radius:7px;margin-left:6px}
   .res.lose{background:#fee2e2;color:var(--red)}
   .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -220,6 +226,31 @@
   .rs78 { height:10px; }
   .rs79 { padding:5px 10px; }
   .rs80 { margin-top:14px;border-top:1px solid #2a3157;padding-top:12px; }
+  /* P5 游戏中心 */
+  .game-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:880px){.game-grid{grid-template-columns:1fr}}
+  .wheel-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .wheel{width:200px;height:200px;border-radius:50%;position:relative;transition:transform 2.2s cubic-bezier(.17,.67,.3,1.3);
+    background:conic-gradient(#6366f1 0 30%,#8b5cf6 30% 52%,#a855f7 52% 62%,#22c55e 62% 80%,#f59e0b 80% 90%,#ef4444 90% 93%,#cbd5e1 93% 100%);
+    box-shadow:0 6px 20px rgba(79,70,229,.25);border:6px solid #fff}
+  .wheel-pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;
+    border-left:10px solid transparent;border-right:10px solid transparent;border-top:18px solid #11162b;z-index:2}
+  .wheel-hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;
+    background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  .seg-pass{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+  .lvl{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+    background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+  .lvl.on{background:var(--primary);color:#fff}
+  .lvl.cla{box-shadow:0 0 0 2px var(--green) inset}
+  .picks-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #f0f2f7}
+  .prob-card{background:linear-gradient(120deg,#0f172a,#334155);color:#fff;border-radius:12px;padding:12px 14px;font-size:12px;line-height:1.7}
+  .badge-line{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .onb-mask{position:fixed;inset:0;background:rgba(15,20,40,.6);display:flex;align-items:center;justify-content:center;z-index:60}
+  .onb{background:#fff;border-radius:18px;padding:26px;width:460px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+  .onb .step{font-size:34px;margin:8px 0}
+  .onb .dots{display:flex;gap:8px;justify-content:center;margin:14px 0}
+  .onb .dot{width:9px;height:9px;border-radius:50%;background:#d4d9e6}
+  .onb .dot.on{background:var(--primary)}
 </style>
 </head>
 <body>
@@ -231,6 +262,7 @@
     <button class="navbtn" data-v="markets"><span class="ic">📊</span>预测市场</button>
     <button class="navbtn" data-v="board"><span class="ic">🏆</span>排行榜</button>
     <button class="navbtn" data-v="league"><span class="ic">🏅</span>竞猜联赛</button>
+    <button class="navbtn" data-v="game"><span class="ic">🎮</span>游戏中心</button>
     <button class="navbtn" data-v="mall"><span class="ic">🎁</span>积分商城</button>
     <button class="navbtn" data-v="ugc"><span class="ic">✍️</span>发起事件</button>
     <button class="navbtn" data-v="mypred"><span class="ic">📈</span>我的预测</button>
@@ -417,12 +449,12 @@ async function afterLogin(id){
 }
 
 /* ---------- 导航 ---------- */
-const TITLES={home:'首页',markets:'预测市场',board:'排行榜',league:'竞猜联赛',mall:'积分商城',ugc:'发起事件',mypred:'我的预测',me:'我的',ops:'自动化运营',support:'客服 Agent',ads:'广告 Agent',dev:'开发看板'};
+const TITLES={home:'首页',markets:'预测市场',board:'排行榜',league:'竞猜联赛',game:'游戏中心',mall:'积分商城',ugc:'发起事件',mypred:'我的预测',me:'我的',ops:'自动化运营',support:'客服 Agent',ads:'广告 Agent',dev:'开发看板'};
 function go(v){
   document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
   $('pageTitle').textContent=TITLES[v]||'';
   if(window.innerWidth<=880) toggleMenu();
-  ({home:renderHome,markets:renderMarkets,board:renderBoard,league:renderLeague,mall:renderMall,ugc:renderUgc,mypred:renderMypred,me:renderMe,ops:renderOps,support:renderSupport,ads:renderAds,dev:renderDev}[v]||renderHome)();
+  ({home:renderHome,markets:renderMarkets,board:renderBoard,league:renderLeague,game:renderGame,mall:renderMall,ugc:renderUgc,mypred:renderMypred,me:renderMe,ops:renderOps,support:renderSupport,ads:renderAds,dev:renderDev}[v]||renderHome)();
 }
 document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>go(b.dataset.v));
 
@@ -596,6 +628,25 @@ function sparkSVG(hist, idx){
   const pts=vals.map((v,i)=>((i/(vals.length-1))*w).toFixed(1)+','+(h-(v/100)*h).toFixed(1)).join(' ');
   return `<svg class="spark" width="${w}" height="${h}" title="概率趋势"><polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="1.5"/></svg>`;
 }
+function reliabilitySVG(cal){
+  // cal: [{bucket:'0-20', n, hit_rate}, ...] → 可靠性图（预测概率 vs 实际命中率）
+  const centers={'0-20':0.1,'20-40':0.3,'40-60':0.5,'60-80':0.7,'80-100':0.9};
+  const W=240,H=180,pad=30,X=p=>pad+p*(W-2*pad),Y=q=>H-pad-q*(H-2*pad);
+  let pts='',wnum=0,wden=0;
+  (cal||[]).forEach(c=>{
+    const cx=centers[c.bucket]; if(cx==null||!c.n||c.hit_rate==null) return;
+    const obs=c.hit_rate, r=3+Math.sqrt(c.n)*1.7;
+    pts+=`<circle cx="${X(cx).toFixed(1)}" cy="${Y(obs).toFixed(1)}" r="${r.toFixed(1)}" fill="#06b6d4" fill-opacity="0.72" stroke="#0e7490" stroke-width="0.6"/>`;
+    wnum+=c.n*(cx-obs); wden+=c.n;
+  });
+  const diag=`<line x1="${X(0).toFixed(1)}" y1="${Y(0).toFixed(1)}" x2="${X(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="#94a3b8" stroke-dasharray="4 3"/>`;
+  const ax=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(0)}" stroke="#475569" stroke-width="1"/><line x1="${X(0)}" y1="${Y(0)}" x2="${X(0)}" y2="${Y(1)}" stroke="#475569" stroke-width="1"/>`;
+  const t1=`<text x="${X(0.5)}" y="${H-6}" text-anchor="middle" font-size="10" fill="#94a3b8">下注时概率</text>`;
+  const t2=`<text x="8" y="${Y(0.55).toFixed(0)}" font-size="10" fill="#94a3b8" transform="rotate(-90 8 ${Y(0.55).toFixed(0)})" text-anchor="middle">实际命中</text>`;
+  const oc = wden>0?wnum/wden:null;
+  return {svg:`<svg viewBox="0 0 ${W} ${H}" class="relsvg" role="img" aria-label="校准可靠性图">${ax}${diag}${pts}${t1}${t2}</svg>`,
+          overconf:oc};
+}
 function marketCard(m){
   const isNum = m.market_type==='numeric';
   mtCache[m.id]=m.market_type; // 供 participate() 判别数值市场
@@ -607,7 +658,7 @@ function marketCard(m){
         <span class="prob" data-prob-mid="${m.id}" data-prob-opt="${i}">${p.toFixed(1)}%</span><span class="muted">(${m.shares[i]}份)</span></div>
       <div class="bar"><span data-bar-mid="${m.id}" data-bar-opt="${i}" data-rs-style="width:${p}%"></span></div></div>`;
   }).join('');
-  let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
+  let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}${m.ai_participated?' · <span class="ai-tag">🤖 AI 预测</span>':''}</span>`;
   if(m.status==='settled' && m.resolution!=null){
     statusLine=`<span class="res">已结算：${isNum?esc(String(m.resolution_value)):esc(m.options[m.resolution])}</span>`;
   }
@@ -654,7 +705,7 @@ async function openMarket(id){
   const cmts=await api('/api/markets/'+id+'/comments')||[];
   const resol=await api('/api/markets/'+id+'/resolution')||{};
   $('pageTitle').textContent='市场详情';
-  let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}</span>`;
+  let statusLine=`<span class="muted">${m.participants} 人参与 · 截止 ${esc(m.closes_at||'-')} · ${m.status}${m.creator?' · 用户发起':''}${m.ai_participated?' · <span class="ai-tag">🤖 AI 预测</span>':''}</span>`;
   if(m.status==='settled' && m.resolution!=null) statusLine=`<span class="res">已结算：${isNum?esc(String(m.resolution_value)):esc(m.options[m.resolution])}</span>`;
   const canPlay=me&&m.status==='open';
   const typeTag = isNum?`<span class="tag" style="background:#e0f2fe;color:#0369a1">📐 数值市场</span>`:`<span class="tag cat">${esc(m.whitelist_tag||'未分类')}</span>`;
@@ -901,8 +952,9 @@ async function renderMypred(){
   const tierCard=`<div class="card" data-rs-style="margin-bottom:14px;border-left:4px solid ${tier.color||'#06b6d4'}">
     <div class="row rs41">
       <div><span class="badge" data-rs-style="background:${tier.color||'#06b6d4'};font-size:13px;padding:4px 12px">${esc(tier.tier_name||'青铜预测者')}</span>
-        <span class="muted rs40">声誉 ${tier.reputation!=null?tier.reputation:'0'} · 商城额度 ×${tier.mall_quota_multiplier||1}</span></div>
+        <span class="muted rs40">声誉 ${tier.reputation!=null?tier.reputation:'0'} · 商城额度 ×${tier.mall_quota_multiplier||1}${tier.skill_rating!=null?' · 技能分 '+tier.skill_rating:''}</span></div>
       ${tier.can_create_market?'<span class="pill rs39">可发起 UGC 市场</span>':''}
+      ${tier.skill_certified?'<span class="pill" style="background:#dcfce7;color:#166534">🎯 技能认证</span>':''}
     </div>
     <div class="rs16">${privHtml}</div>
     ${nextHtml}
@@ -916,12 +968,17 @@ async function renderMypred(){
       <td>${p.prob_at_bet!=null?(p.prob_at_bet*100).toFixed(0)+'%':'-'}</td>
       <td>${out}</td></tr>`;
   }).join('') : '<tr><td colspan="5" class="muted">还没有预测记录，去市场参与吧</td></tr>';
-  let calHtml='';
-  if(acc.calibration){
-    calHtml=acc.calibration.map(c=>{
-      const h=c.hit_rate!=null?(c.hit_rate*100):0;
-      return `<div class="c" data-rs-style="height:${Math.max(4,h)}px" title="${c.bucket}: 命中${h}% (${c.n})"><small>${c.bucket}</small></div>`;
-    }).join('');
+  let calHtml='<div class="muted rs16">暂无可校准数据（需先参与已结算的分类市场）。</div>';
+  let ocTag='';
+  if(acc.calibration && acc.calibration.some(c=>c.n&&c.hit_rate!=null)){
+    const rel=reliabilitySVG(acc.calibration);
+    calHtml=rel.svg;
+    const oc=rel.overconf;
+    if(oc!=null){
+      const cls=oc>0.10?'over':oc<-0.10?'under':'good';
+      const lab=oc>0.10?'过度自信':oc<-0.10?'过度保守':'校准良好';
+      ocTag=`<span class="cal-tag ${cls}">校准诊断：${lab}（${(oc*100).toFixed(0)}%）</span>`;
+    }
   }
   const myCmts=await api('/api/users/'+me.id+'/comments?limit=30')||[];
   const cstatMap={ok:['ok','✅ 已公开'],review:['review','⏳ 审核中'],rejected:['rejected','⛔ 已下架']};
@@ -937,8 +994,9 @@ async function renderMypred(){
       <div class="row rs24"><span>总预测</span><b>${acc.total||0}</b></div>
       <div class="row rs24"><span>命中率</span><b class="pos">${acc.accuracy!=null?(acc.accuracy*100).toFixed(1)+'%':'-'}</b></div>
       <div class="row rs24"><span>平均校准(Brier)</span><b>${acc.avg_brier!=null?acc.avg_brier:'-'}</b></div>
-      <div class="muted rs16">校准曲线：横轴为你下注时的概率区间，柱高为实际命中率（越接近该区间中点越好）。</div>
-      <div class="cal">${calHtml}</div>
+      <div class="muted rs16">校准可靠性图：散点为各概率区间的实际命中率，越贴近对角线=越校准；圆点越大=样本越多。</div>
+      ${calHtml}
+      ${ocTag}
     </div>
     <div class="card">
       <h3>预测明细</h3>
@@ -1310,6 +1368,173 @@ function showOnboarding(){
 }
 function closeOnboarding(){ localStorage.setItem('rc_onboarded','1'); closeAuth(); }
 
+/* ---------- P5 游戏中心（Hook 模型：每日习惯/可变奖励/成长/收藏） ---------- */
+let _wheelAngle=0;
+async function renderGame(){
+  const host=$('view');
+  if(!me){
+    host.innerHTML=`<div class="card"><h3>🎮 游戏中心</h3>
+      <div class="empty">登录后开启每日签到、幸运转盘、赛季通行证等游戏化玩法。<br>
+      <button class="btn" data-call="openAuth()">登录 / 注册</button></div></div>`;
+    return;
+  }
+  const st=await api('/api/daily/status?user_id='+me.id) || {};
+  const season=await api('/api/season?user_id='+me.id) || {xp:0,level:0,tiers:[],season:{name:''},progress:0,cur_xp:0,next_xp:0};
+  const picks=await api('/api/daily/picks?user_id='+me.id) || {picks:[],claimed:false};
+  const lbcfg=await api('/api/lootbox/config') || {enabled:false,items:[],rarity_weights:{}};
+  const mySquad=await api('/api/squads/mine?user_id='+me.id) || {joined:false};
+  const squads=await api('/api/squads?limit=12') || [];
+  const squadLb=await api('/api/squads/leaderboard?limit=5') || [];
+  const pkMine=await api('/api/pk/mine?user_id='+me.id) || [];
+  const pkLb=await api('/api/pk/leaderboard?limit=5') || [];
+  const openMk=await api('/api/markets?status=open&limit=40') || [];
+  host.innerHTML=`
+   <div class="banner"><div><b>🎮 游戏中心</b><br><small>每日回来，越玩越准 · 纯积分娱乐，不涉及现金</small></div>
+     <div><span class="pill">🎟️ ${st.tickets||0}</span> <span class="pill">🔷 ${st.shards||0}</span></div></div>
+   <div class="game-grid">
+     <div class="card">
+       <h3>📅 每日签到 <span class="muted">连续 ${st.signin_streak||0} 天</span></h3>
+       <p class="muted">第 ${st.signin_day||0} 天 · 连续签到积分递增，断签重置（损失厌恶留住你）。</p>
+       <button class="btn" data-call="gameCheckin()" ${st.signed_today?'disabled':''}>${st.signed_today?'今日已签 ✓':'签到领积分'}</button>
+       <div class="row" style="margin-top:10px"><span class="muted">🔥 预测连胜 ${st.predict_streak||0} 天</span></div>
+     </div>
+     <div class="card">
+       <h3>🎡 幸运转盘 <span class="muted">每日免费 1 次</span></h3>
+       <div class="wheel-wrap"><div class="wheel" id="wheel"><div class="wheel-pointer"></div><div class="wheel-hub">🎁</div></div></div>
+       <button class="btn" data-call="gameSpin()" ${st.wheel_remaining>0?'':'disabled'}>${st.wheel_remaining>0?'转一次！':'今日已转'}</button>
+       <div id="wheelMsg" class="muted" style="margin-top:8px"></div>
+     </div>
+     <div class="card">
+       <h3>🎯 每日一猜 <span class="muted">完成得积分</span></h3>
+       ${picks.picks.length?picks.picks.map(p=>`
+         <div class="picks-row"><div><b>${esc(p.title)}</b><div class="muted">${esc(p.category)}</div></div>
+         <button class="btn sec" data-call="openMarket(${p.id})">去猜</button></div>`).join(''):'<div class="muted">暂无进行中市场</div>'}
+       <button class="btn" data-call="gameClaimPicks()" ${picks.claimed?'disabled':''} style="margin-top:8px">${picks.claimed?'今日已领 ✓':'完成每日一猜领 15 积分'}</button>
+     </div>
+     <div class="card">
+       <h3>🏆 赛季通行证 <span class="muted">${esc(season.season.name)}</span></h3>
+       <div class="bar"><span class="bar-fill" style="width:${Math.round((season.progress||0)*100)}%;background:linear-gradient(90deg,#6366f1,#a855f7)"></span></div>
+       <div class="muted" style="margin-top:6px">Lv ${season.level}/${season.max_level} · ${season.xp} XP · 距下一级 ${season.cur_xp}/${season.next_xp}</div>
+       <div class="seg-pass">${season.tiers.map(t=>`<div class="lvl ${t.unlocked?'on':''} ${t.claimed?'cla':''}" title="${esc(t.name)}">${t.level}</div>`).join('')}</div>
+       <div class="row" style="margin-top:8px;flex-wrap:wrap">${season.tiers.filter(t=>t.unlocked&&!t.claimed).map(t=>`<button class="btn sec" data-call="gameClaimSeason(${t.level})">领 L${t.level} ${esc(t.name)}</button>`).join('')||'<span class="muted">奖励已全部领取 🎉</span>'}</div>
+     </div>
+     <div class="card" style="grid-column:1/-1">
+       <h3>🎨 外观抽卡 <span class="muted">概率公示 · 仅外观</span></h3>
+       <div class="prob-card">${lbcfg.enabled?'已开启':'默认关闭（按最严合规标准写好，等待律所意见后开放）'} · 消耗 🎟️ ${lbcfg.cost_tickets||1}/次<br>
+         概率公示：${Object.entries(lbcfg.rarity_weights||{}).map(([k,v])=>`${k} ${v}%`).join(' · ')} · 保底 ${lbcfg.pity} 抽 · 单日上限 ${lbcfg.daily_limit} 抽<br>
+         外观目录：${(lbcfg.items||[]).map(i=>esc(i.name)+'('+i.rarity+')').join('、')}</div>
+       <button class="btn" data-call="gamePull()" ${lbcfg.enabled?'':'disabled'} style="margin-top:10px">${lbcfg.enabled?'抽一次（消耗 1 抽奖券）':'暂未开放'}</button>
+     </div>
+     <div class="card" style="grid-column:1/-1">
+       <h3>🛡️ 战队 <span class="muted">纯荣誉榜 · 积分内闭环</span></h3>
+       ${mySquad.joined?`<div class="row"><span>你已加入 <b>${esc(mySquad.name)}</b>（${mySquad.members} 人）</span>
+         ${mySquad.role==='owner'?'<span class="pill">👑 队长</span>':'<button class="btn sec" data-call="gameLeaveSquad('+mySquad.squad_id+')">退出</button>'}</div>`
+         :`<div class="row" style="flex-wrap:wrap;gap:8px"><input id="squadName" class="inp" placeholder="新战队名称" maxlength="24"><button class="btn" data-call="gameCreateSquad()">创建战队</button></div>`}
+       <div class="muted" style="margin:8px 0 4px">可加入的战队（点「加入」）：</div>
+       <div class="row" style="flex-wrap:wrap;gap:8px">${squads.length?squads.map(s=>`<span class="pill">${esc(s.name)}${s.tag?' #'+esc(s.tag):''} · ${s.members}人 · ${s.score}分 <button class="btn sec sm" data-call="gameJoinSquad(${s.id})">加入</button></span>`).join(''):'<span class="muted">暂无战队，创建第一个吧</span>'}</div>
+       <div class="muted" style="margin:10px 0 4px">🏆 战队荣誉榜（前5）</div>
+       <div class="row" style="flex-wrap:wrap;gap:8px">${squadLb.length?squadLb.map((s,i)=>`<span class="pill">${i+1}. ${esc(s.name)} · ${s.score}分</span>`).join(''):'<span class="muted">—</span>'}</div>
+     </div>
+     <div class="card" style="grid-column:1/-1">
+       <h3>⚔️ 好友 PK <span class="muted">同一市场比准 · 平台奖励积分</span></h3>
+       <p class="muted">挑战好友对同一市场下注，赛果后谁更准谁赢（胜者获平台奖励积分 + 勋章，输家不付出，积分互不转移）。</p>
+       <div class="row" style="flex-wrap:wrap;gap:8px">
+         <input id="pkOpp" class="inp" placeholder="对手用户名" maxlength="24">
+         <select id="pkMarket" class="inp">${openMk.length?openMk.map(m=>`<option value="${m.id}">${esc((m.title||'').slice(0,28))}</option>`).join(''):'<option>无开放市场</option>'}</select>
+         <button class="btn" data-call="gamePkChallenge()">发起 PK</button>
+       </div>
+       <div class="muted" style="margin:10px 0 4px">我的 PK（最近5）</div>
+       <div class="row" style="flex-wrap:wrap;gap:8px">${pkMine.length?pkMine.slice(0,5).map(p=>`<span class="pill">${p.status==='done'?(p.winner_id===me.id?'🏆 你赢了':'😅 你输了'):'⏳ 待结算'} · 市场#${p.market_id}</span>`).join(''):'<span class="muted">还没有 PK，去挑战一个好友</span>'}</div>
+       <div class="muted" style="margin:10px 0 4px">🏆 PK 胜场榜（前5）</div>
+       <div class="row" style="flex-wrap:wrap;gap:8px">${pkLb.length?pkLb.map((u,i)=>`<span class="pill">${i+1}. ${esc(u.username)} · ${u.wins}胜</span>`).join(''):'<span class="muted">—</span>'}</div>
+     </div>
+   </div>`;
+  if(!localStorage.getItem('rc_game_onboarded')) showGameOnboarding();
+}
+async function gameCheckin(){
+  if(!me)return;
+  const r=await post('/api/daily/checkin?user_id='+me.id,{});
+  if(r){ toast(r.reward>0?('签到 +'+r.reward+' 积分，连签 '+r.streak+' 天'):'今日已签到'); refreshMe(); renderGame(); }
+}
+async function gameSpin(){
+  if(!me)return;
+  const w=$('wheel'); if(w){ _wheelAngle+=1080+Math.floor(Math.random()*360); w.style.transform='rotate('+_wheelAngle+'deg)'; }
+  const r=await post('/api/lucky/spin?user_id='+me.id,{});
+  setTimeout(()=>{
+    if(r&&r.ok){ const m=$('wheelMsg'); if(m)m.innerHTML='🎉 抽中：<b>'+esc(r.reward_text)+'</b>'+(r.tickets!=null?' · 🎟️ '+r.tickets:''); toast('幸运转盘：'+r.reward_text); refreshMe(); renderGame(); }
+    else if(r&&r.reason==='limit'){ const m=$('wheelMsg'); if(m)m.textContent='今日已转，明天再来～'; }
+  }, 2200);
+}
+async function gameClaimPicks(){
+  if(!me)return;
+  const r=await post('/api/daily/picks/claim?user_id='+me.id,{});
+  if(r&&r.ok){ toast('每日一猜 +'+r.reward+' 积分'); refreshMe(); renderGame(); }
+  else if(r&&r.reason==='not_participated'){ toast('先去「预测市场」下注 1 场再回来领奖'); }
+  else if(r){ toast('今日已领过啦'); }
+}
+async function gameClaimSeason(lvl){
+  if(!me)return;
+  const r=await post('/api/season/claim?user_id='+me.id+'&level='+lvl,{});
+  if(r&&r.ok){ toast('领取赛季奖励：'+esc(r.tier.name)); refreshMe(); renderGame(); }
+  else if(r){ toast('无法领取：'+(r.reason||'未知')); }
+}
+async function gamePull(){
+  if(!me)return;
+  const r=await post('/api/lootbox/pull?user_id='+me.id,{});
+  if(r&&r.ok){ toast('获得外观：'+esc(r.item.name)+'（'+r.rarity+'）'); refreshMe(); renderGame(); }
+  else if(r&&r.reason==='no_ticket'){ toast('抽奖券不足，去转盘/赛季领取'); }
+  else if(r){ toast('暂未开放或达上限'); }
+}
+async function gameCreateSquad(){
+  if(!me)return;
+  const name=($('squadName')||{}).value?.trim(); if(!name){ toast('请输入战队名称'); return; }
+  const r=await post('/api/squads',{user_id:me.id,name});
+  if(r&&r.ok){ toast('战队已创建 🛡️'); renderGame(); }
+  else if(r){ toast('创建失败：'+(r.reason||'未知')); }
+}
+async function gameJoinSquad(id){
+  if(!me)return;
+  const r=await post('/api/squads/'+id+'/join?user_id='+me.id,{});
+  if(r&&r.ok){ toast('已加入战队'); renderGame(); }
+  else if(r){ toast('加入失败：'+(r.reason||'未知')); }
+}
+async function gameLeaveSquad(id){
+  if(!me)return;
+  const r=await post('/api/squads/'+id+'/leave?user_id='+me.id,{});
+  if(r&&r.ok){ toast('已退出战队'); renderGame(); }
+  else if(r){ toast('退出失败：'+(r.reason||'未知')); }
+}
+async function gamePkChallenge(){
+  if(!me)return;
+  const opp=($('pkOpp')||{}).value?.trim(); const mid=($('pkMarket')||{}).value;
+  if(!opp){ toast('请输入对手用户名'); return; }
+  if(!mid){ toast('请选择市场'); return; }
+  const r=await post('/api/pk/challenge',{challenger_id:me.id,opponent_name:opp,market_id:Number(mid)});
+  if(r&&r.ok){ toast('PK 已发起，等对手也来下注 ⚔️'); renderGame(); }
+  else if(r){ toast('发起失败：'+(r.reason||'未知')); }
+}
+function showGameOnboarding(){
+  $('modalRoot').innerHTML=`<div class="onb-mask" data-backdrop="1" data-call="closeGameOnboarding()">
+    <div class="onb">
+      <div class="step">🎯</div><h3>3 步玩转真测</h3>
+      <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+      <p>① 选你关心的事件（体育 / 娱乐 / 经济…）<br>② 用免费积分下注你的判断<br>③ 看校准曲线，越准声望越高</p>
+      <p class="muted">新手禀赋：注册即送 500 积分 + 每日签到连胜，空积分也会通向奖励与皮肤。</p>
+      <button class="btn" data-call="gameOnboardNext()">下一步</button>
+    </div></div>`;
+}
+let _onbStep=1;
+function gameOnboardNext(){
+  _onbStep++;
+  const dots=document.querySelectorAll('.onb .dot');
+  if(_onbStep>3){ closeGameOnboarding(); go('markets'); return; }
+  if(dots[_onbStep-1]) dots[_onbStep-1].classList.add('on');
+  const msgs=['① 选你关心的事件（体育 / 娱乐 / 经济…）','② 用免费积分下注你的判断','③ 看校准曲线，越准声望越高'];
+  const step=$('modalRoot').querySelector('.onb .step'); if(step)step.textContent='🚀';
+  const p=$('modalRoot').querySelector('.onb p'); if(p)p.innerHTML=msgs[_onbStep-1];
+}
+function closeGameOnboarding(){ localStorage.setItem('rc_game_onboarded','1'); $('modalRoot').innerHTML=''; }
+
 /* ---------- 事件委托引擎（v0.7.1） ----------
    页面上所有可点元素用 data-call="fn(a,'b')" 声明动作，非点击类用
    data-on="input:fn() change:g() mousemove:h(event)" 声明。
@@ -1322,7 +1547,10 @@ const ACTIONS={adConfirm,adInquire,adStmt,agentOrchestrate,approve,authSeg,claim
   participateNumeric,boardSortChange,
   postComment,publishAuto,redeem,reportComment,reviewCmt,runScout,sendSupport,shareMe,
   showCompliance,showReply,signin,submitUgc,toggleMenu,toggleNotif,trendHover,trendLeave,
-  voteDispute};
+  voteDispute,
+  renderGame,gameCheckin,gameSpin,gameClaimPicks,gameClaimSeason,gamePull,
+  gameCreateSquad,gameJoinSquad,gameLeaveSquad,gamePkChallenge,
+  showGameOnboarding,closeGameOnboarding,gameOnboardNext};
 
 /* 字面量解析：只认 数字 / 引号字符串 / true|false|null / event，不做 eval。 */
 function _lit(s,evt){

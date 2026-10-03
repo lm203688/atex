@@ -266,7 +266,7 @@ def main():
         try:
             with open(_manifest, "w", encoding="utf-8") as f:
                 _json.dump({str(_mid): {"winning_option": 0}}, f, ensure_ascii=False)
-            s, j = call("POST", "/api/oracle/resolve-due", admin=True)
+            s, j = call("POST", "/api/oracle/resolve-from-sources", admin=True)
             check("Oracle权威源自动结算", s == 200 and j.get("resolved", 0) >= 1,
                   f"{s} {j}")
             s, j = call("GET", f"/api/markets/{_mid}")
@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.10", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.13", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
@@ -848,6 +848,174 @@ def main():
     except Exception as _e:
         _ok_iso, _note_iso = False, f"{type(_e).__name__}: {_e}"
     check("v0.7.9 外部参考与结算路径代码级隔离", _ok_iso, _note_iso)
+
+    # ===== P4 路线图落地回归（v0.7.11）=====
+    # P4-A1 校准曲线（可靠性图数据端点）
+    s, j = call("GET", f"/api/users/{uid}/calibration", token=tok)
+    _bins = j.get("bins") if isinstance(j, dict) else None
+    check("P4-A1 校准曲线端点返回分桶",
+          s == 200 and isinstance(_bins, list) and len(_bins) == 5 and "overconfidence" in j,
+          f"{s} {str(j)[:120]}")
+
+    # P4-A2 聚合预测层（分类/数值统一共识 + 群体 vs 外部偏差，外部仅参考不结算）
+    if multi_id:
+        s, j = call("GET", f"/api/markets/{multi_id}/forecast?weighted=1")
+        check("P4-A2 聚合预测层(分类共识+偏差分析)",
+              s == 200 and j.get("type") == "categorical"
+              and isinstance(j.get("probabilities"), list)
+              and "deviation_vs_external" in j, f"{s} {str(j)[:160]}")
+        check("P4-A2 外部概率仅参考不结算(无源→has_external=False)",
+              j.get("deviation_vs_external", {}).get("has_external") is False,
+              f"{str(j.get('deviation_vs_external'))[:80]}")
+
+    # P4-A3 声誉 × 准确度联动（技能分折算声誉 + 技能认证徽标）
+    s, j = call("GET", f"/api/users/{uA}/tier", token=tokA)
+    check("P4-A3 声誉×技能联动端点含技能字段",
+          s == 200 and "skill_certified" in j and "skill_rating" in j
+          and "skill_confidence" in j and "tier_name" in j, f"{s} {str(j)[:160]}")
+
+    # P4-B1 受控 AI 预测：默认关闭时为安全 no-op（ran=False）
+    s, j = call("POST", "/api/automation/ai_predict", admin=True)
+    check("P4-B1 AI预测默认关闭(安全no-op, ran=False)",
+          s == 200 and j.get("ran") is False, f"{s} {j}")
+
+    # P4-B2 Oracle 多源分歧/人工兜底：默认 ORACLE_AUTO_SETTLE 关闭，有源也不自动结算
+    s, j = call("POST", "/api/admin/markets",
+                {"title": "P4-B2 人工兜底验证", "category": "体育",
+                 "options": ["会", "不会"], "closes_at": "2020-01-01 00:00:00",
+                 "oracle_source": "manifest"}, admin=True)
+    _b2 = j.get("market_id")
+    if _b2:
+        _mfile = _os.path.join(_os.path.dirname(_os.path.dirname(os.path.abspath(__file__))),
+                               "oracle_manifest.json")
+        try:
+            with open(_mfile, "w", encoding="utf-8") as f:
+                _json.dump({str(_b2): {"winning_option": 0}}, f, ensure_ascii=False)
+            s, j = call("POST", "/api/oracle/resolve-due", admin=True)
+            check("P4-B2 Oracle默认不自动结算(转人工兜底)",
+                  s == 200 and j.get("resolved", 0) == 0 and j.get("escalated", 0) >= 1,
+                  f"{s} {j}")
+            s2, j2 = call("GET", f"/api/markets/{_b2}")
+            check("P4-B2 人工兜底市场仍处open(未自动结算)",
+                  s2 == 200 and j2.get("status") == "open", f"{s2} {str(j2)[:80]}")
+        finally:
+            try:
+                _os.remove(_mfile)
+            except Exception:
+                pass
+
+    # P4-B3 MCP 兼容服务（JSON-RPC 2.0）：tools/list 免鉴权、只读 call 成功、写操作需鉴权
+    s, j = call("POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+    _tools = (j or {}).get("result", {}).get("tools") if isinstance(j, dict) else None
+    check("P4-B3 MCP tools/list 返回5个工具",
+          s == 200 and isinstance(_tools, list) and len(_tools) == 5, f"{s} {str(j)[:120]}")
+    s, j = call("POST", "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                                 "params": {"name": "get_market", "arguments": {"market_id": 1}}})
+    _ok = (isinstance(j, dict) and isinstance(j.get("result"), dict)
+           and isinstance(j["result"].get("content"), list) and len(j["result"]["content"]) >= 1)
+    check("P4-B3 MCP 只读 get_market 调用成功", s == 200 and _ok, f"{s} {str(j)[:120]}")
+    s, j = call("POST", "/mcp", {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                 "params": {"name": "submit_prediction",
+                                            "arguments": {"user_id": uid, "market_id": 1,
+                                                          "option_index": 0, "stake": 5}}})
+    _err_code = (j or {}).get("error", {}).get("code")
+    check("P4-B3 MCP 写操作无token被拒(-32001)",
+          s == 200 and _err_code == -32001, f"{s} {str(j)[:120]}")
+
+    # ===== P5 游戏化：每日习惯循环 / 幸运转盘 / 赛季通行证 / 外观抽卡公示 =====
+    # 独立新用户，避免与上面签到状态耦合
+    s, j = call("POST", "/api/register", {"username": "p5gameuser", "age_confirmed": True, "password": PW})
+    check("P5 注册游戏测试用户", s == 200 and j.get("user_id"), f"{s} {j}")
+    p5u = j.get("user_id")
+    _, jl = call("POST", "/api/login", {"username": "p5gameuser", "password": PW})
+    p5tok = jl.get("token")
+    check("P5 登录拿token", bool(p5tok), str(jl))
+
+    # 每日状态聚合
+    s, j = call("GET", f"/api/daily/status?user_id={p5u}", token=p5tok)
+    check("P5 每日状态返回连胜/转盘余次/库存",
+          s == 200 and "signin_streak" in j and "wheel_remaining" in j and "tickets" in j, f"{s} {j}")
+
+    # 签到幂等：首次有奖励，第二次为 0
+    s1, j1 = call("POST", f"/api/daily/checkin?user_id={p5u}", token=p5tok)
+    s2, j2 = call("POST", f"/api/daily/checkin?user_id={p5u}", token=p5tok)
+    check("P5 签到首次有奖励/二次幂等",
+          s1 == 200 and j1.get("reward", 0) > 0 and s2 == 200 and j2.get("reward", -1) == 0, f"{s1}{j1} {s2}{j2}")
+
+    # 幸运转盘：首次成功，第二次超限（可变奖励 + 单日限额）
+    s, j = call("POST", f"/api/lucky/spin?user_id={p5u}", token=p5tok)
+    check("P5 转盘首次转动成功(可变奖励)", s == 200 and j.get("ok") is True and j.get("prize"), f"{s} {j}")
+    s, j = call("POST", f"/api/lucky/spin?user_id={p5u}", token=p5tok)
+    check("P5 转盘每日限一次", s == 200 and j.get("reason") == "limit", f"{s} {j}")
+
+    # 赛季通行证：免费轨 10 级结构
+    s, j = call("GET", f"/api/season?user_id={p5u}", token=p5tok)
+    check("P5 赛季通行证返回10级免费轨", s == 200 and isinstance(j.get("tiers"), list) and len(j["tiers"]) == 10, f"{s} {j}")
+    # 锁定的高级奖励不可领
+    s, j = call("POST", f"/api/season/claim?user_id={p5u}&level=5", token=p5tok)
+    check("P5 未解锁档位不可领(locked)", s == 200 and j.get("reason") == "locked", f"{s} {j}")
+
+    # 每日一猜：未下注则不可领
+    s, j = call("POST", f"/api/daily/picks/claim?user_id={p5u}", token=p5tok)
+    check("P5 每日一猜未参与不可领", s == 200 and j.get("ok") is False and j.get("reason") == "not_participated", f"{s} {j}")
+
+    # 外观抽卡：默认关闭，但概率公示对外可见（合规透明度）
+    s, j = call("GET", "/api/lootbox/config")
+    check("P5 抽卡概率公示(无需鉴权)", s == 200 and "rarity_weights" in j and j.get("pity") == 10 and j.get("daily_limit") == 5, f"{s} {j}")
+    s, j = call("POST", f"/api/lootbox/pull?user_id={p5u}", token=p5tok)
+    check("P5 外观抽卡默认关闭(gated)", s == 200 and j.get("enabled") is False, f"{s} {j}")
+
+    # ===== P5-γ 社交：战队 + 好友 PK（积分内闭环，零合规风险） =====
+    # 创建战队 → 自动成为 owner 并获「战队队长」勋章
+    s, j = call("POST", "/api/squads", {"user_id": p5u, "name": "真测先锋营", "tag": "RC"}, token=p5tok)
+    check("P5-γ 创建战队成功", s == 200 and j.get("ok") is True and j.get("squad_id"), f"{s} {j}")
+    sqid = j.get("squad_id")
+    s, j = call("GET", f"/api/squads/mine?user_id={p5u}", token=p5tok)
+    check("P5-γ 我的战队含成员数与角色", s == 200 and j.get("role") == "owner" and j.get("members") == 1, f"{s} {j}")
+    s, j = call("GET", "/api/squads/leaderboard?limit=5")
+    check("P5-γ 战队荣誉榜返回聚合分", s == 200 and isinstance(j, list) and any(x.get("score") is not None for x in j), f"{s} {j}")
+
+    # 第二个用户加入战队（需要第二个账号）
+    s, j = call("POST", "/api/register", {"username": "p5squadmate", "age_confirmed": True, "password": PW})
+    p5mate = j.get("user_id")
+    _, jl = call("POST", "/api/login", {"username": "p5squadmate", "password": PW})
+    p5matetok = jl.get("token")
+    s, j = call("POST", f"/api/squads/{sqid}/join?user_id={p5mate}", token=p5matetok)
+    check("P5-γ 加入战队成功", s == 200 and j.get("ok") is True, f"{s} {j}")
+    s, j = call("POST", f"/api/squads/{sqid}/leave?user_id={p5mate}", token=p5matetok)
+    check("P5-γ 普通成员可退出战队", s == 200 and j.get("ok") is True, f"{s} {j}")
+
+    # 好友 PK：建一个临时市场，双方同场比准，结算后自动判定
+    s, j = call("POST", "/api/admin/markets", {"title": "PK测试·谁更准", "options": ["红队", "蓝队"],
+                                              "category": "体育", "closes_at": "2099-01-01 00:00:00"}, admin=True)
+    pkmid = j.get("market_id")
+    # 对手账号
+    s, j = call("POST", "/api/register", {"username": "p5pkopp", "age_confirmed": True, "password": PW})
+    p5opp = j.get("user_id")
+    _, jl = call("POST", "/api/login", {"username": "p5pkopp", "password": PW})
+    p5opptok = jl.get("token")
+    # 发起 PK
+    s, j = call("POST", "/api/pk/challenge", {"challenger_id": p5u, "opponent_name": "p5pkopp", "market_id": pkmid}, token=p5tok)
+    check("P5-γ 发起好友PK成功", s == 200 and j.get("ok") is True and j.get("pk_id"), f"{s} {j}")
+    # 双方下注（challenger 选0，opponent 选1）
+    call("POST", f"/api/markets/{pkmid}/participate", {"user_id": p5u, "option": 0, "stake": 10}, token=p5tok)
+    call("POST", f"/api/markets/{pkmid}/participate", {"user_id": p5opp, "option": 1, "stake": 10}, token=p5opptok)
+    bal_before = call("GET", f"/api/users/{p5u}", token=p5tok)[1].get("points_balance", 0)
+    # 结算：红队(0)胜 → challenger 应赢
+    s, j = call("POST", "/api/admin/settle", {"market_id": pkmid, "winning_option": 0, "source": "测试"}, admin=True)
+    check("P5-γ 市场结算成功", s == 200, f"{s} {j}")
+    s, j = call("GET", f"/api/pk/mine?user_id={p5u}", token=p5tok)
+    my_pk = next((p for p in j if p.get("market_id") == pkmid), None)
+    bal_after = call("GET", f"/api/users/{p5u}", token=p5tok)[1].get("points_balance", 0)
+    check("P5-γ PK自动结算并判定challenger胜(平台奖励积分)",
+          bool(my_pk) and my_pk.get("status") == "done" and my_pk.get("winner_id") == p5u
+          and bal_after > bal_before, f"{j} bal {bal_before}→{bal_after}")
+    # 胜者获 PK 之王勋章
+    s, j = call("GET", f"/api/users/{p5u}/badges", token=p5tok)
+    check("P5-γ 胜者获「PK之王」勋章", s == 200 and any(b.get("id") == "pk_champ" for b in j), f"{s} {j}")
+    # 胜场榜
+    s, j = call("GET", "/api/pk/leaderboard?limit=5")
+    check("P5-γ PK胜场榜含胜者", s == 200 and isinstance(j, list) and any(x.get("user_id") == p5u for x in j), f"{s} {j}")
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
