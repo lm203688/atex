@@ -37,7 +37,7 @@ from core import tiers
 from core import rating
 from core import external_ref
 from core import forecast
-from core import daily, seasons, cosmetics, social
+from core import daily, seasons, cosmetics, adwatch, sponsors, vip, social
 from mcp import server as mcp
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
@@ -96,7 +96,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.13",
+    version="0.7.14",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -442,6 +442,64 @@ def api_lootbox_pull(user_id: int, request: Request):
     """外观抽卡（消耗抽奖券）。默认 LOOTBOX_ENABLED=0 时不开放。"""
     _auth_user(user_id, request)
     return cosmetics.pull(user_id)
+
+
+# ---------------- P5-δ 变现层：L1 激励视频 / L2 品牌众测 / L3 VIP 订阅（不卖分） ----------------
+@app.get("/api/ads/offer")
+def api_ads_offer(user_id: int, request: Request):
+    """当前可看的激励视频广告（占位，真实接入时替换为广告 SDK）。"""
+    _auth_user(user_id, request)
+    return adwatch.ad_offer()
+
+
+@app.get("/api/ads/status")
+def api_ads_status(user_id: int, request: Request):
+    _auth_user(user_id, request)
+    return adwatch.ad_status(user_id)
+
+
+@app.post("/api/ads/watch")
+def api_ads_watch(user_id: int, request: Request, ad_id: str = None):
+    """观看激励视频，领平台积分（每日上限）。"""
+    _auth_user(user_id, request)
+    return adwatch.watch(user_id, ad_id)
+
+
+@app.get("/api/sponsors")
+def api_sponsors(limit: int = 30):
+    """品牌众测市场列表（含赞助商）。"""
+    return sponsors.list_sponsored(limit)
+
+
+@app.post("/api/markets/{market_id}/sponsor")
+def api_market_sponsor(market_id: int, brand_name: str, brand_note: str = None,
+                       request: Request = None):
+    """运营/品牌：赞助一个市场（admin）。"""
+    _auth_admin(request)
+    return sponsors.sponsor_market(market_id, brand_name, brand_note)
+
+
+@app.get("/api/sponsors/{market_id}/report")
+def api_sponsor_report(market_id: int, request: Request = None):
+    """赞助商品牌侧匿名情绪报告（admin）。无 PII，纯聚合。"""
+    _auth_admin(request)
+    rep = sponsors.brand_report(market_id)
+    if rep is None:
+        raise HTTPException(404, "市场不存在")
+    return rep
+
+
+@app.get("/api/vip/tiers")
+def api_vip_tiers():
+    """VIP 订阅档位与权益说明（无需鉴权，透明度）。默认关闭返回 enabled=False。"""
+    return vip.tiers()
+
+
+@app.post("/api/vip/subscribe")
+def api_vip_subscribe(user_id: int, tier_key: str, request: Request):
+    """订阅某档 VIP。默认 VIP_PAYMENTS_ENABLED=0 关闭，仅暴露模型不接入支付。"""
+    _auth_user(user_id, request)
+    return vip.subscribe(user_id, tier_key)
 
 
 # ---------------- P5-γ 社交：战队 + 好友 PK（积分内闭环，零合规风险） ----------------

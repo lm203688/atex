@@ -446,6 +446,25 @@ def init_db():
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {ctype} DEFAULT 0")
             except sqlite3.OperationalError:
                 pass
+        # P5-δ L3 VIP 订阅档位（仅服务权益标识，绝不发放下注积分）
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN vip_tier TEXT DEFAULT 'free'")
+        except sqlite3.OperationalError:
+            pass
+        # P5-δ L2 品牌赞助：市场记录赞助商品牌（仅展示 + 匿名报告，不涉及积分买卖）
+        for col, ctype in (("sponsor_name", "TEXT"), ("sponsor_note", "TEXT")):
+            try:
+                conn.execute(f"ALTER TABLE markets ADD COLUMN {col} {ctype}")
+            except sqlite3.OperationalError:
+                pass
+        for sql in (
+            """CREATE TABLE IF NOT EXISTS ad_watch_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, day TEXT NOT NULL,
+                ad_id TEXT, reward INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')))""",
+        ):
+            conn.execute(sql)
         for sql in (
             """CREATE TABLE IF NOT EXISTS daily_wheel (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

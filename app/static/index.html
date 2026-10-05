@@ -1388,6 +1388,9 @@ async function renderGame(){
   const pkMine=await api('/api/pk/mine?user_id='+me.id) || [];
   const pkLb=await api('/api/pk/leaderboard?limit=5') || [];
   const openMk=await api('/api/markets?status=open&limit=40') || [];
+  const adStatus=await api('/api/ads/status?user_id='+me.id) || {remaining:0,reward:0,daily_limit:3,watched_today:0};
+  const sponsored=await api('/api/sponsors?limit=12') || [];
+  const vipTiers=await api('/api/vip/tiers') || {enabled:false,tiers:[]};
   host.innerHTML=`
    <div class="banner"><div><b>🎮 游戏中心</b><br><small>每日回来，越玩越准 · 纯积分娱乐，不涉及现金</small></div>
      <div><span class="pill">🎟️ ${st.tickets||0}</span> <span class="pill">🔷 ${st.shards||0}</span></div></div>
@@ -1448,6 +1451,21 @@ async function renderGame(){
        <div class="muted" style="margin:10px 0 4px">🏆 PK 胜场榜（前5）</div>
        <div class="row" style="flex-wrap:wrap;gap:8px">${pkLb.length?pkLb.map((u,i)=>`<span class="pill">${i+1}. ${esc(u.username)} · ${u.wins}胜</span>`).join(''):'<span class="muted">—</span>'}</div>
      </div>
+     <div class="card" style="grid-column:1/-1">
+       <h3>📺 激励视频 <span class="muted">看视频领积分（每日 ${adStatus.daily_limit} 次）</span></h3>
+       <p class="muted">自愿观看 30s 视频广告，今日已看 ${adStatus.watched_today||0} 次，还可看 ${adStatus.remaining||0} 次，每次 +${adStatus.reward||0} 积分。广告主付费→平台发积分→你免费得（积分仍只送不卖）。</p>
+       <button class="btn" data-call="gameWatchAd()" ${adStatus.remaining>0?'':'disabled'}>${adStatus.remaining>0?'看一段视频 +'+ (adStatus.reward||0) +' 积分':'今日已看完'}</button>
+     </div>
+     <div class="card" style="grid-column:1/-1">
+       <h3>🏷️ 品牌众测 <span class="muted">品牌赞助市场 · 奖品由品牌提供</span></h3>
+       <p class="muted">赞助市场展示品牌徽标；品牌方获得该市场匿名群体情绪报告（无 PII）。这是真测的合规变现之一，参照虎扑/腾讯体育「品牌主题联赛」。</p>
+       <div class="row" style="flex-wrap:wrap;gap:8px">${sponsored.length?sponsored.map(s=>`<span class="pill">🏷️ ${esc(s.sponsor_name)} 赞助：${esc((s.title||'').slice(0,30))}</span>`).join(''):'<span class="muted">暂无赞助市场，运营可对接品牌赞助</span>'}</div>
+     </div>
+     <div class="card" style="grid-column:1/-1">
+       <h3>💎 VIP 订阅 <span class="muted">服务权益，绝不卖分</span></h3>
+       <p class="muted">${esc(vipTiers.note||'VIP 是订阅服务（去广告/专属分析/抢先体验），绝不售卖预测积分、绝不 pay-to-win。')}${vipTiers.enabled?'':'（支付网关待接入，当前仅展示档位）'}</p>
+       <div class="row" style="flex-wrap:wrap;gap:10px">${vipTiers.tiers.length?vipTiers.tiers.map(t=>`<div class="card" style="flex:1;min-width:160px"><b>${esc(t.name)}</b>${t.price_cny>0?' · ¥'+t.price_cny+'/月':''}<ul class="muted" style="padding-left:18px;margin:6px 0">${t.benefits.map(b=>`<li>${esc(b)}</li>`).join('')}</ul>${vipTiers.enabled?'<button class="btn sec sm" data-call="gameVip(\''+t.key+'\')">开通</button>':'<span class="muted">待接入支付</span>'}</div>`).join(''):'<span class="muted">—</span>'}</div>
+     </div>
    </div>`;
   if(!localStorage.getItem('rc_game_onboarded')) showGameOnboarding();
 }
@@ -1484,6 +1502,20 @@ async function gamePull(){
   if(r&&r.ok){ toast('获得外观：'+esc(r.item.name)+'（'+r.rarity+'）'); refreshMe(); renderGame(); }
   else if(r&&r.reason==='no_ticket'){ toast('抽奖券不足，去转盘/赛季领取'); }
   else if(r){ toast('暂未开放或达上限'); }
+}
+async function gameWatchAd(){
+  if(!me)return;
+  const r=await post('/api/ads/watch?user_id='+me.id,{});
+  if(r&&r.ok){ toast('观看完成，+'+r.reward+' 积分（今日剩 '+r.remaining+' 次）'); refreshMe(); renderGame(); }
+  else if(r&&r.reason==='limit'){ toast('今日观看次数已用完，明天再来'); }
+  else if(r){ toast('观看失败，请重试'); }
+}
+async function gameVip(tierKey){
+  if(!me)return;
+  const r=await post('/api/vip/subscribe?user_id='+me.id+'&tier_key='+tierKey,{});
+  if(r&&r.enabled===false){ toast('支付网关待接入（ICP+支付牌照），当前仅展示档位'); }
+  else if(r&&r.ok){ toast('已开通 '+tierKey+'（仅服务权益，未发放下注积分）'); renderGame(); }
+  else if(r){ toast('开通失败：'+(r.reason||'未知')); }
 }
 async function gameCreateSquad(){
   if(!me)return;

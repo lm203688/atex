@@ -131,9 +131,9 @@ cd app && python tests/uat_customer.py    # 期望 90/90 全绿
 - **P4-B2 Oracle 人工兜底路由**：`POST /api/oracle/resolve-due` 改用 `resolve_due_with_human_fallback()`——多源结果分歧或 `ORACLE_AUTO_SETTLE` 未开启（默认）时一律升级 dev 人工裁定工单，**绝不自动结算**，守住人工兜底红线；单源一致且显式开启 `ORACLE_AUTO_SETTLE=1` 才自动结算并留痕。原源直连结算保留为 `POST /api/oracle/resolve-from-sources`。
 - **P4-B3 MCP 兼容服务（JSON-RPC 2.0）**：新增 `app/mcp/server.py` 与 `POST /mcp`，纯标准库实现无外部依赖。只读工具（list_markets/get_market/get_forecast/get_leaderboard）免鉴权；写工具 `submit_prediction` 必须带 `Authorization: Bearer <token>` 且服务端核验 token 与 user_id 匹配后才走普通 participate 路径。
 
-> 质量门禁：`python tests/smoke.py --fresh` 现为 **154/154 全绿**（含 P4 + P5 全量断言）。
+> 质量门禁：`python tests/smoke.py --fresh` 现为 **161/161 全绿**（含 P4 + P5 全量断言）。
 
-### 真测游戏化（P5）· v0.7.12 · 用 Hook 模型补齐「每天回来」的理由
+### 真测游戏化（P5）· v0.7.12 → v0.7.14 · 用 Hook 模型补齐「每天回来」的理由
 > 竞品/市场扫描结论：纯 play-money 预测在亚洲监管面最小、变现不能靠交易抽水，应走「广告 + 品牌众测 + VIP订阅(非买分) + 实物/抽奖(公示概率) + 匿名数据B2B + 引擎白标」复合栈。真测已站对赛道，缺的是**游戏循环**。本轮按 Nir Eyal Hook 模型（触发→行动→可变奖励→投入）落地四循环：
 
 - **P5-A 每日习惯循环**：`core/daily.py` + 端点 `/api/daily/checkin`、`/api/daily/picks`、`/api/daily/picks/claim`、`/api/daily/status`。每日签到（连续递增、断签重置，损失厌恶）、每日一猜（3 场精选、完成领 15 积分）、预测连胜展示。前端「游戏中心」一屏。
@@ -142,9 +142,13 @@ cd app && python tests/uat_customer.py    # 期望 90/90 全绿
 - **P5-D 段位赛 / P5-C 皮肤抽卡（默认关）**：段位展示由声誉驱动；`core/cosmetics.py` 写好外观抽卡（概率公示 + 保底 10 抽 + 单日上限 5 + 仅外观零货币价值），但 `LOOTBOX_ENABLED` 默认 `0` 关闭、前端不开入口，**等律所意见后一键开启**。
 - **P5-H 新手引导**：首次进入「游戏中心」弹 3 步引导（选兴趣→下注→看校准）；注册即送 500 积分 + 每日签到连胜（禀赋进展效应）。
 - **P5-γ 社交：战队 + 好友 PK（积分内闭环，零合规风险）**：`core/social.py` + 端点 `/api/squads`(建)、`/api/squads/{id}/join|leave`、`/api/squads/mine`、`/api/squads`(列表)、`/api/squads/leaderboard`、`/api/pk/challenge`、`/api/pk/mine`、`/api/pk/leaderboard`。战队为**纯荣誉聚合榜**（成员预测活跃度+校准+声誉），不发放/不转移积分；好友 PK 双方对同一市场比准，结算时**由平台奖励池**发放胜者小额积分+「PK之王」勋章，输家不付出、双方积分不互转（非流通、非回兑）。市场结算时自动连带结算该市场上的所有 PK。全程 18+，不涉及人民币/加密/赌博三要素。
-- 合规：所有循环仅服务 18+；积分只送不卖/不可流通/不可回兑；抽卡按最严标准（公示概率+保底+上限）先行写好，不开 UI 入口。
+- **P5-δ 变现层（合规复合栈）**：
+  - **L1 激励视频广告**：`core/adwatch.py` + `GET /api/ads/offer`、`GET /api/ads/status`、`POST /api/ads/watch`。用户自愿观看（前端占位 30s）→ 领平台积分（默认 20/次、每日上限 3）。链路：广告主付费→平台发积分→用户免费得，积分仍只送不卖。
+  - **L2 品牌众测赞助**：`core/sponsors.py` + `GET /api/sponsors`、`POST /api/markets/{id}/sponsor`(admin)、`GET /api/sponsors/{id}/report`(admin)。品牌赞助市场（徽标展示），品牌方取该市场**匿名**群体情绪报告（无 PII）；奖品由品牌提供，参照虎扑/腾讯体育「品牌主题联赛」。种子已演示：双十一市场由「星寰电商」赞助。
+  - **L3 VIP 订阅（不卖分）**：`core/vip.py` + `GET /api/vip/tiers`、`POST /api/vip/subscribe`。三档（免费/支持者 ¥9/Pro ¥29），权益为去广告/专属分析/抢先体验，**绝不发放下注积分、绝不 pay-to-win**。真实支付需接 xunhupay+ICP，`VIP_PAYMENTS_ENABLED` 默认 `0` 关闭，仅暴露档位说明。
+- 合规：所有循环仅服务 18+；积分只送不卖/不可流通/不可回兑；抽卡按最严标准（公示概率+保底+上限）先行写好，不开 UI 入口；广告/VIP/赞助变现均不触碰「人民币买积分」「积分回兑现金」红线。
 
-> 质量门禁：`python tests/smoke.py --fresh` 现为 **154/154 全绿**（含 P4 + P5 全量断言）。
+> 质量门禁：`python tests/smoke.py --fresh` 现为 **161/161 全绿**（含 P4 + P5 全量断言）。
 
 ## 上线硬性前提（未满足不得公开运营）
 - 服务器 ICP 备案（腾讯云）

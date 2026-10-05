@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.13", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.14", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
@@ -1016,6 +1016,27 @@ def main():
     # 胜场榜
     s, j = call("GET", "/api/pk/leaderboard?limit=5")
     check("P5-γ PK胜场榜含胜者", s == 200 and isinstance(j, list) and any(x.get("user_id") == p5u for x in j), f"{s} {j}")
+
+    # ---- P5-δ 变现层：L1 激励视频 / L2 品牌众测 / L3 VIP 订阅（不卖分）----
+    # L1 激励视频
+    s, j = call("GET", f"/api/ads/status?user_id={p5u}", token=p5tok)
+    check("P5-δ 激励视频状态含每日上限", s == 200 and j.get("daily_limit", 0) == 3 and j.get("remaining", 0) >= 1, f"{s} {j}")
+    s, j = call("POST", f"/api/ads/watch?user_id={p5u}", token=p5tok)
+    check("P5-δ 看广告领积分", s == 200 and j.get("ok") is True and j.get("reward", 0) > 0 and j.get("remaining", 9) < 3, f"{s} {j}")
+    # L2 品牌众测：种子已赞助 m7，列表应≥1
+    s, j = call("GET", "/api/sponsors?limit=12")
+    check("P5-δ 品牌众测列表含种子赞助市场", s == 200 and isinstance(j, list) and len(j) >= 1, f"{s} {j}")
+    # 运营赞助一个市场（admin，brand_name 走 query，用 ASCII 避免 URL 编码问题）
+    s, j = call("POST", f"/api/markets/{pkmid}/sponsor?brand_name=TestBrand", admin=True)
+    check("P5-δ 运营可赞助市场", s == 200 and j.get("ok") is True, f"{s} {j}")
+    # 品牌匿名报告（admin，无 PII）
+    s, j = call("GET", f"/api/sponsors/{pkmid}/report", admin=True)
+    check("P5-δ 品牌匿名情绪报告(无PII)", s == 200 and "participants" in j and "community_probabilities" in j and "sponsor_name" in j, f"{s} {j}")
+    # L3 VIP 订阅：默认关闭，返回 enabled=False
+    s, j = call("GET", "/api/vip/tiers")
+    check("P5-δ VIP档位默认关闭(enabled=False)", s == 200 and j.get("enabled") is False and len(j.get("tiers", [])) == 3, f"{s} {j}")
+    s, j = call("POST", f"/api/vip/subscribe?user_id={p5u}&tier_key=supporter", token=p5tok)
+    check("P5-δ VIP订阅默认关闭(gated)", s == 200 and j.get("enabled") is False, f"{s} {j}")
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:

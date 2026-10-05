@@ -10,6 +10,7 @@ from core import mall
 from core import tournaments
 from core import comments
 from automation import scout, publish
+from core import sponsors
 
 init_db()
 
@@ -99,6 +100,11 @@ m11 = markets.create_market(
     "体育", "体育", ["Los Angeles Rams", "Philadelphia Eagles"],
     "ESPN 公开比分 API", "2026-10-05 03:00:00",
     oracle_meta={"provider": "espn", "sport": "football", "league": "nfl", "date": "20261004"})
+
+# 2.5) 品牌众测（P5-δ L2）：品牌赞助一个真实市场（奖品由品牌提供，平台展示徽标）。
+#      品牌方后续可调 /api/sponsors/{market_id}/report 取该市场匿名群体情绪报告。
+sponsors.sponsor_market(m7, "星寰电商",
+    "2026 双十一独家众测合作伙伴：品牌依据群体预测调整备货与营销节奏。")
 
 # 3) 用户参与（u1/u2 命中 m3 已结算市场，使 accuracy/校准有真实战绩）
 markets.participate(u1, m1, 0, 30)   # 酋长
