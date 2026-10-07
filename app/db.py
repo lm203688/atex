@@ -486,6 +486,20 @@ def init_db():
                 user_id INTEGER NOT NULL, day TEXT NOT NULL,
                 cosmetic_key TEXT NOT NULL, rarity TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')))""",
+            # P5-E Live-Ops 限时活动：活动表 + 参与去重表（积分只送，每用户每活动限领一次）
+            """CREATE TABLE IF NOT EXISTS live_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL, theme TEXT, description TEXT,
+                start_at TEXT NOT NULL, end_at TEXT NOT NULL,
+                status TEXT DEFAULT 'scheduled',
+                reward_points INTEGER DEFAULT 0, linked_markets TEXT, banner TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')))""",
+            """CREATE TABLE IF NOT EXISTS event_participation (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, event_id INTEGER NOT NULL,
+                reward INTEGER DEFAULT 0,
+                claimed_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(user_id, event_id))""",
         ):
             conn.execute(sql)
         conn.commit()

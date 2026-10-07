@@ -37,7 +37,7 @@ from core import tiers
 from core import rating
 from core import external_ref
 from core import forecast
-from core import daily, seasons, cosmetics, adwatch, sponsors, vip, social
+from core import daily, seasons, cosmetics, adwatch, sponsors, vip, social, events
 from mcp import server as mcp
 from automation import scout, publish, moderation
 from agents import support, ads, devboard
@@ -96,7 +96,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title="真测 Realcast (Points-based Prediction Community)",
-    version="0.7.14",
+    version="0.7.15",
     description=DESCRIPTION,
     docs_url="/docs",
     lifespan=lifespan,
@@ -500,6 +500,56 @@ def api_vip_subscribe(user_id: int, tier_key: str, request: Request):
     """订阅某档 VIP。默认 VIP_PAYMENTS_ENABLED=0 关闭，仅暴露模型不接入支付。"""
     _auth_user(user_id, request)
     return vip.subscribe(user_id, tier_key)
+
+
+# ---------------- P5-E Live-Ops 限时活动（默认开放，纯内容+积分激励，无合规风险） ----------------
+class EventCreate(BaseModel):
+    title: str
+    theme: str = "custom"
+    description: str = ""
+    start_at: str          # 'YYYY-MM-DD HH:MM:SS'（UTC，按库内字符串约定）
+    end_at: str
+    reward_points: int = 0
+    linked_markets: str = ""   # 逗号分隔的市场 id
+    banner: str = "🎉"
+
+
+@app.get("/api/events")
+def api_events():
+    """限时活动列表（公开），状态由时间推导。"""
+    return events.list_events()
+
+
+@app.get("/api/events/{event_id}")
+def api_event_detail(event_id: int):
+    """活动详情 + 关联市场（只读，不参与结算）。"""
+    d = events.detail(event_id)
+    if d is None:
+        raise HTTPException(404, "活动不存在")
+    return d
+
+
+@app.post("/api/events/{event_id}/participate")
+def api_event_participate(event_id: int, user_id: int, request: Request):
+    """参与活动领平台积分（每用户每活动限一次，积分只送不卖）。"""
+    _auth_user(user_id, request)
+    return events.participate(user_id, event_id)
+
+
+@app.post("/api/admin/events")
+def api_admin_event_create(req: EventCreate, request: Request):
+    """运营：创建限时活动（admin）。"""
+    _auth_admin(request)
+    return events.create_event(req.title, req.theme, req.description,
+                               req.start_at, req.end_at, req.reward_points,
+                               req.linked_markets, req.banner)
+
+
+@app.post("/api/admin/events/{event_id}/close")
+def api_admin_event_close(event_id: int, request: Request):
+    """运营：关闭（结束）一个活动（admin）。"""
+    _auth_admin(request)
+    return events.close_event(event_id)
 
 
 # ---------------- P5-γ 社交：战队 + 好友 PK（积分内闭环，零合规风险） ----------------

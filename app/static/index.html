@@ -1391,6 +1391,7 @@ async function renderGame(){
   const adStatus=await api('/api/ads/status?user_id='+me.id) || {remaining:0,reward:0,daily_limit:3,watched_today:0};
   const sponsored=await api('/api/sponsors?limit=12') || [];
   const vipTiers=await api('/api/vip/tiers') || {enabled:false,tiers:[]};
+  const eventsList=await api('/api/events') || [];
   host.innerHTML=`
    <div class="banner"><div><b>🎮 游戏中心</b><br><small>每日回来，越玩越准 · 纯积分娱乐，不涉及现金</small></div>
      <div><span class="pill">🎟️ ${st.tickets||0}</span> <span class="pill">🔷 ${st.shards||0}</span></div></div>
@@ -1465,7 +1466,21 @@ async function renderGame(){
        <h3>💎 VIP 订阅 <span class="muted">服务权益，绝不卖分</span></h3>
        <p class="muted">${esc(vipTiers.note||'VIP 是订阅服务（去广告/专属分析/抢先体验），绝不售卖预测积分、绝不 pay-to-win。')}${vipTiers.enabled?'':'（支付网关待接入，当前仅展示档位）'}</p>
        <div class="row" style="flex-wrap:wrap;gap:10px">${vipTiers.tiers.length?vipTiers.tiers.map(t=>`<div class="card" style="flex:1;min-width:160px"><b>${esc(t.name)}</b>${t.price_cny>0?' · ¥'+t.price_cny+'/月':''}<ul class="muted" style="padding-left:18px;margin:6px 0">${t.benefits.map(b=>`<li>${esc(b)}</li>`).join('')}</ul>${vipTiers.enabled?'<button class="btn sec sm" data-call="gameVip(\''+t.key+'\')">开通</button>':'<span class="muted">待接入支付</span>'}</div>`).join(''):'<span class="muted">—</span>'}</div>
-     </div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <h3>📅 限时活动 <span class="muted">Live-Ops · 主题季</span></h3>
+      ${eventsList.length?eventsList.map(ev=>{
+        const active=ev.status==='active';
+        const linked=ev.linked_markets||[];
+        return `<div class="ev-row">
+          <div class="ev-head"><span class="ev-banner">${esc(ev.banner||'🎉')}</span>
+            <div><b>${esc(ev.title)}</b> <span class="pill" style="${active?'background:#16a34a;color:#fff':'background:#475569;color:#fff'}">${active?'进行中':'即将开始'}</span></div></div>
+          <p class="muted" style="margin:6px 0">${esc(ev.description||'')}</p>
+          <div class="row" style="flex-wrap:wrap;gap:6px">${linked.length?linked.map(m=>`<button class="btn sec sm" data-call="openMarket(${m})">市场 #${m}</button>`).join(''):'<span class="muted">无关联市场</span>'}</div>
+          ${active?`<button class="btn" data-call="gameJoinEvent(${ev.id})" style="margin-top:8px">参与领 ${ev.reward_points||0} 积分</button>`:`<div class="muted" style="margin-top:6px">⏳ 即将开始（${esc((ev.start_at||'').slice(0,10))} 起）</div>`}
+        </div>`;
+      }).join('<hr style="border:none;border-top:1px solid #1e293b;margin:10px 0">'):'<div class="muted">暂无限时活动，运营可创建主题季</div>'}
+    </div>
    </div>`;
   if(!localStorage.getItem('rc_game_onboarded')) showGameOnboarding();
 }
@@ -1509,6 +1524,14 @@ async function gameWatchAd(){
   if(r&&r.ok){ toast('观看完成，+'+r.reward+' 积分（今日剩 '+r.remaining+' 次）'); refreshMe(); renderGame(); }
   else if(r&&r.reason==='limit'){ toast('今日观看次数已用完，明天再来'); }
   else if(r){ toast('观看失败，请重试'); }
+}
+async function gameJoinEvent(eid){
+  if(!me)return;
+  const r=await post('/api/events/'+eid+'/participate?user_id='+me.id,{});
+  if(r&&r.ok){ toast('参与成功，+'+r.reward+' 积分（'+esc(r.event)+'）'); refreshMe(); renderGame(); }
+  else if(r&&r.reason==='already'){ toast('你已参与过该活动'); }
+  else if(r&&r.reason==='not_active'){ toast('活动未在进行中'); }
+  else if(r){ toast('参与失败：'+(r.reason||'未知')); }
 }
 async function gameVip(tierKey){
   if(!me)return;
@@ -1581,7 +1604,7 @@ const ACTIONS={adConfirm,adInquire,adStmt,agentOrchestrate,approve,authSeg,claim
   showCompliance,showReply,signin,submitUgc,toggleMenu,toggleNotif,trendHover,trendLeave,
   voteDispute,
   renderGame,gameCheckin,gameSpin,gameClaimPicks,gameClaimSeason,gamePull,
-  gameCreateSquad,gameJoinSquad,gameLeaveSquad,gamePkChallenge,
+  gameCreateSquad,gameJoinSquad,gameLeaveSquad,gamePkChallenge,gameJoinEvent,
   showGameOnboarding,closeGameOnboarding,gameOnboardNext};
 
 /* 字面量解析：只认 数字 / 引号字符串 / true|false|null / event，不做 eval。 */

@@ -66,7 +66,7 @@ python -m uvicorn main:app --port 8000
 
 ## 测试
 ```bash
-python tests/smoke.py --fresh   # 重置数据库→重新种子→起本地服务→跑全链路，161 项全绿
+python tests/smoke.py --fresh   # 重置数据库→重新种子→起本地服务→跑全链路，168 项全绿
 ```
 
 ## 已做实 vs 路线图

@@ -10,7 +10,7 @@ from core import mall
 from core import tournaments
 from core import comments
 from automation import scout, publish
-from core import sponsors
+from core import sponsors, events
 
 init_db()
 
@@ -105,6 +105,9 @@ m11 = markets.create_market(
 #      品牌方后续可调 /api/sponsors/{market_id}/report 取该市场匿名群体情绪报告。
 sponsors.sponsor_market(m7, "星寰电商",
     "2026 双十一独家众测合作伙伴：品牌依据群体预测调整备货与营销节奏。")
+
+# 2.6) P5-E Live-Ops 限时活动（真实主题，相对 now 保证部署后始终有进行中/即将开始）
+events.seed_events(m6, [m2, m9], m7)
 
 # 3) 用户参与（u1/u2 命中 m3 已结算市场，使 accuracy/校准有真实战绩）
 markets.participate(u1, m1, 0, 30)   # 酋长

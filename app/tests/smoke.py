@@ -599,7 +599,7 @@ def main():
           f"{s} {j.get('backplane')}")
 
     # (4) 版本号
-    check("v0.7.1 版本号已升级", j.get("version") == "0.7.14", str(j.get("version")))
+    check("v0.7.1 版本号已升级", j.get("version") == "0.7.15", str(j.get("version")))
 
     # (4b) v0.7.6：DB 连接池为「每线程独立连接」，修复 v0.7.5 全局单连接的
     # 事务交叉污染（78 个同步端点走线程池，共享连接会让 A 的未提交写被 B 的
@@ -1037,6 +1037,30 @@ def main():
     check("P5-δ VIP档位默认关闭(enabled=False)", s == 200 and j.get("enabled") is False and len(j.get("tiers", [])) == 3, f"{s} {j}")
     s, j = call("POST", f"/api/vip/subscribe?user_id={p5u}&tier_key=supporter", token=p5tok)
     check("P5-δ VIP订阅默认关闭(gated)", s == 200 and j.get("enabled") is False, f"{s} {j}")
+
+    # ---- P5-E Live-Ops 限时活动（默认开放，纯内容+积分激励，无合规风险）----
+    s, j = call("GET", "/api/events")
+    check("P5-E 限时活动列表≥3且含状态", s == 200 and isinstance(j, list) and len(j) >= 3 and all("status" in e for e in j), f"{s} {j}")
+    active = next((e for e in j if e.get("status") == "active"), None)
+    check("P5-E 存在进行中活动", bool(active), f"active={active}")
+    if active:
+        eid = active["id"]
+        s, j = call("GET", f"/api/events/{eid}")
+        check("P5-E 活动详情含关联市场", s == 200 and "markets" in j, f"{s} {j}")
+        s, j = call("POST", f"/api/events/{eid}/participate?user_id={p5u}", token=p5tok)
+        check("P5-E 参与活动领积分", s == 200 and j.get("ok") is True and j.get("reward", 0) > 0, f"{s} {j}")
+        s, j = call("POST", f"/api/events/{eid}/participate?user_id={p5u}", token=p5tok)
+        check("P5-E 重复参与被拒(已领)", s == 200 and j.get("ok") is False and j.get("reason") == "already", f"{s} {j}")
+    # 运营创建并关闭
+    s, j = call("POST", "/api/admin/events",
+                {"title": "测试活动", "theme": "custom", "description": "smoke",
+                 "start_at": "2020-01-01 00:00:00", "end_at": "2099-01-01 00:00:00",
+                 "reward_points": 5, "linked_markets": "", "banner": "🧪"}, admin=True)
+    check("P5-E 运营可创建活动", s == 200 and j.get("ok") is True and j.get("id"), f"{s} {j}")
+    if j.get("id"):
+        nid = j["id"]
+        s, j = call("POST", f"/api/admin/events/{nid}/close", admin=True)
+        check("P5-E 运营可关闭活动", s == 200 and j.get("ok") is True, f"{s} {j}")
 
     print(f"\n结果：PASS={len(PASS)}  FAIL={len(FAIL)}")
     if FAIL:
