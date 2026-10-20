@@ -40,7 +40,7 @@ def main():
     s, b, _ = req("GET", "/api/health")
     j = json.loads(b)
     print(f"  health: {s} version={j.get('version')} oracle_sources={j.get('oracle_sources')}")
-    ok &= (s == 200 and j.get("version") == "0.4.1" and isinstance(j.get("oracle_sources"), list))
+    ok &= (s == 200 and j.get("version") == "0.7.15" and isinstance(j.get("oracle_sources"), list))
 
     # 2) 管理员端点无 token → 401
     s, _, _ = req("GET", "/api/admin/comments/pending")
@@ -69,11 +69,23 @@ def main():
     ok &= os.path.exists(DB)
 
     # 7) 内容安全：前端仍可创建只读无金钱权重的评论（合规闭环仍在）
-    s, b, _ = req("POST", "/api/register", body={"username": "生产验证员", "age_confirmed": True})
+    import time as _t
+    s, b, _ = req("POST", "/api/register", body={"username": f"prodverify{int(_t.time())}", "age_confirmed": True, "password": "verify123"})
     uid = json.loads(b).get("user_id") if s == 200 else None
     print(f"  注册: {s} uid={uid}")
     ok &= (s == 200 and uid)
 
+    checks = {
+        "health": (s == 200 and j.get("version") == "0.7.15" and isinstance(j.get("oracle_sources"), list)),
+        "admin_no_token": (req("GET", "/api/admin/comments/pending")[0] == 401),
+        "admin_wrong": (req("GET", "/api/admin/comments/pending", headers={"x-admin-token": "wrong"})[0] == 401),
+        "admin_ok": (req("GET", "/api/admin/comments/pending", headers={"x-admin-token": ADMIN})[0] == 200),
+        "cors": (acao == CORS),
+        "db": os.path.exists(DB),
+        "register": (s == 200 and uid),
+    }
+    print("  checks:", checks)
+    ok = all(checks.values())
     print("\n生产模式验证:", "全部通过 ✅" if ok else "存在失败项 ❌")
     return 0 if ok else 1
 
